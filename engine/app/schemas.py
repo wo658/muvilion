@@ -15,7 +15,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 # ---------- geometry ----------
 
 
@@ -154,6 +153,9 @@ class SimulateRequest(BaseModel):
     booths: list[BoothSpec]
     scenario: Scenario
     grid_cell: float = Field(default=2.0, gt=0)
+    # Safety cap on real compute time; a run that hits it returns partial metrics with
+    # truncated=true (and is then no longer guaranteed to be reproducible).
+    max_wall_time_s: float = Field(default=60.0, gt=0, le=600)
 
 
 class DensityGrid(BaseModel):
@@ -184,6 +186,8 @@ class SimResult(BaseModel):
     grid: DensityGrid
     sim_time_s: float
     wall_time_s: float
+    # True when the run stopped early because max_wall_time_s was reached.
+    truncated: bool = False
 
 
 class QueueRequest(BaseModel):
