@@ -30,6 +30,79 @@ export function Card({
   );
 }
 
+/** A section inside a workspace pane: flat, divided by hairlines instead of boxed. */
+export function PaneSection({
+  title,
+  right,
+  children,
+  className = "",
+}: {
+  title?: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`border-b border-hairline px-4 py-3.5 last:border-b-0 ${className}`}>
+      {(title || right) && (
+        <div className="mb-2.5 flex min-h-5 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          {title && <h2 className="eyebrow">{title}</h2>}
+          {right}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+/** Underline tabs for the inspector; `count` renders a small pill next to the label. */
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  label,
+}: {
+  tabs: { id: T; label: ReactNode; count?: number; dot?: boolean }[];
+  value: T;
+  onChange: (v: T) => void;
+  label: string;
+}) {
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-4 overflow-x-auto border-b border-hairline px-4">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={value === t.id}
+          onClick={() => onChange(t.id)}
+          className={`-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-[12.5px] font-medium transition-colors ${
+            value === t.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          {t.label}
+          {t.count !== undefined && <span className="num rounded-full bg-sunken px-1.5 text-[10.5px] leading-[16px] text-muted">{t.count}</span>}
+          {t.dot && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** One figure in the KPI strip: label, value, unit and an optional delta / note line. */
+export function Kpi({ label, value, unit, foot, tone }: { label: string; value: ReactNode; unit?: string; foot?: ReactNode; tone?: "ok" | "bad" }) {
+  return (
+    <div className="min-w-0 py-2 pr-3 lg:px-4 lg:py-2.5">
+      <div className="truncate text-[11px] font-medium text-muted">{label}</div>
+      <div className="mt-0.5 flex items-baseline gap-1">
+        <span className={`num text-[20px] font-medium leading-none ${tone === "bad" ? "text-bad" : tone === "ok" ? "text-ok" : "text-ink"}`}>{value}</span>
+        {unit && <span className="text-[11px] text-muted">{unit}</span>}
+      </div>
+      <div className="mt-1 h-4 truncate text-[11px] text-faint">{foot}</div>
+    </div>
+  );
+}
+
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 const VARIANT: Record<Variant, string> = {
   primary: "bg-accent text-white hover:bg-accent-hover border border-accent",
