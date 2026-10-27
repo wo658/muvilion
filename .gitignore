@@ -1,0 +1,31 @@
+# Planning notes kept local (not part of the submission repo)
+/README.md
+/docs/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Worktrees
+.worktrees/
