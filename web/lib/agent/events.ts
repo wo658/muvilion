@@ -213,7 +213,23 @@ export type AgentDataParts = {
   say: SayInfo;
 };
 
-export type AgentUIMessage = UIMessage<never, AgentDataParts>;
+/**
+ * Message metadata of the simple view's conversation (one `useChat` chat on /api/chat).
+ * User messages say what they ask for (`intent`, plus `mode`/`venue` for runs and the run a
+ * question is about); assistant messages say what they are (`kind`) and, for answers, who wrote
+ * them (`by`: "stub" or the model id). Streams from /api/agent carry none.
+ */
+export type MuseMetadata = {
+  intent?: "run" | "ask";
+  mode?: "live" | "replay";
+  venue?: string;
+  /** Ask only: the run message the question is about (default: the latest run). */
+  runMessageId?: string;
+  kind?: "run" | "answer";
+  by?: string;
+};
+
+export type AgentUIMessage = UIMessage<MuseMetadata, AgentDataParts>;
 
 export type AgentEvent =
   | { [K in keyof AgentDataParts]: { type: K; data: AgentDataParts[K] } }[keyof AgentDataParts]
