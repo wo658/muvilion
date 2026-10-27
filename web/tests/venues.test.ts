@@ -53,6 +53,8 @@ describe("venue picker", () => {
     const m = await lastMessage(res);
     const run = m?.parts.find((p) => p.type === "data-run");
     expect(run?.type === "data-run" && run.data.venue.setting).toBe("outdoor");
+    // the venue's scenario override is locked in for the run
+    expect(run?.type === "data-run" && run.data.scenario).toMatchObject(venueById("riverside-plaza")!.scenario!);
     expect(m?.parts.some((p) => p.type === "data-brief")).toBe(true);
   });
 

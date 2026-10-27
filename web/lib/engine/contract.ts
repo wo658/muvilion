@@ -17,8 +17,8 @@
  * - Travel times count finished agents only (0 if none finished).
  * - Validation rule ids (engine/app/validation/rules.py): aisle_width,
  *   booth_outside_hall, booth_over_obstacle, booth_overlap, booth_unreachable,
- *   connectivity, door_clearance, door_unreachable, entrance_blocked, keep_out,
- *   wall_margin (warning).
+ *   connectivity, door_clearance, door_unreachable, entrance_blocked, fire_lane_blocked, keep_out,
+ *   wall_margin (warning), zone_unbuildable (zone rules have source "venue:zones/<zone id>").
  *
  * Fields with a Pydantic default use `.default(...)`, so `z.input<>` matches
  * what may be sent and `z.infer<>` (output) has every field filled in.

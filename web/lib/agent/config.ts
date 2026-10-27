@@ -45,6 +45,16 @@ export function loadAgentConfig(env: Env = process.env): AgentConfig {
   };
 }
 
+/**
+ * Per-venue scenario override (lib/venues): e.g. the outdoor plaza is demoed with an entry rush of
+ * 400 visitors. Applied on top of the env config for live runs and real-engine recordings; the
+ * scenario stays locked for the whole run either way (ScenarioGuard).
+ */
+export function applyScenarioOverride(config: AgentConfig, override?: Partial<Scenario>): AgentConfig {
+  if (!override) return config;
+  return { ...config, scenario: Scenario.parse({ ...config.scenario, ...override }) };
+}
+
 export function liveAgentEnabled(env: Env = process.env): boolean {
   return env.LIVE_AGENT === "on";
 }

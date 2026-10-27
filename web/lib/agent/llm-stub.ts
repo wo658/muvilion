@@ -102,7 +102,10 @@ export function createStubLLM(): AgentLLM {
       for (const id of new Set(errors.flatMap((v) => v.booth_ids))) {
         if (pinned.has(id)) actions.push({ type: "unpin_booth", booth_id: id });
       }
-      const infeasible = errors.some((v) => v.rule_id === "layout_infeasible" || v.rule_id === "booth_missing");
+      // Booths on an unbuildable zone / blocking the fire lane: pinned ones were unpinned above;
+      // otherwise the constraints left too little buildable room, so relax like an infeasible solve.
+      const zoneConflict = errors.some((v) => (v.rule_id === "zone_unbuildable" || v.rule_id === "fire_lane_blocked") && !v.booth_ids.some((b) => pinned.has(b)));
+      const infeasible = zoneConflict || errors.some((v) => v.rule_id === "layout_infeasible" || v.rule_id === "booth_missing");
       if (infeasible || errors.some((v) => v.rule_id === "keep_out")) {
         if (c.keep_out.length > 0) actions.push({ type: "remove_keep_out", index: c.keep_out.length - 1 });
         else if (c.popular_door_distance > 0) actions.push({ type: "set_popular_door_distance", value: Math.max(0, c.popular_door_distance - 4) });

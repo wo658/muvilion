@@ -22,20 +22,14 @@ describe("design brief", () => {
     expect(t.request.previous).toBeNull();
     expect(c.min_aisle_width).toBeGreaterThan(defaultConstraints().min_aisle_width);
     expect(c.door_clearance).toBeGreaterThan(defaultConstraints().door_clearance);
-    expect(c.popular_door_distance).toBeGreaterThan(0);
-    // food trucks count as popular, so they are kept away from the gates
-    expect(p.booths.filter((b) => b.kind === "food_truck").every((b) => b.popularity >= c.popular_threshold)).toBe(true);
-    // the arrival plaza rect is computed in code, centered on the main gate, touching the boundary
-    expect(c.keep_out).toHaveLength(1);
-    const plaza = c.keep_out[0];
-    expect(plaza.y).toBe(0);
-    expect(plaza.x + plaza.w / 2).toBeCloseTo(30, 5);
-    // the kiosk is pinned beside the main gate, clear of obstacles, zones, the plaza and the gate line
+    // where the food trucks go is left to the solver and the revision loop (not pre-empted)
+    expect(c.popular_door_distance).toBe(0);
+    expect(c.keep_out).toEqual([]);
+    // the kiosk is pinned beside the main gate, clear of obstacles, zones and the gate line
     const k = c.fixed.K1;
     expect(k).toBeDefined();
     const kr = boothRect({ ...k, w: 2, h: 2 });
     expect(Math.hypot(kr.x + 1 - 30, kr.y + 1)).toBeLessThan(20);
-    expect(rectsOverlap(kr, plaza)).toBe(false);
     expect(kr.x + kr.w <= 27 || kr.x >= 33).toBe(true);
     for (const o of p.venue.obstacles) expect(rectsOverlap(kr, polygonBBox(o.polygon))).toBe(false);
     // and the solver can place everything under it without validation errors
@@ -55,6 +49,14 @@ describe("design brief", () => {
     const t = applyBrief({ venue: p.venue, specs: p.booths, request: initial(p) }, high.brief);
     expect(t.request.constraints.popular_door_distance).toBe(8);
     expect(t.applied.map((a) => a.effect)).toEqual(["popular_door_distance 0 → 8 m"]);
+  });
+
+  it("an open area in front of a gate becomes a keep-out rect computed from the door geometry", () => {
+    const p = structuredClone(venueById("riverside-plaza")!.project);
+    const { brief } = normalizeBrief({ rationale: "plaza", keep_clear_at_doors: [{ door_id: "G-main", depth_m: 9, width_m: 12 }] });
+    const t = applyBrief({ venue: p.venue, specs: p.booths, request: initial(p) }, brief);
+    expect(t.request.constraints.keep_out).toEqual([{ x: 24, y: 0, w: 12, h: 9 }]);
+    expect(t.applied[0].effect).toMatch(/^open area in front of G-main/);
   });
 
   it("validates model output: out-of-range values and unknown ids are rejected, not applied", () => {
@@ -108,5 +110,21 @@ describe("mock solver steps", () => {
     const res = mockLayout({ ...initial(p), previous: first.layout });
     expect(res.steps).toHaveLength(1);
     expect(res.steps[0].booths).toEqual(res.layout.booths);
+  });
+});
+
+describe("zone rules", () => {
+  it("a booth pinned on the fire lane fails zone_unbuildable + fire_lane_blocked, and the stub unpins it", async () => {
+    const p = structuredClone(venueById("riverside-plaza")!.project);
+    const c = { ...defaultConstraints(), fixed: { M01: { x: 30, y: 19 } } };
+    const res = mockLayout(LayoutRequest.parse({ venue: p.venue, booths: p.booths, constraints: c }));
+    const v = mockValidate({ venue: p.venue, layout: res.layout, constraints: c }).violations;
+    const zone = v.filter((x) => x.rule_id === "zone_unbuildable" || x.rule_id === "fire_lane_blocked");
+    expect(zone.map((x) => x.rule_id).sort()).toEqual(["fire_lane_blocked", "zone_unbuildable"]);
+    expect(zone.every((x) => x.source === "venue:zones/Z-fire" && x.severity === "error")).toBe(true);
+    const { summarizeIteration } = await import("@/lib/agent/analysis");
+    const summary = summarizeIteration({ iteration: 0, venue: p.venue, specs: p.booths, layout: res.layout, constraints: c, sim: null, violations: v });
+    const fix = await createStubLLM().proposeFixes({ summary, attempt: 0 });
+    expect(fix.revision.actions).toContainEqual({ type: "unpin_booth", booth_id: "M01" });
   });
 });

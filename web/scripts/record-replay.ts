@@ -4,11 +4,12 @@
  * web/public/replay/traj/<run_id>.json (served statically to the 3D replay in replay mode).
  *
  *   pnpm record:replay                                         mock engine, MOCK_RECORDING_ENV
- *   RECORD_ENGINE_URL=http://localhost:8000 pnpm record:replay real engine; AGENT_* env applies
+ *   RECORD_ENGINE_URL=http://localhost:8000 pnpm record:replay real engine; AGENT_* env + the venue's
+ *                                                              scenario override (lib/venues) apply
  */
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { loadAgentConfig } from "@/lib/agent/config";
+import { applyScenarioOverride, loadAgentConfig } from "@/lib/agent/config";
 import { recordReplayTrajectories, recordRun } from "@/lib/agent/recording";
 import { createHttpEngine } from "@/lib/engine/client";
 import { createMockEngine } from "@/lib/engine/mock";
@@ -22,7 +23,10 @@ async function main() {
   for (const f of readdirSync(dir)) if (f.endsWith(".json")) rmSync(join(dir, f));
 
   for (const v of VENUES) {
-    const rec = engineUrl ? await recordRun(v.project, engine, loadAgentConfig(process.env)) : await recordRun(v.project, engine);
+    // real engine: env config + the venue's scenario override; mock: MOCK_RECORDING_ENV (deterministic)
+    const rec = engineUrl
+      ? await recordRun(v.project, engine, applyScenarioOverride(loadAgentConfig(process.env), v.scenario))
+      : await recordRun(v.project, engine);
     const out = resolve(__dirname, "..", replayFixturePath(v.id));
     mkdirSync(dirname(out), { recursive: true });
     writeFileSync(out, JSON.stringify(rec) + "\n");

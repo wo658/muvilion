@@ -281,11 +281,9 @@ export function applyBrief(ctx: BriefContext, brief: Brief): TranslatedBrief {
 
 // ---------- deterministic rules (stub) ----------
 
-
 /**
- * Rule-based brief used by the stub LLM. Outdoor: wider aisles and door clearance, an arrival
- * plaza kept open in front of the main gate, popular stalls and food trucks kept away from the
- * gates, kiosks pinned beside the main gate. Indoor: the standard rules, and popular booths
+ * Rule-based brief used by the stub LLM. Outdoor: wider aisles and door clearance, kiosks pinned
+ * beside the main gate (popular stalls are left to the solver + simulation loop). Indoor: the standard rules, and popular booths
  * away from the entrance only when attendance is high.
  */
 export function ruleBasedBrief(site: SiteSummary): DesignBriefToolInput {
@@ -297,29 +295,25 @@ export function ruleBasedBrief(site: SiteSummary): DesignBriefToolInput {
   const highAttendance = site.attendance.visitors_per_m2 >= 0.25;
 
   if (site.venue.setting === "outdoor") {
+    // Deliberately conservative: where popular stalls and food trucks go is left to the solver and
+    // the simulation (the revision loop moves them if the gate area crowds), so the brief does not
+    // pre-empt the bottleneck the loop is there to find.
     const out: DesignBriefToolInput = {
       rationale: "",
       min_aisle_width: Math.max(d0.min_aisle_width, 3.5),
       door_clearance: Math.max(d0.door_clearance, 6),
-      keep_clear_at_doors: main ? [{ door_id: main.id, depth_m: 9, width_m: main.width_m + 6 }] : [],
     };
     const parts = [
-      `Outdoor site: crowds spread less evenly than indoors and service access matters, so aisles are wider and every gate keeps a deeper clearance.`,
-      main ? `The arrival plaza inside ${main.id} stays open so queues and arriving visitors do not spill into the stalls.` : "",
+      "Outdoor site: crowds spread less evenly than indoors and service access matters, so aisles are wider and every gate keeps a deeper clearance.",
     ];
-    if (trucks.length > 0 || site.booths.list.some((b) => b.popularity >= 0.8)) {
-      out.popular_threshold = 0.7;
-      out.popular_door_distance = 8;
-      parts.push(
-        `Food trucks${trucks.length ? ` (${trucks.map((t) => t.id).join(", ")})` : ""} and the most popular stalls draw long queues, so they are kept away from the entrances.`,
-      );
-    }
     if (main && kiosks.length > 0) {
       out.place_near_door = kiosks.slice(0, 2).map((k) => ({ booth_id: k.id, door_id: main.id }));
-      parts.push(`${kiosks.map((k) => k.id).join(", ")} sells tickets, so it sits beside ${main.id}.`);
+      parts.push(`${kiosks.map((k) => k.id).join(", ")} sells tickets, so it sits beside ${main.id}, out of the walking line.`);
     }
+    if (trucks.length > 0)
+      parts.push("Food trucks will draw queues; their placement is left to the solver and checked against the simulation before anything is moved.");
     if (site.zones.some((z) => z.kind === "fire_lane")) parts.push("The fire lane is unbuildable and must stay continuous; the engine enforces it.");
-    out.rationale = parts.filter(Boolean).join(" ");
+    out.rationale = parts.join(" ");
     return out;
   }
 

@@ -13,7 +13,7 @@ import indoorRecording from "@/fixtures/replay/sample-hall.json";
 import outdoorRecording from "@/fixtures/replay/riverside-plaza.json";
 import { createAgentLLM, createRunDeps, runAgentLoop } from "@/lib/agent";
 import { acquireLiveRun, capStatus } from "@/lib/agent/caps";
-import { liveAgentEnabled, loadAgentConfig } from "@/lib/agent/config";
+import { applyScenarioOverride, liveAgentEnabled, loadAgentConfig } from "@/lib/agent/config";
 import type { AgentEvent, AgentUIMessage } from "@/lib/agent/events";
 import { asReplay, createEventEncoder, replayDelayMs } from "@/lib/agent/stream";
 import { getModel } from "@/lib/agent/model";
@@ -100,7 +100,10 @@ export async function POST(req: Request) {
   const cap = acquireLiveRun();
   if (!cap.ok) return Response.json({ error: "cap_reached", message: cap.reason }, { status: 429 });
 
-  const { config, engine } = createRunDeps();
+  const deps = createRunDeps();
+  const { engine } = deps;
+  // The venue's scenario override applies when the project is that venue's.
+  const config = applyScenarioOverride(deps.config, venueById(parsed.data.venue.id)?.scenario);
   const timeoutS = Number(process.env.AGENT_RUN_TIMEOUT_S ?? 280);
   const signal = AbortSignal.any([req.signal, AbortSignal.timeout(timeoutS * 1000)]);
 

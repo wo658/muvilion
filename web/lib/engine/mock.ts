@@ -7,8 +7,8 @@
  *   footprint size). Honors wall_margin, door_clearance, obstacles, unbuildable zones, keep_out,
  *   fixed and popular_door_distance; with `previous` each booth takes the free slot nearest
  *   its old position (minimal displacement). `steps` imitates the solver's improving solutions.
- * - /validate: plain rectangle checks using the engine's rule ids, plus booth_on_unbuildable_zone
- *   (mock-only id; the engine's zone rule id may differ) (wall_margin is a
+ * - /validate: plain rectangle checks using the engine's rule ids, incl. zone_unbuildable and
+ *   fire_lane_blocked (source "venue:zones/<zone id>") (wall_margin is a
  *   warning; reachability rules — connectivity, entrance_blocked, booth_unreachable,
  *   door_unreachable — are not modeled).
  * - /simulate: a synthetic peak-density field = entrance inflow + crowding around
@@ -263,20 +263,25 @@ function mockSteps(venue: Venue, final: Booth[], objective: number, solveTime: n
 export function mockValidate(input: ValidateRequestInput): ValidateResponse {
   const { venue, layout, constraints: c } = ValidateRequest.parse(input);
   const v: Violation[] = [];
-  const add = (rule_id: string, message: string, booth_ids: string[], r?: Rect, severity: "error" | "warning" = "error") =>
-    v.push({ rule_id, severity, message, booth_ids, location: r ? center(r) : null, source: "internal:geometry" });
+  const add = (rule_id: string, message: string, booth_ids: string[], r?: Rect, severity: "error" | "warning" = "error", source = "internal:geometry") =>
+    v.push({ rule_id, severity, message, booth_ids, location: r ? center(r) : null, source });
+  const site = venue.setting === "outdoor" ? "site" : "hall";
+  const wall = venue.setting === "outdoor" ? "fence" : "wall";
   const m = c.wall_margin;
   const rects = layout.booths.map((b) => ({ b, r: boothRect(b) }));
   for (const { b, r } of rects) {
     const outside = r.x < -1e-6 || r.y < -1e-6 || r.x + r.w > venue.width + 1e-6 || r.y + r.h > venue.height + 1e-6;
-    if (outside) add("booth_outside_hall", `${b.id} extends outside the hall`, [b.id], r);
+    if (outside) add("booth_outside_hall", `${b.id} extends outside the ${site}`, [b.id], r);
     else if (r.x < m - 1e-6 || r.y < m - 1e-6 || r.x + r.w > venue.width - m + 1e-6 || r.y + r.h > venue.height - m + 1e-6)
-      add("wall_margin", `${b.id} is closer than ${m} m to a wall`, [b.id], r, "warning");
+      add("wall_margin", `${b.id} is closer than ${m} m to the ${wall}`, [b.id], r, "warning");
     for (const o of venue.obstacles)
       if (rectsOverlap(r, polygonBBox(o.polygon))) add("booth_over_obstacle", `${b.id} overlaps ${o.kind} ${o.id}`, [b.id], r);
-    for (const z of venue.zones)
-      if (!z.buildable && rectsOverlap(r, polygonBBox(z.polygon)))
-        add("booth_on_unbuildable_zone", `${b.id} is on unbuildable ${z.kind.replace(/_/g, " ")} ${z.id}`, [b.id], r);
+    for (const z of venue.zones) {
+      if (z.buildable || !rectsOverlap(r, polygonBBox(z.polygon))) continue;
+      const src = `venue:zones/${z.id}`;
+      add("zone_unbuildable", `${b.id} is on unbuildable ${z.kind.replace(/_/g, " ")} ${z.id}`, [b.id], r, "error", src);
+      if (z.kind === "fire_lane") add("fire_lane_blocked", `${b.id} blocks fire lane ${z.id}`, [b.id], r, "error", src);
+    }
     for (const d of venue.doors) {
       const z = doorClearanceRect(d, venue, c.door_clearance, c.min_aisle_width / 2);
       if (z && rectsOverlap(r, z)) add("door_clearance", `${b.id} blocks the ${c.door_clearance} m clearance of door ${d.id}`, [b.id], r);

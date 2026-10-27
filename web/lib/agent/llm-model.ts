@@ -130,7 +130,7 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
           `The generated layout failed validation (fix attempt ${attempt + 1}).`,
           JSON.stringify(summary),
           REVISION_GUIDE,
-          "Propose the smallest constraint changes that resolve the error-severity violations (e.g. unpin a conflicting booth, remove a keep-out that makes the problem infeasible, relax popular_door_distance). Call propose_revision.",
+          "Propose the smallest constraint changes that resolve the error-severity violations (e.g. unpin a conflicting booth, remove a keep-out that makes the problem infeasible, relax popular_door_distance). zone_unbuildable / fire_lane_blocked mean a booth stands on an unbuildable zone or breaks the fire lane: unpin it or free up buildable room. Call propose_revision.",
         ].join("\n\n"),
       );
       return normalizeRevision(input);

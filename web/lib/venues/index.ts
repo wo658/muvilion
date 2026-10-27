@@ -4,13 +4,30 @@
  */
 import indoor from "@/fixtures/sample_hall.json";
 import outdoor from "@/fixtures/outdoor_plaza.json";
-import { ProjectInput } from "@/lib/engine/contract";
+import { ProjectInput, type Scenario } from "@/lib/engine/contract";
 
-export type VenueOption = { id: string; label: string; setting: "indoor" | "outdoor"; project: ProjectInput };
+export type VenueOption = {
+  id: string;
+  label: string;
+  setting: "indoor" | "outdoor";
+  project: ProjectInput;
+  /**
+   * Scenario fields this venue overrides (live runs and real-engine recordings). Tuned for the
+   * real engine; mock recordings use MOCK_RECORDING_ENV instead (lib/agent/recording.ts).
+   */
+  scenario?: Partial<Scenario>;
+};
 
 export const VENUES: VenueOption[] = [
   { id: "sample-hall", label: "Indoor hall", setting: "indoor", project: ProjectInput.parse(indoor) },
-  { id: "riverside-plaza", label: "Outdoor plaza", setting: "outdoor", project: ProjectInput.parse(outdoor) },
+  {
+    id: "riverside-plaza",
+    label: "Outdoor plaza",
+    setting: "outdoor",
+    project: ProjectInput.parse(outdoor),
+    // browse/200 sits right at the target outdoors; an entry rush shows the gate bottleneck.
+    scenario: { kind: "entry", agents: 400, seed: 0 },
+  },
 ];
 
 export const DEFAULT_VENUE_ID = VENUES[0].id;
