@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import health
+from app.routers import health, validate
 
 app = FastAPI(title="Booth Layout Engine", version="0.1.0")
 
@@ -12,4 +12,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router)
+for module in (health, validate):
+    app.include_router(module.router)
