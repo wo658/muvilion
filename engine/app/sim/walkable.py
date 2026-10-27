@@ -41,8 +41,11 @@ def _largest(parts: list[Polygon]) -> Polygon:
 
 
 def build_walkable(venue: Venue, layout: Layout) -> Polygon:
-    """Hall minus booths and obstacles.
+    """Hall (or outdoor site) minus booths and obstacles.
 
+    Zones are walkable ground, unbuildable ones included (a fire lane or stage-front lawn is
+    where people walk), so they are not subtracted. On an outdoor site the doors are the
+    fence gates; entrances, exits and spawn strips work exactly as indoor doors do.
     If booths split the floor into disconnected pieces, the piece next to an entrance (or the
     largest piece) is kept; agents cannot reach the others anyway.
     """
