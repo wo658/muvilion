@@ -17,3 +17,13 @@ def sample() -> dict:
 @pytest.fixture(scope="session")
 def client() -> TestClient:
     return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def solved_layout(client, sample) -> dict:
+    """A layout solved once for the whole session (CP-SAT is the slowest step)."""
+    res = client.post(
+        "/layout", json={"venue": sample["venue"], "booths": sample["booths"], "time_limit_s": 3}
+    )
+    assert res.status_code == 200
+    return res.json()
