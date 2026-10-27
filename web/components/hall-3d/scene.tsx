@@ -21,7 +21,7 @@ import type { Palette } from "./palette";
 export const BOOTH_HEIGHT = 2.5;
 const WALL_HEIGHT = 1.2;
 const WALL_T = 0.15;
-const OBSTACLE_HEIGHT: Record<Obstacle["kind"], number> = { column: 4, restroom: 2.8, stage: 1, registration: 1.1, other: 2 };
+const OBSTACLE_HEIGHT: Record<Obstacle["kind"], number> = { column: 4, restroom: 2.8, stage: 1, registration: 1.1, tree: 5, fountain: 0.8, structure: 2.6, other: 2 };
 
 export type HallSceneProps = {
   venue: Venue;

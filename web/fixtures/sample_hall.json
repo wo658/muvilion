@@ -179,7 +179,8 @@
     "unknowns": [
       "Ceiling height not shown on plan",
       "Emergency door D-emg swing direction unconfirmed"
-    ]
+    ],
+    "setting": "indoor"
   },
   "booths": [
     {

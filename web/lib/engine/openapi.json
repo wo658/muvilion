@@ -332,6 +332,17 @@
             "minimum": 0.0,
             "title": "Popularity",
             "default": 0.5
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "booth",
+              "tent",
+              "food_truck",
+              "kiosk"
+            ],
+            "title": "Kind",
+            "default": "booth"
           }
         },
         "type": "object",
@@ -609,6 +620,14 @@
           "solve_time_s": {
             "type": "number",
             "title": "Solve Time S"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutStep"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
           }
         },
         "type": "object",
@@ -618,6 +637,33 @@
           "solve_time_s"
         ],
         "title": "LayoutResponse"
+      },
+      "LayoutStep": {
+        "properties": {
+          "t_s": {
+            "type": "number",
+            "title": "T S"
+          },
+          "objective": {
+            "type": "number",
+            "title": "Objective"
+          },
+          "booths": {
+            "items": {
+              "$ref": "#/components/schemas/Booth"
+            },
+            "type": "array",
+            "title": "Booths"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t_s",
+          "objective",
+          "booths"
+        ],
+        "title": "LayoutStep",
+        "description": "An improving solution found by the solver on the way to the returned layout."
       },
       "Obstacle": {
         "properties": {
@@ -632,6 +678,9 @@
               "restroom",
               "stage",
               "registration",
+              "tree",
+              "fountain",
+              "structure",
               "other"
             ],
             "title": "Kind"
@@ -1055,6 +1104,15 @@
             "type": "string",
             "title": "Name"
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "indoor",
+              "outdoor"
+            ],
+            "title": "Setting",
+            "default": "indoor"
+          },
           "width": {
             "type": "number",
             "exclusiveMinimum": 0.0,
@@ -1071,6 +1129,14 @@
             },
             "type": "array",
             "title": "Obstacles",
+            "default": []
+          },
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/Zone"
+            },
+            "type": "array",
+            "title": "Zones",
             "default": []
           },
           "doors": {
@@ -1149,6 +1215,46 @@
           "message"
         ],
         "title": "Violation"
+      },
+      "Zone": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "fire_lane",
+              "lawn",
+              "paved",
+              "stage_front",
+              "queue_area"
+            ],
+            "title": "Kind"
+          },
+          "polygon": {
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "type": "array",
+            "minItems": 3,
+            "title": "Polygon"
+          },
+          "buildable": {
+            "type": "boolean",
+            "title": "Buildable",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "polygon"
+        ],
+        "title": "Zone",
+        "description": "Walkable ground area with its own rules (booths may not be placed on unbuildable zones)."
       }
     }
   }

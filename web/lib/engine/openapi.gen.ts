@@ -153,6 +153,12 @@ export interface components {
              * @default 0.5
              */
             popularity: number;
+            /**
+             * Kind
+             * @default booth
+             * @enum {string}
+             */
+            kind: "booth" | "tent" | "food_truck" | "kiosk";
         };
         /** DensityGrid */
         DensityGrid: {
@@ -285,6 +291,23 @@ export interface components {
             objective?: number | null;
             /** Solve Time S */
             solve_time_s: number;
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["LayoutStep"][];
+        };
+        /**
+         * LayoutStep
+         * @description An improving solution found by the solver on the way to the returned layout.
+         */
+        LayoutStep: {
+            /** T S */
+            t_s: number;
+            /** Objective */
+            objective: number;
+            /** Booths */
+            booths: components["schemas"]["Booth"][];
         };
         /** Obstacle */
         Obstacle: {
@@ -294,7 +317,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "column" | "restroom" | "stage" | "registration" | "other";
+            kind: "column" | "restroom" | "stage" | "registration" | "tree" | "fountain" | "structure" | "other";
             /** Polygon */
             polygon: components["schemas"]["Point"][];
         };
@@ -476,6 +499,12 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Setting
+             * @default indoor
+             * @enum {string}
+             */
+            setting: "indoor" | "outdoor";
             /** Width */
             width: number;
             /** Height */
@@ -485,6 +514,11 @@ export interface components {
              * @default []
              */
             obstacles: components["schemas"]["Obstacle"][];
+            /**
+             * Zones
+             * @default []
+             */
+            zones: components["schemas"]["Zone"][];
             /** Doors */
             doors: components["schemas"]["Door"][];
             /**
@@ -515,6 +549,26 @@ export interface components {
              * @default internal:geometry
              */
             source: string;
+        };
+        /**
+         * Zone
+         * @description Walkable ground area with its own rules (booths may not be placed on unbuildable zones).
+         */
+        Zone: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "fire_lane" | "lawn" | "paved" | "stage_front" | "queue_area";
+            /** Polygon */
+            polygon: components["schemas"]["Point"][];
+            /**
+             * Buildable
+             * @default true
+             */
+            buildable: boolean;
         };
     };
     responses: never;

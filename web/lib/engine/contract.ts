@@ -40,7 +40,7 @@ export type Rect = z.infer<typeof Rect>;
 
 // ---------- venue ----------
 
-export const ObstacleKind = z.enum(["column", "restroom", "stage", "registration", "other"]);
+export const ObstacleKind = z.enum(["column", "restroom", "stage", "registration", "tree", "fountain", "structure", "other"]);
 export const Obstacle = z.object({
   id: z.string(),
   kind: ObstacleKind,
@@ -59,12 +59,25 @@ export const Door = z.object({
 });
 export type Door = z.infer<typeof Door>;
 
+/** Walkable ground area with its own rules (booths may not be placed on unbuildable zones). */
+export const ZoneKind = z.enum(["fire_lane", "lawn", "paved", "stage_front", "queue_area"]);
+export const Zone = z.object({
+  id: z.string(),
+  kind: ZoneKind,
+  polygon: z.array(Point).min(3),
+  buildable: z.boolean().default(true),
+});
+export type Zone = z.infer<typeof Zone>;
+
 export const Venue = z.object({
   id: z.string(),
   name: z.string(),
+  /** Outdoor sites have a fence instead of walls; doors are then gates in the fence. */
+  setting: z.enum(["indoor", "outdoor"]).default("indoor"),
   width: z.number().positive(),
   height: z.number().positive(),
   obstacles: z.array(Obstacle).default([]),
+  zones: z.array(Zone).default([]),
   doors: z.array(Door).min(1),
   /** Items the floor-plan reader could not confirm; never filled by guessing. */
   unknowns: z.array(z.string()).default([]),
@@ -80,6 +93,8 @@ export const BoothSpec = z.object({
   h: z.number().positive(),
   /** Relative attraction 0..1; drives dwell time and visit probability. */
   popularity: z.number().min(0).max(1).default(0.5),
+  /** Visual/semantic type; the engine treats every kind as a rectangular footprint. */
+  kind: z.enum(["booth", "tent", "food_truck", "kiosk"]).default("booth"),
 });
 export type BoothSpec = z.infer<typeof BoothSpec>;
 
@@ -136,11 +151,21 @@ export type LayoutRequest = z.infer<typeof LayoutRequest>;
 export type LayoutRequestInput = z.input<typeof LayoutRequest>;
 
 export const LayoutStatus = z.enum(["optimal", "feasible", "infeasible"]);
+/** An improving solution found by the solver on the way to the returned layout. */
+export const LayoutStep = z.object({
+  t_s: z.number(),
+  objective: z.number(),
+  booths: z.array(Booth),
+});
+export type LayoutStep = z.infer<typeof LayoutStep>;
+
 export const LayoutResponse = z.object({
   layout: Layout,
   status: LayoutStatus,
   objective: z.number().nullable().default(null),
   solve_time_s: z.number(),
+  /** Improving solutions in the order found (at most ~12, last one equals `layout`). */
+  steps: z.array(LayoutStep).default([]),
 });
 export type LayoutResponse = z.infer<typeof LayoutResponse>;
 

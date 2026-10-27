@@ -35,8 +35,19 @@ class Rect(BaseModel):
 
 class Obstacle(BaseModel):
     id: str
-    kind: Literal["column", "restroom", "stage", "registration", "other"]
+    kind: Literal[
+        "column", "restroom", "stage", "registration", "tree", "fountain", "structure", "other"
+    ]
     polygon: list[Point] = Field(min_length=3)
+
+
+class Zone(BaseModel):
+    """Walkable ground area with its own rules (booths may not be placed on unbuildable zones)."""
+
+    id: str
+    kind: Literal["fire_lane", "lawn", "paved", "stage_front", "queue_area"]
+    polygon: list[Point] = Field(min_length=3)
+    buildable: bool = True
 
 
 class Door(BaseModel):
@@ -50,9 +61,12 @@ class Door(BaseModel):
 class Venue(BaseModel):
     id: str
     name: str
+    # Outdoor sites have a fence instead of walls; doors are then gates in the fence.
+    setting: Literal["indoor", "outdoor"] = "indoor"
     width: float = Field(gt=0)
     height: float = Field(gt=0)
     obstacles: list[Obstacle] = []
+    zones: list[Zone] = []
     doors: list[Door] = Field(min_length=1)
     # Items the floor-plan reader could not confirm; never filled by guessing.
     unknowns: list[str] = []
@@ -68,6 +82,8 @@ class BoothSpec(BaseModel):
     h: float = Field(gt=0)
     # Relative attraction 0..1; drives dwell time and visit probability in simulation.
     popularity: float = Field(default=0.5, ge=0, le=1)
+    # Visual/semantic type; the engine treats every kind as a rectangular footprint.
+    kind: Literal["booth", "tent", "food_truck", "kiosk"] = "booth"
 
 
 class Booth(BaseModel):
@@ -112,11 +128,21 @@ class LayoutRequest(BaseModel):
     time_limit_s: float = Field(default=10.0, gt=0, le=60)
 
 
+class LayoutStep(BaseModel):
+    """An improving solution found by the solver on the way to the returned layout."""
+
+    t_s: float
+    objective: float
+    booths: list[Booth]
+
+
 class LayoutResponse(BaseModel):
     layout: Layout
     status: Literal["optimal", "feasible", "infeasible"]
     objective: float | None = None
     solve_time_s: float
+    # Improving solutions in the order found (at most ~12, last one equals `layout`).
+    steps: list[LayoutStep] = []
 
 
 class Violation(BaseModel):
