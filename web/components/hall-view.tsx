@@ -7,6 +7,7 @@
 import type { BoothMove } from "@/lib/agent/events";
 import type { BoothSpec, DensityGrid, Hotspot, Layout, Rect, Venue } from "@/lib/engine/contract";
 import { boothRect, center, doorClearanceRect } from "@/lib/geometry";
+import { boothHsl, heatCss, HEAT_MAX } from "@/lib/ui/heat";
 
 type Props = {
   venue: Venue;
@@ -25,14 +26,6 @@ type Props = {
 
 const DOOR_COLOR = { entrance: "var(--door-entrance)", exit: "var(--door-exit)", emergency: "var(--door-emergency)" } as const;
 
-function heatColor(v: number, max: number): string | null {
-  const t = Math.min(1, v / max);
-  if (t < 0.12) return null;
-  // yellow → orange → red, more opaque as density rises
-  const hue = 55 - 55 * t;
-  return `hsl(${hue} 95% 50% / ${0.18 + 0.6 * t})`;
-}
-
 export function HallView({
   venue,
   specs,
@@ -44,7 +37,7 @@ export function HallView({
   popularThreshold = 0.8,
   doorClearance = 0,
   showHeatmap = true,
-  heatMax = 4,
+  heatMax = HEAT_MAX,
 }: Props) {
   const W = venue.width;
   const H = venue.height;
@@ -88,7 +81,7 @@ export function HallView({
       {showHeatmap &&
         grid &&
         grid.peak.map((v, k) => {
-          const c = heatColor(v, heatMax);
+          const c = heatCss(v, heatMax);
           if (!c) return null;
           const i = k % grid.cols;
           const j = Math.floor(k / grid.cols);
@@ -159,7 +152,7 @@ export function HallView({
               width={r.w}
               height={r.h}
               rx={0.15}
-              fill={`hsl(32 92% ${93 - p * 48}%)`}
+              fill={`hsl(${boothHsl(p).h} ${boothHsl(p).s}% ${boothHsl(p).l}%)`}
               stroke={isMoved ? "var(--move)" : popular ? "var(--popular)" : "var(--booth-stroke)"}
               strokeWidth={isMoved ? 0.28 : popular ? 0.2 : 0.08}
             />
