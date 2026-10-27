@@ -25,6 +25,7 @@ a recorded run (`fixtures/replay/sample-run.json`).
 |---|---|
 | `pnpm dev` / `pnpm build` / `pnpm start` | Next.js |
 | `pnpm lint`, `pnpm typecheck` | ESLint, `tsc --noEmit` |
+| `pnpm gen:engine-types` | regenerate lib/engine/openapi.{json,gen.ts} from engine/ (needs uv); run after changing engine/app/schemas.py |
 | `pnpm test` | vitest (contract, revision translator, scenario guard, loop e2e, stream/replay) |
 | `pnpm record:replay` | Re-records `fixtures/replay/sample-run.json` by running the real loop against the mock engine with the stub LLM (deterministic; a test asserts the committed file still matches). |
 | `pnpm smoke:tools` | With `MODEL_API_KEY` set, checks the model calls two tools in sequence through the AI SDK; skips cleanly without a key. |
@@ -36,7 +37,9 @@ a recorded run (`fixtures/replay/sample-run.json`).
 app/page.tsx                 review console (server component → <ReviewConsole/>)
 app/api/agent/route.ts       GET status · POST live/replay UI message stream
 components/                  hall-view (SVG), panels (timeline, metric cards, comparison, report), review-console
-lib/engine/contract.ts       zod mirror of engine/app/schemas.py (to be replaced by OpenAPI-generated types)
+lib/engine/contract.ts       zod mirror of engine/app/schemas.py (runtime validation)
+lib/engine/openapi.gen.ts    types generated from the engine's OpenAPI spec (pnpm gen:engine-types)
+lib/engine/contract-drift.ts compile-time check that contract.ts matches openapi.gen.ts
 lib/engine/client.ts         typed HTTP client (ENGINE_URL, zod-validated responses, timeouts)
 lib/engine/mock.ts           deterministic mock engine (ENGINE_MOCK=1)
 lib/agent/loop.ts            the code-controlled loop

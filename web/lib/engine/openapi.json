@@ -1,0 +1,1045 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Booth Layout Engine",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/layout": {
+      "post": {
+        "tags": [
+          "layout"
+        ],
+        "summary": "Layout",
+        "operationId": "layout_layout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/queue": {
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "summary": "Queue",
+        "operationId": "queue_queue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate": {
+      "post": {
+        "tags": [
+          "simulate"
+        ],
+        "summary": "Simulate",
+        "operationId": "simulate_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validate": {
+      "post": {
+        "tags": [
+          "validate"
+        ],
+        "summary": "Validate",
+        "operationId": "validate_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Booth": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          },
+          "w": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "W"
+          },
+          "h": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "H"
+          },
+          "rotation": {
+            "type": "integer",
+            "enum": [
+              0,
+              90
+            ],
+            "title": "Rotation",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "title": "Booth"
+      },
+      "BoothSpec": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "w": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "W"
+          },
+          "h": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "H"
+          },
+          "popularity": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Popularity",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "w",
+          "h"
+        ],
+        "title": "BoothSpec"
+      },
+      "DensityGrid": {
+        "properties": {
+          "cell": {
+            "type": "number",
+            "title": "Cell"
+          },
+          "cols": {
+            "type": "integer",
+            "title": "Cols"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "peak": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Peak"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell",
+          "cols",
+          "rows",
+          "peak"
+        ],
+        "title": "DensityGrid"
+      },
+      "Door": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "entrance",
+              "exit",
+              "emergency"
+            ],
+            "title": "Kind"
+          },
+          "a": {
+            "$ref": "#/components/schemas/Point"
+          },
+          "b": {
+            "$ref": "#/components/schemas/Point"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "a",
+          "b"
+        ],
+        "title": "Door"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Hotspot": {
+        "properties": {
+          "zone": {
+            "$ref": "#/components/schemas/Rect"
+          },
+          "peak_density": {
+            "type": "number",
+            "title": "Peak Density"
+          },
+          "mean_density": {
+            "type": "number",
+            "title": "Mean Density"
+          },
+          "nearby_booth_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nearby Booth Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "zone",
+          "peak_density",
+          "mean_density"
+        ],
+        "title": "Hotspot"
+      },
+      "Layout": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "venue_id": {
+            "type": "string",
+            "title": "Venue Id"
+          },
+          "booths": {
+            "items": {
+              "$ref": "#/components/schemas/Booth"
+            },
+            "type": "array",
+            "title": "Booths"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "venue_id",
+          "booths"
+        ],
+        "title": "Layout"
+      },
+      "LayoutConstraints": {
+        "properties": {
+          "min_aisle_width": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Aisle Width",
+            "default": 3.0
+          },
+          "door_clearance": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Door Clearance",
+            "default": 5.0
+          },
+          "wall_margin": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Wall Margin",
+            "default": 1.0
+          },
+          "fixed": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "type": "object",
+            "title": "Fixed",
+            "default": {}
+          },
+          "keep_out": {
+            "items": {
+              "$ref": "#/components/schemas/Rect"
+            },
+            "type": "array",
+            "title": "Keep Out",
+            "default": []
+          },
+          "popular_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Popular Threshold",
+            "default": 0.8
+          },
+          "popular_door_distance": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Popular Door Distance",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "LayoutConstraints"
+      },
+      "LayoutRequest": {
+        "properties": {
+          "venue": {
+            "$ref": "#/components/schemas/Venue"
+          },
+          "booths": {
+            "items": {
+              "$ref": "#/components/schemas/BoothSpec"
+            },
+            "type": "array",
+            "title": "Booths"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/LayoutConstraints",
+            "default": {
+              "min_aisle_width": 3.0,
+              "door_clearance": 5.0,
+              "wall_margin": 1.0,
+              "fixed": {},
+              "keep_out": [],
+              "popular_threshold": 0.8,
+              "popular_door_distance": 0.0
+            }
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Layout"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 0
+          },
+          "time_limit_s": {
+            "type": "number",
+            "maximum": 60.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Time Limit S",
+            "default": 10.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "venue",
+          "booths"
+        ],
+        "title": "LayoutRequest"
+      },
+      "LayoutResponse": {
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "optimal",
+              "feasible",
+              "infeasible"
+            ],
+            "title": "Status"
+          },
+          "objective": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective"
+          },
+          "solve_time_s": {
+            "type": "number",
+            "title": "Solve Time S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layout",
+          "status",
+          "solve_time_s"
+        ],
+        "title": "LayoutResponse"
+      },
+      "Obstacle": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "column",
+              "restroom",
+              "stage",
+              "registration",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "polygon": {
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "type": "array",
+            "minItems": 3,
+            "title": "Polygon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "polygon"
+        ],
+        "title": "Obstacle"
+      },
+      "Point": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "Point"
+      },
+      "QueueRequest": {
+        "properties": {
+          "arrivals_per_min": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Arrivals Per Min"
+          },
+          "service_time_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Service Time S"
+          },
+          "servers": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Servers"
+          },
+          "duration_min": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration Min",
+            "default": 60
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "arrivals_per_min",
+          "service_time_s",
+          "servers"
+        ],
+        "title": "QueueRequest"
+      },
+      "QueueResult": {
+        "properties": {
+          "mean_wait_s": {
+            "type": "number",
+            "title": "Mean Wait S"
+          },
+          "p90_wait_s": {
+            "type": "number",
+            "title": "P90 Wait S"
+          },
+          "max_queue_len": {
+            "type": "integer",
+            "title": "Max Queue Len"
+          },
+          "utilization": {
+            "type": "number",
+            "title": "Utilization"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mean_wait_s",
+          "p90_wait_s",
+          "max_queue_len",
+          "utilization"
+        ],
+        "title": "QueueResult"
+      },
+      "Rect": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          },
+          "w": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "W"
+          },
+          "h": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "H"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "title": "Rect"
+      },
+      "Scenario": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "entry",
+              "browse",
+              "exit"
+            ],
+            "title": "Kind"
+          },
+          "agents": {
+            "type": "integer",
+            "maximum": 3000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Agents",
+            "default": 200
+          },
+          "duration_s": {
+            "type": "number",
+            "maximum": 3600.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Duration S",
+            "default": 300.0
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "Scenario"
+      },
+      "SimResult": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/Scenario"
+          },
+          "layout_id": {
+            "type": "string",
+            "title": "Layout Id"
+          },
+          "completed_fraction": {
+            "type": "number",
+            "title": "Completed Fraction"
+          },
+          "mean_travel_time_s": {
+            "type": "number",
+            "title": "Mean Travel Time S"
+          },
+          "p90_travel_time_s": {
+            "type": "number",
+            "title": "P90 Travel Time S"
+          },
+          "max_density": {
+            "type": "number",
+            "title": "Max Density"
+          },
+          "hotspots": {
+            "items": {
+              "$ref": "#/components/schemas/Hotspot"
+            },
+            "type": "array",
+            "title": "Hotspots"
+          },
+          "grid": {
+            "$ref": "#/components/schemas/DensityGrid"
+          },
+          "sim_time_s": {
+            "type": "number",
+            "title": "Sim Time S"
+          },
+          "wall_time_s": {
+            "type": "number",
+            "title": "Wall Time S"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "scenario",
+          "layout_id",
+          "completed_fraction",
+          "mean_travel_time_s",
+          "p90_travel_time_s",
+          "max_density",
+          "hotspots",
+          "grid",
+          "sim_time_s",
+          "wall_time_s"
+        ],
+        "title": "SimResult"
+      },
+      "SimulateRequest": {
+        "properties": {
+          "venue": {
+            "$ref": "#/components/schemas/Venue"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "booths": {
+            "items": {
+              "$ref": "#/components/schemas/BoothSpec"
+            },
+            "type": "array",
+            "title": "Booths"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/Scenario"
+          },
+          "grid_cell": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Grid Cell",
+            "default": 2.0
+          },
+          "max_wall_time_s": {
+            "type": "number",
+            "maximum": 600.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Wall Time S",
+            "default": 60.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "venue",
+          "layout",
+          "booths",
+          "scenario"
+        ],
+        "title": "SimulateRequest"
+      },
+      "ValidateRequest": {
+        "properties": {
+          "venue": {
+            "$ref": "#/components/schemas/Venue"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/LayoutConstraints",
+            "default": {
+              "min_aisle_width": 3.0,
+              "door_clearance": 5.0,
+              "wall_margin": 1.0,
+              "fixed": {},
+              "keep_out": [],
+              "popular_threshold": 0.8,
+              "popular_door_distance": 0.0
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "venue",
+          "layout"
+        ],
+        "title": "ValidateRequest"
+      },
+      "ValidateResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/Violation"
+            },
+            "type": "array",
+            "title": "Violations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "violations"
+        ],
+        "title": "ValidateResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Venue": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "obstacles": {
+            "items": {
+              "$ref": "#/components/schemas/Obstacle"
+            },
+            "type": "array",
+            "title": "Obstacles",
+            "default": []
+          },
+          "doors": {
+            "items": {
+              "$ref": "#/components/schemas/Door"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Doors"
+          },
+          "unknowns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unknowns",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "width",
+          "height",
+          "doors"
+        ],
+        "title": "Venue"
+      },
+      "Violation": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning"
+            ],
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "booth_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Booth Ids",
+            "default": []
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Point"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "internal:geometry"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "severity",
+          "message"
+        ],
+        "title": "Violation"
+      }
+    }
+  }
+}
