@@ -3,8 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/prepare-pdf.mjs",
-    "prebuild": "node scripts/prepare-pdf.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -23,7 +21,6 @@
     "@react-three/fiber": "9.8.2",
     "ai": "7.0.153",
     "next": "16.4.3",
-    "pdfjs-dist": "6.4.299",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",

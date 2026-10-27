@@ -7,13 +7,13 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
-  title: "Layout Engineer · 행사 공간 워크스페이스",
-  description: "도면에서 행사 배치까지. 공간과 방문객 조건을 입력하고 배치안과 보행 흐름을 비교하세요.",
+  title: "Layout Engineer",
+  description: "Muse plans your event layout, tests it with virtual visitors and fixes what gets crowded.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${inter.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${plexMono.variable} h-full antialiased`}>
       <head>
         {/* design tokens (lib/ui/tokens.ts) as CSS variables */}
         <style dangerouslySetInnerHTML={{ __html: tokenCss() }} />
