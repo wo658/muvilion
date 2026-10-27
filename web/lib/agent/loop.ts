@@ -18,6 +18,7 @@ import {
   type LayoutResponse,
   type ProjectInput,
   type SimResult,
+  type SimulateRequest,
   type ValidateResponse,
 } from "@/lib/engine/contract";
 import {
@@ -235,12 +236,13 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
 
       // ---- simulate under the locked scenario ----
       const lr = layoutRes;
+      let simReq: SimulateRequest | undefined;
       const sim = await step(
         it,
         "simulate",
         "Simulate pedestrians (identical scenario)",
         async () => {
-          const simReq = guard.request(lr.layout);
+          simReq = guard.request(lr.layout);
           const res = await engine.simulate(simReq);
           guard.assertResult(res);
           return res;
@@ -250,7 +252,12 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
           (r.truncated ? " — TRUNCATED at max_wall_time_s (not comparable)" : ""),
       );
       const metrics = metricsOf(sim, validation.violations);
-      emit({ type: "sim", data: { iteration: it, result: sim, metrics } });
+      const params = {
+        grid_cell: simReq!.grid_cell,
+        max_wall_time_s: simReq!.max_wall_time_s,
+        trajectory_dt: simReq!.trajectory_dt,
+      };
+      emit({ type: "sim", data: { iteration: it, result: sim, metrics, params } });
       summary = summarizeIteration({
         iteration: it,
         venue,

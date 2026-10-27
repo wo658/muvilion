@@ -90,7 +90,13 @@ export type ValidationInfo = {
   warnings: number;
 };
 
-export type SimInfo = { iteration: number; result: SimResult; metrics: Metrics };
+/**
+ * SimulateRequest fields not otherwise in the stream, so the UI can rebuild the exact request
+ * (venue/booths from data-run, layout from data-layout, scenario from the result) and fetch the
+ * matching /trajectories (same run_id). Never carries trajectories themselves.
+ */
+export type SimParams = { grid_cell: number; max_wall_time_s: number; trajectory_dt: number };
+export type SimInfo = { iteration: number; result: SimResult; metrics: Metrics; params: SimParams };
 
 export type HotspotCause = { hotspot_index: number; cause: string; booth_ids: string[] };
 export type AnalysisInfo = { iteration: number; summary: string; causes: HotspotCause[]; by: string };

@@ -9,6 +9,7 @@ import {
   LayoutResponse,
   QueueResult,
   SimResult,
+  Trajectories,
   ValidateResponse,
   type LayoutRequestInput,
   type QueueRequestInput,
@@ -22,6 +23,8 @@ export interface Engine {
   layout(req: LayoutRequestInput): Promise<LayoutResponse>;
   validate(req: ValidateRequestInput): Promise<ValidateResponse>;
   simulate(req: SimulateRequestInput): Promise<SimResult>;
+  /** Per-agent position tracks for the same request (same run_id as simulate). */
+  trajectories(req: SimulateRequestInput): Promise<Trajectories>;
   queue(req: QueueRequestInput): Promise<QueueResult>;
 }
 
@@ -47,6 +50,11 @@ export interface HttpEngineOptions {
    * entry ~4 s, browse ~11 s, exit ~0.3 s; layout ~3.6 s.
    */
   simulateTimeoutMs?: number;
+  /**
+   * Minimum timeout (ms) for /trajectories (re-runs the simulation and serializes every
+   * track). Effective timeout is max(this, (max_wall_time_s + 60) s); default 120 s.
+   */
+  trajectoriesTimeoutMs?: number;
   fetch?: typeof fetch;
 }
 
@@ -54,6 +62,8 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
   const baseUrl = (opts.baseUrl ?? process.env.ENGINE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
   const timeoutMs = opts.timeoutMs ?? Number(process.env.ENGINE_TIMEOUT_MS ?? 30_000);
   const simulateTimeoutMs = opts.simulateTimeoutMs ?? Number(process.env.ENGINE_SIMULATE_TIMEOUT_MS ?? 90_000);
+  const trajectoriesTimeoutMs =
+    opts.trajectoriesTimeoutMs ?? Number(process.env.ENGINE_TRAJECTORIES_TIMEOUT_MS ?? 120_000);
   const doFetch = opts.fetch ?? fetch;
 
   async function call<S extends z.ZodType>(
@@ -106,6 +116,14 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
     // The engine stops at max_wall_time_s (truncated=true); leave headroom for setup + serialization.
     simulate: (req) =>
       call("POST", "/simulate", SimResult, req, Math.max(simulateTimeoutMs, ((req.max_wall_time_s ?? 60) + 30) * 1000)),
+    trajectories: (req) =>
+      call(
+        "POST",
+        "/trajectories",
+        Trajectories,
+        req,
+        Math.max(trajectoriesTimeoutMs, ((req.max_wall_time_s ?? 60) + 60) * 1000),
+      ),
     queue: (req) => call("POST", "/queue", QueueResult, req, timeoutMs),
   };
 }
