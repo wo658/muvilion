@@ -1,8 +1,55 @@
 @import "tailwindcss";
 
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f7f9;
+  --foreground: #16181d;
+  --panel: #ffffff;
+  --border: #e3e6eb;
+  --muted: #646b78;
+  --hover: #eef0f4;
+  --accent: #4f46e5;
+  --accent-soft: #eef2ff;
+  --floor: #fbfbfc;
+  --wall: #2b2f36;
+  --obstacle: #9aa1ad;
+  --obstacle-text: #ffffff;
+  --booth-stroke: #b8860b;
+  --booth-text: #3d2a00;
+  --popular: #7c2d12;
+  --hotspot: #dc2626;
+  --move: #7c3aed;
+  --keepout: #0891b2;
+  --door-entrance: #16a34a;
+  --door-exit: #2563eb;
+  --door-emergency: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0e1014;
+    --foreground: #e7e9ee;
+    --panel: #161920;
+    --border: #2a2f39;
+    --muted: #9aa1ad;
+    --hover: #1f232c;
+    --accent: #818cf8;
+    --accent-soft: #1e1b4b;
+    --floor: #1b1f27;
+    --wall: #c9ced8;
+    --obstacle: #4b5260;
+    --obstacle-text: #e7e9ee;
+    --booth-stroke: #d4a017;
+    --booth-text: #2a1d00;
+    --popular: #fdba74;
+    --hotspot: #f87171;
+    --move: #a78bfa;
+    --keepout: #22d3ee;
+    --door-entrance: #4ade80;
+    --door-exit: #60a5fa;
+    --door-emergency: #f87171;
+  }
 }
 
 @theme inline {
@@ -12,15 +59,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* Markdown report */
+.report h1 { font-size: 1.1rem; font-weight: 650; margin: 0 0 0.6rem; }
+.report h2 { font-size: 0.95rem; font-weight: 650; margin: 1.1rem 0 0.4rem; }
+.report p { margin: 0.45rem 0; }
+.report ul { list-style: disc; padding-left: 1.25rem; margin: 0.35rem 0; }
+.report blockquote { border-left: 3px solid var(--border); padding-left: 0.75rem; color: var(--muted); margin: 0.5rem 0; }
+.report table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin: 0.5rem 0; display: block; overflow-x: auto; }
+.report th, .report td { border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; white-space: nowrap; }
+.report th { background: var(--hover); font-weight: 600; }
+.report code { font-family: var(--font-geist-mono), monospace; font-size: 0.85em; }
+.report hr { border-color: var(--border); margin: 1rem 0; }

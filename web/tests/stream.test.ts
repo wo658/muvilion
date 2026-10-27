@@ -41,3 +41,27 @@ describe("UI message stream encoding", () => {
     expect(parts[parts.length - 1].type).toBe("data-done");
   });
 });
+
+describe("deriveRunState", () => {
+  it("folds a replayed message into per-iteration views", async () => {
+    const { deriveRunState } = await import("@/lib/ui/run-state");
+    const events = asReplay((recording as { events: AgentEvent[] }).events);
+    const stream = createUIMessageStream<AgentUIMessage>({
+      execute: ({ writer }) => {
+        writer.write({ type: "start" });
+        const emit = createEventEncoder(writer);
+        for (const e of events) emit(e);
+        emit.close();
+      },
+    });
+    let last: AgentUIMessage | undefined;
+    for await (const m of readUIMessageStream<AgentUIMessage>({ stream })) last = m;
+    const s = deriveRunState(last);
+    expect(s.run?.mode).toBe("replay");
+    expect(s.iterations.map((i) => i.iteration)).toEqual([0, 1, 2]);
+    expect(s.iterations[0].revision?.applied.length).toBeGreaterThan(0);
+    expect(s.iterations[1].layout?.moves.length).toBeGreaterThan(0);
+    expect(s.done?.finalIteration).toBe(2);
+    expect(s.reportText).toBe(s.report?.markdown);
+  });
+});
