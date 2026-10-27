@@ -56,7 +56,18 @@ export function createStubLLM(): AgentLLM {
       );
       const popularNearTop = top?.nearby_booths.filter((b) => (b.popularity ?? 0) >= c.popular_threshold) ?? [];
       let rationale = "";
-      if (top && popularNearTop.length > 0 && c.popular_door_distance < 12) {
+      const pinnedNearTop = popularNearTop.filter((b) => b.pinned);
+      if (top && pinnedNearTop.length > 0) {
+        // Input pins (e.g. an organizer request) are causing the crowd: recommend releasing them,
+        // and say so explicitly because a person has to approve overriding their request. The
+        // entrance-distance rule applies to every popular booth, so release all popular pins at once.
+        const popularPinned = summary.popular_booths.filter((b) => b.pinned).map((b) => b.id);
+        for (const id of new Set([...pinnedNearTop.map((b) => b.id), ...popularPinned])) {
+          actions.push({ type: "unpin_booth", booth_id: id });
+        }
+        if (c.popular_door_distance < 12) actions.push({ type: "set_popular_door_distance", value: 12 });
+        rationale = `Hotspot #0 forms around ${pinnedNearTop.map((b) => b.id).join(", ")}, which were pinned by the input constraints. Releasing the pins of popular booths and keeping popular booths away from entrances separates arriving visitors from booth crowds. This overrides the requested positions and needs the organizer's approval.`;
+      } else if (top && popularNearTop.length > 0 && c.popular_door_distance < 12) {
         actions.push({ type: "set_popular_door_distance", value: 12 });
         rationale = `High-attraction booth${popularNearTop.length > 1 ? "s" : ""} ${popularNearTop.map((b) => b.id).join(", ")} sit${popularNearTop.length > 1 ? "" : "s"} in the entrance inflow; requiring popular booths to keep a distance from entrances separates arriving visitors from booth crowds.`;
       } else if (top) {
