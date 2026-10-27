@@ -1,14 +1,15 @@
 /**
- * Produces the replay recording: the real loop against the mock engine with the
- * stub LLM and default config (env ignored), with a fixed clock so the output is
- * byte-for-byte reproducible. Used by scripts/record-replay.ts and by a test
- * that checks the committed fixture is still genuine loop output.
+ * Produces the replay recording: the real loop with the stub LLM and a fixed clock.
+ * By default it runs against the mock engine with default config (env ignored), so the
+ * output is byte-for-byte reproducible; scripts/record-replay.ts can pass the real engine
+ * instead (also deterministic for the same engine version). A test checks that a
+ * mock-engine fixture is still genuine loop output.
  */
 import sample from "@/fixtures/sample_hall.json";
 import type { Engine } from "@/lib/engine/client";
 import { ProjectInput, type Layout, type Trajectories } from "@/lib/engine/contract";
 import { createMockEngine } from "@/lib/engine/mock";
-import { loadAgentConfig } from "./config";
+import { loadAgentConfig, type AgentConfig } from "./config";
 import { simulateRequestFor } from "@/lib/trajectory/request";
 import type { AgentEvent, RunInfo } from "./events";
 import { createStubLLM } from "./llm-stub";
@@ -17,15 +18,17 @@ import type { Recording } from "./stream";
 
 export const RECORDING_CLOCK = "2026-10-27T00:00:00.000Z";
 
-export async function recordSampleRun(): Promise<Recording> {
+export async function recordSampleRun(
+  engine: Engine = createMockEngine(),
+  config: AgentConfig = loadAgentConfig({}),
+): Promise<Recording> {
   const events: AgentEvent[] = [];
-  const engine = createMockEngine();
   const llm = createStubLLM();
   await runAgentLoop({
     project: ProjectInput.parse(sample),
     engine,
     llm,
-    config: loadAgentConfig({}),
+    config,
     runId: "sample-run",
     mode: "live",
     emit: (e) => events.push(e),
@@ -33,7 +36,7 @@ export async function recordSampleRun(): Promise<Recording> {
   });
   return {
     version: 1,
-    generator: "web/scripts/record-replay.ts (mock engine + stub LLM, default config)",
+    generator: `web/scripts/record-replay.ts (${engine.kind} engine + stub LLM)`,
     recordedAt: RECORDING_CLOCK,
     engine: engine.kind,
     llm: llm.name,
