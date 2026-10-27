@@ -19,16 +19,21 @@ import { hallCenter, toWorld } from "@/lib/trajectory/coords";
 import { trajectoryDuration } from "@/lib/trajectory/playback";
 import { Agents } from "./agents";
 import { createClock, SPEEDS, useClockView, usePlaybackLoop, type Clock } from "./clock";
-import { usePalette } from "./palette";
+import { inwardNormal } from "@/lib/ui/site";
+import { HEAT_GRADIENT } from "@/lib/ui/heat";
+import { TOKENS } from "@/lib/ui/tokens";
+import { Segmented, Swatch } from "../ui";
+import { PALETTE } from "./palette";
 import { HallScene, type HallSceneProps } from "./scene";
 import { useTrajectories, type TrajectorySource, type TrajectoryState } from "./use-trajectories";
 
 export type CameraPreset = "overview" | "top" | "entrance";
 const PRESETS: { id: CameraPreset; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "top", label: "Top-down" },
+  { id: "overview", label: "Model" },
+  { id: "top", label: "Plan" },
   { id: "entrance", label: "Entrance" },
 ];
+const TWEEN_MS = 750;
 
 export type ViewSpec = {
   title?: string;
@@ -46,24 +51,24 @@ function presetPose(preset: CameraPreset, venue: Venue): { pos: THREE.Vector3; t
   const H = venue.height;
   const S = Math.max(W, H);
   const c = new THREE.Vector3(...hallCenter(W, H));
-  if (preset === "top") return { pos: new THREE.Vector3(c.x, S * 1.15, c.z + 0.01), target: c };
+  if (preset === "top") return { pos: new THREE.Vector3(c.x, S * 1.55, c.z + 0.01), target: c };
   if (preset === "entrance") {
     const d = venue.doors.find((x) => x.kind === "entrance") ?? venue.doors[0];
     const m = { x: (d.a.x + d.b.x) / 2, y: (d.a.y + d.b.y) / 2 };
-    // inward normal of the boundary the door sits on
-    const dist = [m.y, H - m.y, m.x, W - m.x];
-    const n = [
-      { x: 0, y: 1 },
-      { x: 0, y: -1 },
-      { x: 1, y: 0 },
-      { x: -1, y: 0 },
-    ][dist.indexOf(Math.min(...dist))];
+    const n = inwardNormal(d, venue);
     return {
-      pos: new THREE.Vector3(...toWorld(m.x - n.x * 6, m.y - n.y * 6, 11)),
-      target: new THREE.Vector3(...toWorld(m.x + n.x * 10, m.y + n.y * 10, 0)),
+      pos: new THREE.Vector3(...toWorld(m.x - n.x * 7, m.y - n.y * 7, 9)),
+      target: new THREE.Vector3(...toWorld(m.x + n.x * 12, m.y + n.y * 12, 0)),
     };
   }
-  return { pos: new THREE.Vector3(c.x, S * 0.75, c.z + S * 0.85), target: c };
+  // isometric-ish model view: from the front-left, ~38° above the floor
+  const az = -0.62;
+  const el = 0.66;
+  const r = S * 1.3;
+  return {
+    pos: new THREE.Vector3(c.x + r * Math.sin(az) * Math.cos(el), r * Math.sin(el), c.z + r * Math.cos(az) * Math.cos(el)),
+    target: c.clone().add(new THREE.Vector3(0, 0, S * 0.03)),
+  };
 }
 
 /** Shared camera pose for linked canvases. */
@@ -90,15 +95,38 @@ function CameraRig({ preset, presetNonce, venue, link }: { preset: CameraPreset;
   const id = useMemo(() => nextViewId++, []);
   const seen = useRef(0);
   const interacting = useRef(false);
+  const lastVenue = useRef<Venue | null>(null);
+  const tween = useRef<{ p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number } | null>(null);
 
   useEffect(() => {
     const { pos, target } = presetPose(preset, venue);
-    camera.position.copy(pos);
-    controls.current?.target.copy(target);
-    controls.current?.update();
-    camera.lookAt(target);
+    const ctl = controls.current;
+    if (lastVenue.current !== venue || !ctl) {
+      // first frame or a different site: snap
+      lastVenue.current = venue;
+      camera.position.copy(pos);
+      ctl?.target.copy(target);
+      ctl?.update();
+      camera.lookAt(target);
+      tween.current = null;
+    } else {
+      tween.current = { p0: camera.position.clone(), t0: ctl.target.clone(), p1: pos, t1: target, start: performance.now() };
+    }
     invalidate();
   }, [preset, presetNonce, venue, camera, invalidate]);
+
+  useFrame(() => {
+    const tw = tween.current;
+    const ctl = controls.current;
+    if (!tw || !ctl) return;
+    const k = Math.min(1, (performance.now() - tw.start) / TWEEN_MS);
+    const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+    camera.position.lerpVectors(tw.p0, tw.p1, e);
+    ctl.target.lerpVectors(tw.t0, tw.t1, e);
+    ctl.update();
+    if (k < 1) invalidate();
+    else tween.current = null;
+  });
 
   useEffect(() => {
     if (!link) return;
@@ -119,10 +147,13 @@ function CameraRig({ preset, presetNonce, venue, link }: { preset: CameraPreset;
       ref={controls}
       makeDefault
       enableDamping={false}
-      maxPolarAngle={Math.PI / 2 - 0.05}
+      maxPolarAngle={Math.PI / 2 - 0.08}
       minDistance={3}
       maxDistance={Math.max(venue.width, venue.height) * 2.5}
-      onStart={() => (interacting.current = true)}
+      onStart={() => {
+        interacting.current = true;
+        tween.current = null;
+      }}
       onEnd={() => (interacting.current = false)}
       onChange={() => {
         if (!link || !interacting.current || !controls.current) return;
@@ -141,6 +172,35 @@ function ClockInvalidator({ clock }: { clock: Clock }) {
 
 // ---------- viewport ----------
 
+function SceneLights({ venue }: { venue: Venue }) {
+  const S = Math.max(venue.width, venue.height);
+  const c = hallCenter(venue.width, venue.height);
+  const target = useMemo(() => new THREE.Object3D(), []);
+  return (
+    <>
+      <hemisphereLight args={["#ffffff", "#d3cdbf", 1.05]} />
+      <ambientLight intensity={0.2} />
+      <primitive object={target} position={c} />
+      <directionalLight
+        target={target}
+        position={[c[0] - S * 0.45, S * 0.95, c[2] + S * 0.55]}
+        intensity={2.6}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.04}
+        shadow-radius={6}
+        shadow-camera-left={-S * 0.8}
+        shadow-camera-right={S * 0.8}
+        shadow-camera-top={S * 0.8}
+        shadow-camera-bottom={-S * 0.8}
+        shadow-camera-near={1}
+        shadow-camera-far={S * 3}
+      />
+    </>
+  );
+}
+
 function Viewport({
   view,
   state,
@@ -149,6 +209,7 @@ function Viewport({
   preset,
   presetNonce,
   link,
+  animating = false,
 }: {
   view: ViewSpec;
   state: TrajectoryState;
@@ -157,40 +218,47 @@ function Viewport({
   preset: CameraPreset;
   presetNonce: number;
   link?: CameraLink;
+  /** Booths are moving (placement animation): render every frame. */
+  animating?: boolean;
 }) {
-  const palette = usePalette();
   const counter = useRef<HTMLSpanElement>(null);
   const { venue } = view.scene;
+  const S = Math.max(venue.width, venue.height);
   const initial = useMemo(() => presetPose(preset, venue), []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-[var(--border)]" style={{ background: palette.background }}>
+    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[6px] border border-hairline" style={{ background: PALETTE.background }}>
       <Canvas
-        frameloop={playing ? "always" : "demand"}
+        shadows="soft"
+        frameloop={playing || animating ? "always" : "demand"}
         dpr={[1, 2]}
-        camera={{ fov: 45, near: 0.1, far: 500, position: initial.pos.toArray() }}
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        camera={{ fov: 32, near: 0.5, far: S * 12, position: initial.pos.toArray() }}
+        gl={{ antialias: true, powerPreference: "high-performance", toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 1.02 }}
       >
-        <color attach="background" args={[palette.background]} />
-        <hemisphereLight args={["#ffffff", "#8a8f99", 1.6]} />
-        <directionalLight position={[venue.width * 0.3, 40, 20]} intensity={1.6} />
-        <HallScene {...view.scene} palette={palette} />
-        {state.status === "ready" && <Agents key={state.data.run_id} traj={state.data} clock={clock} counterRef={counter} />}
+        <color attach="background" args={[PALETTE.background]} />
+        <fog attach="fog" args={[PALETTE.background, S * 1.9, S * 4.2]} />
+        <SceneLights venue={venue} />
+        <HallScene {...view.scene} />
+        {state.status === "ready" && (
+          <Agents key={state.data.run_id} traj={state.data} clock={clock} counterRef={counter} width={venue.width} height={venue.height} />
+        )}
         <CameraRig preset={preset} presetNonce={presetNonce} venue={venue} link={link} />
         <ClockInvalidator clock={clock} />
       </Canvas>
-      <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-        {view.title && <span className="rounded bg-black/60 px-1.5 py-0.5 font-semibold text-white">{view.title}</span>}
+      {/* soft vignette */}
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgb(30 30 28 / 0.07) 100%)" }} />
+      <div className="pointer-events-none absolute left-2.5 top-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+        {view.title && <span className="rounded-[4px] border border-hairline bg-surface/95 px-2 py-0.5 font-medium text-ink">{view.title}</span>}
         {state.status === "ready" && (
-          <span className="rounded bg-black/50 px-1.5 py-0.5 text-white">
-            <span ref={counter}>0</span> in hall · {state.data.agents.length} tracks
+          <span className="num rounded-[4px] border border-hairline bg-surface/90 px-2 py-0.5 text-muted">
+            <span ref={counter}>0</span> on site · {state.data.agents.length} tracks
           </span>
         )}
       </div>
-      {state.status !== "ready" && (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center p-2">
+      {state.status !== "ready" && !animating && (state.status !== "idle" || view.scene.booths?.length) ? (
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center p-2.5">
           <span
             role={state.status === "error" ? "alert" : "status"}
-            className={`rounded px-2 py-1 text-xs ${state.status === "error" ? "bg-rose-600 text-white" : "bg-black/60 text-white"}`}
+            className={`rounded-[4px] border px-2 py-1 text-[11px] ${state.status === "error" ? "border-bad/40 bg-surface text-bad" : "border-hairline bg-surface/95 text-muted"}`}
           >
             {state.status === "idle" && "No simulation for this iteration yet — showing the layout only."}
             {state.status === "loading" && "Loading pedestrian trajectories…"}
@@ -204,7 +272,7 @@ function Viewport({
             )}
           </span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -229,17 +297,21 @@ function PlaybackBar({
   extra?: ReactNode;
 }) {
   const v = useClockView(clock);
-  const btn = "rounded px-2 py-0.5 text-xs font-medium";
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => clock.set({ playing: !v.playing, t: !v.playing && v.t >= v.duration ? 0 : v.t })}
-          className="w-16 rounded-md bg-[var(--accent)] px-2 py-1 text-xs font-medium text-white"
+          className="inline-flex h-7 w-[4.5rem] shrink-0 items-center justify-center gap-1.5 rounded-[5px] bg-accent text-[12px] font-medium text-white hover:bg-accent-hover"
           aria-label={v.playing ? "Pause" : "Play"}
         >
-          {v.playing ? "❚❚ Pause" : "▶ Play"}
+          {v.playing ? (
+            <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden><rect width="3" height="10" fill="currentColor" /><rect x="6" width="3" height="10" fill="currentColor" /></svg>
+          ) : (
+            <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden><path d="M0 0 L9 5 L0 10 Z" fill="currentColor" /></svg>
+          )}
+          {v.playing ? "Pause" : "Play"}
         </button>
         <input
           type="range"
@@ -248,32 +320,20 @@ function PlaybackBar({
           step={0.1}
           value={v.t}
           onChange={(e) => clock.set({ t: Number(e.target.value) })}
-          className="min-w-0 flex-1 accent-[var(--accent)]"
+          className="h-1 min-w-0 flex-1"
           aria-label="Simulated time"
         />
-        <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[var(--muted)]">
+        <span className="num w-[5.5rem] shrink-0 text-right text-[11.5px] text-muted">
           {fmt(v.t)} / {fmt(v.duration)}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-        <span className="flex items-center gap-1" role="group" aria-label="Playback speed">
-          {SPEEDS.map((s) => (
-            <button key={s} type="button" onClick={() => clock.set({ speed: s })} aria-pressed={v.speed === s} className={`${btn} ${v.speed === s ? "bg-[var(--accent)] text-white" : "bg-[var(--hover)]"}`}>
-              {s}×
-            </button>
-          ))}
-        </span>
-        <label className="flex items-center gap-1 text-[var(--muted)]">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11.5px]">
+        <Segmented label="Playback speed" options={SPEEDS.map((s) => ({ id: s, label: `${s}×` }))} value={v.speed} onChange={(s) => clock.set({ speed: s })} />
+        <label className="flex items-center gap-1.5 text-muted">
           <input type="checkbox" checked={v.loop} onChange={(e) => clock.set({ loop: e.target.checked })} />
           Loop
         </label>
-        <span className="flex items-center gap-1" role="group" aria-label="Camera">
-          {PRESETS.map((p) => (
-            <button key={p.id} type="button" onClick={() => onPreset(p.id)} aria-pressed={preset === p.id} className={`${btn} ${preset === p.id ? "bg-[var(--accent)] text-white" : "bg-[var(--hover)]"}`}>
-              {p.label}
-            </button>
-          ))}
-        </span>
+        <Segmented label="Camera" options={PRESETS} value={preset} onChange={onPreset} />
         {extra}
       </div>
     </div>
@@ -281,27 +341,20 @@ function PlaybackBar({
 }
 
 export function Legend3D() {
-  const sw = (bg: string) => <span className="inline-block h-3 w-3 rounded-full" style={{ background: bg }} />;
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
-      <span className="inline-flex items-center gap-1.5">
-        {sw("rgb(38 140 242)")} Walking (≥ 1.2 m/s)
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        {sw("rgb(245 158 10)")} Dwelling / queuing (&lt; 0.25 m/s)
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-3 w-6 rounded-sm" style={{ background: "linear-gradient(90deg, rgb(245 158 10), rgb(38 140 242))" }} /> Agent color = local speed
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-3 w-6 rounded-sm" style={{ background: "linear-gradient(90deg, hsl(55 95% 50% / .3), hsl(0 95% 50% / .8))" }} /> Floor = peak density 0→4 p/m²
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-3 w-3 rounded-sm border-2" style={{ borderColor: "var(--move)" }} /> Moved booth (ghost = previous spot)
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-3 w-3 rounded-sm border-2" style={{ borderColor: "var(--hotspot)" }} /> Hotspot
-      </span>
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted">
+      <Swatch label="Pedestrian (grey → amber → red with local crowding)">
+        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: `linear-gradient(90deg, rgb(158 156 148), ${TOKENS.heat0}, ${TOKENS.heat2}, ${TOKENS.heat3})` }} />
+      </Swatch>
+      <Swatch label="Floor = peak density 0 → 4 p/m²">
+        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: HEAT_GRADIENT }} />
+      </Swatch>
+      <Swatch label="Moved by agent (ghost = previous spot)">
+        <span className="inline-block h-2.5 w-3.5 rounded-[2px] border-[1.5px] border-accent bg-white" />
+      </Swatch>
+      <Swatch label="Hover a booth for its name">
+        <span className="inline-block h-2.5 w-3.5 rounded-[2px] border border-hairline-strong bg-white" />
+      </Swatch>
     </div>
   );
 }
@@ -322,15 +375,15 @@ function useClock(states: TrajectoryState[], fallbackDuration: number): { clock:
   return { clock, playing: v.playing };
 }
 
-export function Hall3DPanel({ view }: { view: ViewSpec }) {
-  const state = useTrajectories(view.source);
+export function Hall3DPanel({ view, animating = false }: { view: ViewSpec; animating?: boolean }) {
+  const state = useTrajectories(animating ? undefined : view.source);
   const { clock, playing } = useClock([state], view.durationS ?? 300);
   const [preset, setPreset] = useState<CameraPreset>("overview");
   const [nonce, setNonce] = useState(0);
   const pick = (p: CameraPreset) => (setPreset(p), setNonce((n) => n + 1));
   return (
-    <div className="flex flex-col gap-2">
-      <Viewport view={view} state={state} clock={clock} playing={playing} preset={preset} presetNonce={nonce} />
+    <div className="flex flex-col gap-3">
+      <Viewport view={view} state={state} clock={clock} playing={playing} preset={preset} presetNonce={nonce} animating={animating} />
       <PlaybackBar clock={clock} preset={preset} onPreset={pick} />
       <Legend3D />
     </div>
@@ -346,17 +399,12 @@ export function Hall3DCompare({ before, after }: { before: ViewSpec; after: View
   const [link] = useState(createCameraLink);
   const pick = (p: CameraPreset) => (setPreset(p), setNonce((n) => n + 1));
   return (
-    <div className="flex flex-col gap-2">
-      <div className="grid gap-2 md:grid-cols-2">
+    <div className="flex flex-col gap-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <Viewport view={before} state={a} clock={clock} playing={playing} preset={preset} presetNonce={nonce} link={link} />
         <Viewport view={after} state={b} clock={clock} playing={playing} preset={preset} presetNonce={nonce} link={link} />
       </div>
-      <PlaybackBar
-        clock={clock}
-        preset={preset}
-        onPreset={pick}
-        extra={<span className="text-[var(--muted)]">Shared clock · cameras linked</span>}
-      />
+      <PlaybackBar clock={clock} preset={preset} onPreset={pick} extra={<span className="text-faint">Shared clock · linked cameras</span>} />
       <Legend3D />
     </div>
   );
