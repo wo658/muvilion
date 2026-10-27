@@ -1,15 +1,16 @@
 /**
  * Agent endpoint.
  *   GET  /api/agent              → status (is live mode enabled, engine/LLM kinds)
- *   POST /api/agent[?mode=replay|live][&speed=1]
- *        body (optional): { mode?, speed?, project?: ProjectInput }  (useChat also sends `messages`, ignored)
+ *   POST /api/agent[?mode=replay|live][&speed=1][&venue=<venue id>]
+ *        body (optional): { mode?, speed?, venue?, project?: ProjectInput }  (useChat also sends `messages`, ignored)
  * Streams an AI SDK UI message stream with typed `data-*` parts (see lib/agent/events.ts).
- * Live runs require LIVE_AGENT=on; otherwise only replay of the recorded sample run is served.
+ * Live runs require LIVE_AGENT=on and use `project` (default: the venue's sample project);
+ * replays stream the recording of `venue` (default: the indoor hall).
  */
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { connection } from "next/server";
-import sample from "@/fixtures/sample_hall.json";
-import recording from "@/fixtures/replay/sample-run.json";
+import indoorRecording from "@/fixtures/replay/sample-hall.json";
+import outdoorRecording from "@/fixtures/replay/riverside-plaza.json";
 import { createAgentLLM, createRunDeps, runAgentLoop } from "@/lib/agent";
 import { acquireLiveRun, capStatus } from "@/lib/agent/caps";
 import { liveAgentEnabled, loadAgentConfig } from "@/lib/agent/config";
@@ -17,6 +18,12 @@ import type { AgentEvent, AgentUIMessage } from "@/lib/agent/events";
 import { asReplay, createEventEncoder, replayDelayMs } from "@/lib/agent/stream";
 import { getModel } from "@/lib/agent/model";
 import { ProjectInput } from "@/lib/engine/contract";
+import { DEFAULT_VENUE_ID, venueById } from "@/lib/venues";
+
+const RECORDINGS: Record<string, { events: AgentEvent[] }> = {
+  "sample-hall": indoorRecording as { events: AgentEvent[] },
+  "riverside-plaza": outdoorRecording as { events: AgentEvent[] },
+};
 
 export const maxDuration = 300;
 
@@ -43,7 +50,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const url = new URL(req.url);
-  const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; project?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; venue?: string; project?: unknown };
   const live = liveAgentEnabled();
   const mode = url.searchParams.get("mode") ?? body.mode ?? (live ? "live" : "replay");
   const speed = Number(url.searchParams.get("speed") ?? body.speed ?? 1);
@@ -52,16 +59,24 @@ export async function POST(req: Request) {
     return Response.json({ error: "bad_mode", message: `mode must be "live" or "replay"` }, { status: 400 });
   }
 
+  const venueId = url.searchParams.get("venue") ?? body.venue ?? DEFAULT_VENUE_ID;
+  const venue = venueById(venueId);
+  if (!venue) return Response.json({ error: "bad_venue", message: `unknown venue "${venueId}"` }, { status: 400 });
+
   if (mode === "replay") {
-    const events = asReplay((recording as { events: AgentEvent[] }).events);
+    const recording = RECORDINGS[venue.id];
+    if (!recording) return Response.json({ error: "no_recording", message: `no replay recorded for ${venue.id}` }, { status: 404 });
+    const events = asReplay(recording.events);
     const stream = createUIMessageStream<AgentUIMessage>({
       execute: async ({ writer }) => {
         writer.write({ type: "start" });
         const emit = createEventEncoder(writer);
+        let prev: AgentEvent | undefined;
         for (const e of events) {
           if (req.signal.aborted) break;
-          await sleep(replayDelayMs(e, speed), req.signal);
+          await sleep(replayDelayMs(e, speed, prev), req.signal);
           emit(e);
+          prev = e;
         }
         emit.close();
         writer.write({ type: "finish" });
@@ -77,7 +92,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const parsed = ProjectInput.safeParse(body.project ?? sample);
+  const parsed = ProjectInput.safeParse(body.project ?? venue.project);
   if (!parsed.success) {
     return Response.json({ error: "bad_project", message: parsed.error.message }, { status: 400 });
   }

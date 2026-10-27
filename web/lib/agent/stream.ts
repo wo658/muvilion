@@ -44,11 +44,20 @@ export function createEventEncoder(writer: UIMessageStreamWriter<AgentUIMessage>
   return Object.assign(emit, { close: closeText });
 }
 
-/** Pacing for replay so the timeline visibly streams; `speed` 0 disables delays. */
-export function replayDelayMs(e: AgentEvent, speed: number): number {
+/** Time the console spends on the empty site → placed layout animation (components/placement). */
+export const PLACEMENT_PAUSE_MS = 4200;
+
+/**
+ * Pacing for replay so the timeline visibly streams; `speed` 0 disables delays. `prev` is the
+ * event just sent: the stream lingers on the empty site while the brief is written and after the
+ * first layout so the placement animation plays before the simulation results arrive.
+ */
+export function replayDelayMs(e: AgentEvent, speed: number, prev?: AgentEvent): number {
   if (speed <= 0) return 0;
-  const base =
+  let base =
     e.type === "report-delta" ? 12 : e.type === "step" ? (e.data.status === "running" ? 260 : 60) : e.type === "sim" ? 120 : 90;
+  if (e.type === "step" && e.data.step === "brief" && e.data.status === "done") base = 1400;
+  if (prev?.type === "layout" && prev.data.iteration === 0 && prev.data.attempt === 0 && prev.data.response.steps.length > 0) base = PLACEMENT_PAUSE_MS;
   return Math.round(base / speed);
 }
 

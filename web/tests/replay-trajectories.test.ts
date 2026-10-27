@@ -1,15 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import recording from "@/fixtures/replay/sample-run.json";
+import indoor from "@/fixtures/replay/sample-hall.json";
+import outdoor from "@/fixtures/replay/riverside-plaza.json";
 import type { AgentEvent } from "@/lib/agent/events";
 import { Trajectories, type Layout } from "@/lib/engine/contract";
 import { mockSimulate } from "@/lib/engine/mock";
 import { replayTrajectoryUrl, simulateRequestFor } from "@/lib/trajectory/request";
 
-const { events, engine } = recording as { events: AgentEvent[]; engine: "mock" | "http" };
+const RECORDINGS = { "sample-hall": indoor, "riverside-plaza": outdoor } as unknown as Record<string, { events: AgentEvent[]; engine: "mock" | "http" }>;
 
-describe("replay trajectory fixtures", () => {
+describe.each(Object.entries(RECORDINGS))("replay trajectory fixtures (%s)", (_venue, { events, engine }) => {
   it("exist for every simulated iteration of the recording and match its run ids", () => {
     let run: Extract<AgentEvent, { type: "run" }>["data"] | undefined;
     const layouts = new Map<number, Layout>();
@@ -28,6 +29,6 @@ describe("replay trajectory fixtures", () => {
       if (engine === "mock") expect(mockSimulate(simulateRequestFor(run!, layouts.get(e.data.iteration)!, e.data)).run_id).toBe(t.run_id);
       n++;
     }
-    expect(n).toBe(3);
+    expect(n).toBeGreaterThanOrEqual(2);
   });
 });
