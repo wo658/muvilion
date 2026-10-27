@@ -1,0 +1,354 @@
+{
+  "venue": {
+    "id": "sample-hall",
+    "name": "Sample Hall A (40m x 30m)",
+    "width": 40.0,
+    "height": 30.0,
+    "obstacles": [
+      {
+        "id": "C1",
+        "kind": "column",
+        "polygon": [
+          {
+            "x": 13,
+            "y": 10
+          },
+          {
+            "x": 13.6,
+            "y": 10
+          },
+          {
+            "x": 13.6,
+            "y": 10.6
+          },
+          {
+            "x": 13,
+            "y": 10.6
+          }
+        ]
+      },
+      {
+        "id": "C2",
+        "kind": "column",
+        "polygon": [
+          {
+            "x": 26.4,
+            "y": 10
+          },
+          {
+            "x": 27,
+            "y": 10
+          },
+          {
+            "x": 27,
+            "y": 10.6
+          },
+          {
+            "x": 26.4,
+            "y": 10.6
+          }
+        ]
+      },
+      {
+        "id": "C3",
+        "kind": "column",
+        "polygon": [
+          {
+            "x": 13,
+            "y": 20
+          },
+          {
+            "x": 13.6,
+            "y": 20
+          },
+          {
+            "x": 13.6,
+            "y": 20.6
+          },
+          {
+            "x": 13,
+            "y": 20.6
+          }
+        ]
+      },
+      {
+        "id": "C4",
+        "kind": "column",
+        "polygon": [
+          {
+            "x": 26.4,
+            "y": 20
+          },
+          {
+            "x": 27,
+            "y": 20
+          },
+          {
+            "x": 27,
+            "y": 20.6
+          },
+          {
+            "x": 26.4,
+            "y": 20.6
+          }
+        ]
+      },
+      {
+        "id": "WC",
+        "kind": "restroom",
+        "polygon": [
+          {
+            "x": 34,
+            "y": 24
+          },
+          {
+            "x": 40,
+            "y": 24
+          },
+          {
+            "x": 40,
+            "y": 30
+          },
+          {
+            "x": 34,
+            "y": 30
+          }
+        ]
+      },
+      {
+        "id": "REG",
+        "kind": "registration",
+        "polygon": [
+          {
+            "x": 15,
+            "y": 1.5
+          },
+          {
+            "x": 17,
+            "y": 1.5
+          },
+          {
+            "x": 17,
+            "y": 3
+          },
+          {
+            "x": 15,
+            "y": 3
+          }
+        ]
+      }
+    ],
+    "doors": [
+      {
+        "id": "D-main",
+        "kind": "entrance",
+        "a": {
+          "x": 18,
+          "y": 0
+        },
+        "b": {
+          "x": 22,
+          "y": 0
+        }
+      },
+      {
+        "id": "D-exit",
+        "kind": "exit",
+        "a": {
+          "x": 0,
+          "y": 24
+        },
+        "b": {
+          "x": 0,
+          "y": 27
+        }
+      },
+      {
+        "id": "D-emg",
+        "kind": "emergency",
+        "a": {
+          "x": 40,
+          "y": 8
+        },
+        "b": {
+          "x": 40,
+          "y": 10
+        }
+      }
+    ],
+    "unknowns": [
+      "Ceiling height not shown on plan",
+      "Emergency door D-emg swing direction unconfirmed"
+    ]
+  },
+  "booths": [
+    {
+      "id": "B01",
+      "label": "Booth 1",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B02",
+      "label": "Booth 2",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B03",
+      "label": "Booth 3",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.95
+    },
+    {
+      "id": "B04",
+      "label": "Booth 4",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B05",
+      "label": "Booth 5",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B06",
+      "label": "Booth 6",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    },
+    {
+      "id": "B07",
+      "label": "Booth 7",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B08",
+      "label": "Booth 8",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B09",
+      "label": "Booth 9",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    },
+    {
+      "id": "B10",
+      "label": "Booth 10",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.9
+    },
+    {
+      "id": "B11",
+      "label": "Booth 11",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B12",
+      "label": "Booth 12",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    },
+    {
+      "id": "B13",
+      "label": "Booth 13",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B14",
+      "label": "Booth 14",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B15",
+      "label": "Booth 15",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    },
+    {
+      "id": "B16",
+      "label": "Booth 16",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B17",
+      "label": "Booth 17",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.85
+    },
+    {
+      "id": "B18",
+      "label": "Booth 18",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    },
+    {
+      "id": "B19",
+      "label": "Booth 19",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B20",
+      "label": "Booth 20",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B21",
+      "label": "Booth 21",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    },
+    {
+      "id": "B22",
+      "label": "Booth 22",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B23",
+      "label": "Booth 23",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.4
+    },
+    {
+      "id": "B24",
+      "label": "Booth 24",
+      "w": 3.0,
+      "h": 3.0,
+      "popularity": 0.6
+    }
+  ]
+}
