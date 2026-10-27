@@ -1,10 +1,14 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+# Tests exercise the solver itself; the layout memo is tested separately with its own dir.
+os.environ["LAYOUT_CACHE_DIR"] = ""
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 FIXTURE = FIXTURES / "sample_hall.json"

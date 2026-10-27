@@ -180,7 +180,13 @@ export function keepClearRect(door: Door, venue: Venue, depth: number, width: nu
  * (+1 m), unbuildable zones, every door's clearance, the walking line straight in from this door,
  * every keep-out (and the popular zone if the booth counts as popular). Searched on a 0.5 m lattice along the door's side of the site.
  */
-export function spotNearDoor(venue: Venue, spec: BoothSpec, door: Door, c: LayoutConstraints): Point | null {
+export function spotNearDoor(
+  venue: Venue,
+  spec: BoothSpec,
+  door: Door,
+  c: LayoutConstraints,
+  pinned: Rect[] = [],
+): Point | null {
   const m = c.wall_margin;
   const blocked: Rect[] = [
     ...venue.obstacles.map((o) => {
@@ -193,6 +199,13 @@ export function spotNearDoor(venue: Venue, spec: BoothSpec, door: Door, c: Layou
       return r ? [r] : [];
     }),
     ...c.keep_out,
+    // Booths already pinned (input constraints or earlier brief items), with a full aisle around them.
+    ...pinned.map((r) => ({
+      x: r.x - c.min_aisle_width,
+      y: r.y - c.min_aisle_width,
+      w: r.w + 2 * c.min_aisle_width,
+      h: r.h + 2 * c.min_aisle_width,
+    })),
   ];
   // Keep the walking line straight out of the door free: beside the gate, not in front of it.
   const corridor = doorClearanceRect(door, venue, Math.max(c.door_clearance, 1) + 12, c.min_aisle_width / 2);
@@ -262,7 +275,14 @@ export function applyBrief(ctx: BriefContext, brief: Brief): TranslatedBrief {
       rejected.push({ action: item, reason: !s ? `unknown booth ${item.booth_id}` : `unknown door ${item.door_id}` });
       continue;
     }
-    const p = spotNearDoor(venue, s, d, c);
+    // A pin carries no rotation, so reserve the square that covers either orientation.
+    const pinned = Object.entries(c.fixed).flatMap(([id, q]) => {
+      const ps = spec.get(id);
+      if (!ps) return [];
+      const side = Math.max(ps.w, ps.h);
+      return [{ x: q.x, y: q.y, w: side, h: side }];
+    });
+    const p = spotNearDoor(venue, s, d, c, pinned);
     if (!p) {
       rejected.push({ action: item, reason: `no free spot for ${s.id} within 25 m of ${d.id}` });
       continue;
