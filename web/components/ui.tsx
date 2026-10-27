@@ -118,3 +118,12 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
           : "border-hairline-strong text-muted";
   return <span className={`inline-flex h-5 items-center gap-1 rounded-full border px-2 text-[11px] font-medium ${t}`}>{children}</span>;
 }
+
+/** A legend ramp with a tick where the crowd threshold sits (`at` = 0..1 along the bar). */
+export function ThresholdBar({ background, at }: { background: string; at: number }) {
+  return (
+    <span className="relative inline-block h-2.5 w-14 rounded-full" style={{ background }}>
+      <span className="absolute -top-0.5 -bottom-0.5 w-px bg-ink-soft" style={{ left: `${at * 100}%` }} />
+    </span>
+  );
+}

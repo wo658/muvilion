@@ -198,11 +198,11 @@ export function ReviewConsole() {
               }
             >
               <Hall3DCompare
-                before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · max ${baselineIt.sim!.metrics.max_density.toFixed(2)} p/m²` })}
+                before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · ${baselineIt.sim!.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor` })}
                 after={viewFor(state.run, venue, specs, compareIt, {
                   showHeatmap: showHeat,
                   moves: diffLayouts(baselineIt.layout!.response.layout, compareIt.layout!.response.layout),
-                  title: `${iterLabel(compareIt.iteration)} · max ${compareIt.sim!.metrics.max_density.toFixed(2)} p/m²`,
+                  title: `${iterLabel(compareIt.iteration)} · ${compareIt.sim!.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor`,
                 })}
               />
               <p className="mt-3 text-[11.5px] text-muted">
@@ -292,7 +292,7 @@ export function ReviewConsole() {
               <Roles steps={state.steps} run={state.run} />
             </Card>
             {state.iterations.some((i) => i.sim) && (
-              <Card title="Iterations" right={state.run && <span className="num text-[11px] text-faint">target ≤ {state.run.targets.crowded_s_per_visitor} s/visitor</span>}>
+              <Card title="Iterations" right={state.run && <span className="num text-[11px] text-faint">target ≤ {state.run.targets.crowded_s_per_visitor} s crowded (≥ {state.run.crowdThreshold ?? 2} p/m²)</span>}>
                 <MetricCards
                   iterations={state.iterations}
                   selected={current?.iteration ?? -1}
@@ -307,7 +307,7 @@ export function ReviewConsole() {
             )}
             {state.done?.baseline && state.done.final && (
               <Card title="Before / after" right={<span className="text-[11px] text-faint">stop: {state.done.stopReason.replace(/_/g, " ")}</span>}>
-                <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} />
+                <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} target={state.run?.targets.crowded_s_per_visitor} />
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {canCompare && (
                     <Button variant="primary" className="!h-7 text-[11.5px]" onClick={() => openCompare(state.done!.finalIteration)}>
@@ -422,7 +422,8 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
             <ActorTag id="jupedsim" /> Simulation
           </>,
           <span className="num">
-            max {it.sim.metrics.max_density.toFixed(2)} p/m² · p90 {it.sim.metrics.p90_travel_time_s.toFixed(0)} s · {it.sim.result.hotspots.length} hotspot(s)
+            {it.sim.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor (≥ {it.sim.metrics.crowd_threshold} p/m²) · {it.sim.metrics.crowded_person_s.toFixed(0)} person-s · peak crowded area {it.sim.metrics.peak_crowded_area_m2.toFixed(0)} m² · p90 {it.sim.metrics.p90_travel_time_s.toFixed(0)} s · {(it.sim.metrics.completed_fraction * 100).toFixed(0)}% completed · {it.sim.result.hotspots.length} hotspot(s)
+            <span className="text-faint"> · max {it.sim.metrics.max_density.toFixed(2)} p/m²</span>
           </span>,
         )}
       {it.comparison &&

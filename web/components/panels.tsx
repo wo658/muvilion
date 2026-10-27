@@ -140,6 +140,8 @@ export function BriefPanel({ brief }: { brief: BriefInfo }) {
   );
 }
 
+const pctChange = (a: number, b: number) => (a > 0 ? ((b - a) / a) * 100 : b > 0 ? Infinity : 0);
+
 export function MetricCards({
   iterations,
   selected,
@@ -150,18 +152,22 @@ export function MetricCards({
   iterations: IterationView[];
   selected: number;
   onSelect: (i: number) => void;
+  /** Target crowded seconds per visitor. */
   target?: number;
   finalIteration?: number;
 }) {
   const withSim = iterations.filter((i) => i.sim);
   if (withSim.length === 0) return null;
+  const base = withSim.find((i) => i.iteration === 0)?.sim?.metrics;
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(7.6rem,1fr))] gap-2">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(8.4rem,1fr))] gap-2">
       {withSim.map((it) => {
         const m = it.sim!.metrics;
         const ok = it.comparison?.valid;
+        const guard = it.comparison && !it.comparison.completionOk;
         const active = it.iteration === selected;
         const met = target !== undefined && m.crowded_s_per_visitor <= target;
+        const ch = base && it.iteration !== 0 ? pctChange(base.crowded_s_per_visitor, m.crowded_s_per_visitor) : null;
         return (
           <button
             key={it.iteration}
@@ -175,18 +181,35 @@ export function MetricCards({
                 {it.iteration === 0 ? "Baseline" : `Iter ${it.iteration}`}
                 {finalIteration === it.iteration && it.iteration !== 0 ? <span className="ml-1 text-accent">final</span> : null}
               </span>
-              <span className={`text-[10.5px] ${ok ? "text-ok" : "text-bad"}`}>{ok ? "valid" : m.truncated ? "truncated" : "invalid"}</span>
+              <span className={`text-[10.5px] ${ok && !guard ? "text-ok" : "text-bad"}`}>
+                {!ok ? (m.truncated ? "truncated" : "invalid") : guard ? "completion ↓" : "valid"}
+              </span>
             </div>
-            <div className="num text-[19px] font-medium leading-none text-ink">
-              {n(m.max_density)}
-              <span className="ml-1 font-sans text-[10.5px] font-normal text-muted">p/m² max</span>
+            <div className="num text-[21px] font-medium leading-none text-ink">
+              {n(m.crowded_s_per_visitor, 1)}
+              <span className="ml-1 font-sans text-[10.5px] font-normal text-muted">s crowded</span>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between gap-1 text-[10.5px] text-muted">
+              <span>per visitor</span>
+              {ch !== null && Number.isFinite(ch) && (
+                <span className={`num ${ch < 0 ? "text-ok" : ch > 0 ? "text-bad" : "text-faint"}`}>
+                  {ch > 0 ? "+" : ch < 0 ? "−" : "±"}
+                  {Math.abs(ch).toFixed(0)}%
+                </span>
+              )}
             </div>
             {target !== undefined && (
-              <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-sunken">
+              <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-sunken" title={`target ≤ ${target} s per visitor`}>
                 <div className="h-full rounded-full" style={{ width: `${Math.min(100, (m.crowded_s_per_visitor / (target * 1.8)) * 100)}%`, background: met ? "var(--ok)" : "var(--heat-2)" }} />
               </div>
             )}
             <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-[11px]">
+              <dt className="text-muted">Person-s</dt>
+              <dd className="num text-right text-ink-soft">{n(m.crowded_person_s, 0)}</dd>
+              <dt className="text-muted">Crowded area</dt>
+              <dd className="num text-right text-ink-soft">{n(m.peak_crowded_area_m2, 0)} m²</dd>
+              <dt className="text-muted">Hotspot mean</dt>
+              <dd className="num text-right text-ink-soft">{n(m.worst_hotspot_mean_density)}</dd>
               <dt className="text-muted">p90 travel</dt>
               <dd className="num text-right text-ink-soft">{n(m.p90_travel_time_s, 0)} s</dd>
               <dt className="text-muted">Completed</dt>
@@ -194,6 +217,7 @@ export function MetricCards({
               <dt className="text-muted">Errors</dt>
               <dd className="num text-right text-ink-soft">{m.violations}</dd>
             </dl>
+            <div className="num mt-1.5 border-t border-hairline pt-1 text-[10px] text-faint">max {n(m.max_density)} p/m²</div>
           </button>
         );
       })}
@@ -208,39 +232,62 @@ function Delta({ a, b, lowerIsBetter = true, digits = 2, unit = "" }: { a: numbe
   return <span className={zero ? "text-faint" : good ? "text-ok" : "text-bad"}>{zero ? "±0" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(digits)}${unit}`}</span>;
 }
 
-export function Comparison({ baseline, final, finalIteration }: { baseline: Metrics; final: Metrics; finalIteration: number }) {
-  const rows: { label: string; a: number; b: number; fmt: (v: number) => string; lower?: boolean; digits?: number; unit?: string }[] = [
-    { label: "Max density", a: baseline.max_density, b: final.max_density, fmt: (v) => `${n(v)}` },
-    { label: "p90 travel time", a: baseline.p90_travel_time_s, b: final.p90_travel_time_s, fmt: (v) => `${n(v, 1)} s`, digits: 1, unit: " s" },
-    { label: "Completed", a: baseline.completed_fraction * 100, b: final.completed_fraction * 100, fmt: (v) => `${n(v, 1)}%`, lower: false, digits: 1, unit: " pt" },
+export function Comparison({ baseline, final, finalIteration, target }: { baseline: Metrics; final: Metrics; finalIteration: number; target?: number }) {
+  const ch = pctChange(baseline.crowded_s_per_visitor, final.crowded_s_per_visitor);
+  const rows: { label: string; unit?: string; a: number; b: number; fmt: (v: number) => string; lower?: boolean; digits?: number; dunit?: string }[] = [
+    { label: "Crowded person-seconds", a: baseline.crowded_person_s, b: final.crowded_person_s, fmt: (v) => n(v, 0), digits: 0 },
+    { label: "Peak crowded area", unit: "m²", a: baseline.peak_crowded_area_m2, b: final.peak_crowded_area_m2, fmt: (v) => n(v, 1), digits: 1 },
+    { label: "Worst hotspot mean", unit: "p/m²", a: baseline.worst_hotspot_mean_density, b: final.worst_hotspot_mean_density, fmt: (v) => n(v) },
+    { label: "p90 travel time", a: baseline.p90_travel_time_s, b: final.p90_travel_time_s, fmt: (v) => `${n(v, 1)} s`, digits: 1, dunit: " s" },
+    { label: "Completed", a: baseline.completed_fraction * 100, b: final.completed_fraction * 100, fmt: (v) => `${n(v, 1)}%`, lower: false, digits: 1, dunit: " pt" },
     { label: "Validation errors", a: baseline.violations, b: final.violations, fmt: (v) => String(v), digits: 0 },
   ];
   return (
-    <table className="w-full text-[12.5px]">
-      <thead>
-        <tr className="text-left text-[10.5px] uppercase tracking-[0.06em] text-muted">
-          <th className="pb-1.5 font-medium">Metric</th>
-          <th className="pb-1.5 text-right font-medium">Baseline</th>
-          <th className="pb-1.5 text-right font-medium">Iter {finalIteration}</th>
-          <th className="pb-1.5 text-right font-medium">Change</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.label} className="border-t border-hairline">
-            <td className="py-1.5 text-ink-soft">
-              {r.label}
-              {r.label === "Max density" && <span className="text-faint"> p/m²</span>}
-            </td>
-            <td className="num py-1.5 text-right text-muted">{r.fmt(r.a)}</td>
-            <td className="num py-1.5 text-right text-ink">{r.fmt(r.b)}</td>
-            <td className="num py-1.5 text-right">
-              <Delta a={r.a} b={r.b} lowerIsBetter={r.lower ?? true} digits={r.digits ?? 2} unit={r.unit} />
-            </td>
+    <div>
+      <div className="text-[11.5px] text-muted">Time the average visitor spent in crowded areas</div>
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="num text-[15px] text-muted">{n(baseline.crowded_s_per_visitor, 1)} s</span>
+        <span className="text-faint">→</span>
+        <span className="num text-[28px] font-medium leading-none text-ink">{n(final.crowded_s_per_visitor, 1)} s</span>
+        {Number.isFinite(ch) && (
+          <span className={`num text-[13px] font-medium ${ch < 0 ? "text-ok" : ch > 0 ? "text-bad" : "text-faint"}`}>
+            {ch > 0 ? "+" : ch < 0 ? "−" : "±"}
+            {Math.abs(ch).toFixed(0)}%
+          </span>
+        )}
+      </div>
+      <div className="mt-1 text-[11px] text-faint">
+        crowded = ≥ {final.crowd_threshold} p/m²{target !== undefined && ` · target ≤ ${target} s per visitor`} · iter {finalIteration} vs baseline
+      </div>
+      <table className="mt-3 w-full text-[12.5px]">
+        <thead>
+          <tr className="text-left text-[10.5px] uppercase tracking-[0.06em] text-muted">
+            <th className="pb-1.5 font-medium">Metric</th>
+            <th className="pb-1.5 text-right font-medium">Baseline</th>
+            <th className="pb-1.5 text-right font-medium">Iter {finalIteration}</th>
+            <th className="pb-1.5 text-right font-medium">Change</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-t border-hairline">
+              <td className="py-1.5 text-ink-soft">
+                {r.label}
+                {r.unit && <span className="text-faint"> {r.unit}</span>}
+              </td>
+              <td className="num py-1.5 text-right text-muted">{r.fmt(r.a)}</td>
+              <td className="num py-1.5 text-right text-ink">{r.fmt(r.b)}</td>
+              <td className="num py-1.5 text-right">
+                <Delta a={r.a} b={r.b} lowerIsBetter={r.lower ?? true} digits={r.digits ?? 2} unit={r.dunit} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="num mt-2 text-[11px] text-faint">
+        Max density (single-instant peak): {n(baseline.max_density)} → {n(final.max_density)} p/m²
+      </p>
+    </div>
   );
 }
 
@@ -257,7 +304,9 @@ export function Conditions({ run }: { run: RunInfo }) {
       <dl>
         {item("Scenario", `${s.kind} · ${s.agents} agents · ${s.duration_s} s`)}
         {item("Seed · grid", `${s.seed} · ${run.gridCell} m`)}
-        {item("Target", `crowded ≤ ${run.targets.crowded_s_per_visitor} s/visitor`)}
+        {item("Crowded", `≥ ${run.crowdThreshold ?? 2} p/m² (grid cell)`)}
+        {item("Target", `≤ ${run.targets.crowded_s_per_visitor} s crowded per visitor`)}
+        {item("Better if", `−${Math.round(run.targets.min_improvement * 100)}% vs best · completion ≥ baseline −${Math.round(run.targets.max_completion_drop * 100)} pt`)}
         {item("Revisions", `up to ${run.maxIterations}`)}
         {item("Fingerprint", run.scenarioFingerprint)}
       </dl>

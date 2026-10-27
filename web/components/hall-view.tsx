@@ -10,10 +10,10 @@ import { useId } from "react";
 import type { BoothMove } from "@/lib/agent/events";
 import type { BoothSpec, DensityGrid, Hotspot, Obstacle, Point, Rect, Venue, Zone } from "@/lib/engine/contract";
 import { boothRect, center, doorClearanceRect, doorMid, polygonBBox } from "@/lib/geometry";
-import { HEAT_GRADIENT, heatCss, HEAT_MAX } from "@/lib/ui/heat";
+import { CROWD_THRESHOLD, HEAT_GRADIENT, heatCss, HEAT_MAX, THRESHOLD_AT } from "@/lib/ui/heat";
 import type { AnimatedBooth } from "@/lib/ui/placement";
 import { inwardNormal, wallSegments } from "@/lib/ui/site";
-import { Swatch } from "./ui";
+import { Swatch, ThresholdBar } from "./ui";
 
 type Props = {
   venue: Venue;
@@ -345,8 +345,8 @@ export function HallLegend({ outdoor = false }: { outdoor?: boolean }) {
           <span className="inline-block h-2.5 w-3.5" style={{ background: "repeating-linear-gradient(-45deg, var(--fire-lane) 0 2px, var(--fire-lane-hatch) 2px 3px)" }} />
         </Swatch>
       )}
-      <Swatch label="Peak density 0 → 4 p/m²">
-        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: HEAT_GRADIENT }} />
+      <Swatch label={`Peak density 0 → ${HEAT_MAX} p/m² · amber from ${CROWD_THRESHOLD} = crowded`}>
+        <ThresholdBar background={HEAT_GRADIENT} at={THRESHOLD_AT} />
       </Swatch>
       <Swatch label="Hotspot">
         <span className="inline-block h-2.5 w-3.5 rounded-[3px] border border-dashed" style={{ borderColor: "var(--heat-3)" }} />
