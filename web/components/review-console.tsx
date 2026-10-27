@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
+import { useChat, type Chat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { diffLayouts } from "@/lib/agent/analysis";
@@ -19,9 +19,21 @@ type Status = { live: boolean; engine: string; llm: string; maxIterations: numbe
 
 const iterLabel = (n: number) => (n === 0 ? "Baseline" : `Iter ${n}`);
 
-export function ReviewConsole() {
+export type ReviewConsoleProps = {
+  /** Shared chat (the simple view's run), so Details shows the same run; omitted = its own. */
+  chat?: Chat<AgentUIMessage>;
+  /** Controlled venue (with onVenueChange); omitted = the console keeps its own. */
+  venueId?: string;
+  onVenueChange?: (id: string) => void;
+  /** Shows a "Simple view" button that calls this. */
+  onClose?: () => void;
+};
+
+export function ReviewConsole({ chat, venueId: venueProp, onVenueChange, onClose }: ReviewConsoleProps = {}) {
   const [status, setStatus] = useState<Status | null>(null);
-  const [venueId, setVenueId] = useState(DEFAULT_VENUE_ID);
+  const [ownVenueId, setOwnVenueId] = useState(venueProp ?? DEFAULT_VENUE_ID);
+  const venueId = venueProp ?? ownVenueId;
+  const setVenueId = onVenueChange ?? setOwnVenueId;
   const [selected, setSelected] = useState<number | null>(null);
   const [showHeat, setShowHeat] = useState(true);
   const [mode, setMode] = useState<"live" | "replay" | null>(null);
@@ -35,7 +47,7 @@ export function ReviewConsole() {
   const wide = useWide();
 
   const transport = useMemo(() => new DefaultChatTransport<AgentUIMessage>({ api: "/api/agent" }), []);
-  const { messages, sendMessage, setMessages, status: chatStatus, error, stop, clearError } = useChat<AgentUIMessage>({ transport });
+  const { messages, sendMessage, setMessages, status: chatStatus, error, stop, clearError } = useChat<AgentUIMessage>(chat ? { chat } : { transport });
 
   useEffect(() => {
     let alive = true;
@@ -182,6 +194,11 @@ export function ReviewConsole() {
           <span className="max-w-[22rem] truncate">{statusLine}</span>
         </span>
         <div className="ml-auto flex items-center gap-2">
+          {onClose && (
+            <Button variant="ghost" onClick={onClose}>
+              ← Simple view
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => setExplainer(true)} className="max-sm:hidden">
             How it works
           </Button>
@@ -513,8 +530,8 @@ function Delta({ a, b, lowerIsBetter = true, digits = 2, unit = "" }: { a: numbe
 }
 
 function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunState>["iterations"][number]> }) {
-  const row = (label: React.ReactNode, body: React.ReactNode) => (
-    <div className="grid gap-1 border-t border-hairline py-2.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
+  const row = (label: React.ReactNode, body: React.ReactNode, key?: React.Key) => (
+    <div key={key} className="grid gap-1 border-t border-hairline py-2.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium text-muted">{label}</div>
       <div className="min-w-0 text-[12.5px] leading-relaxed text-ink-soft">{body}</div>
     </div>
@@ -559,7 +576,7 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
             )}
           </>,
         )}
-      {it.fixes.map((f) =>
+      {it.fixes.map((f, k) =>
         row(
           <>
             <ActorTag id="muse" /> Fix
@@ -572,6 +589,7 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
               ))}
             </ul>
           </>,
+          k,
         ),
       )}
       {it.sim &&

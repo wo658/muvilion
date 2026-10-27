@@ -7,8 +7,8 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
-  title: "Layout Engineer · Review Console",
-  description: "AI agent that lays out exhibition booths, simulates pedestrians, revises the layout and reports for human review.",
+  title: "Layout Engineer",
+  description: "Muse plans your event layout, tests it with virtual visitors and fixes what gets crowded.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

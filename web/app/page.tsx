@@ -1,9 +1,9 @@
-import { ReviewConsole } from "@/components/review-console";
+import { SimpleView } from "@/components/simple/simple-view";
 
 export default function Page() {
   return (
     <main className="flex-1">
-      <ReviewConsole />
+      <SimpleView />
     </main>
   );
 }
