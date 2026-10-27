@@ -57,15 +57,20 @@ export function createStubLLM(): AgentLLM {
       const popularNearTop = top?.nearby_booths.filter((b) => (b.popularity ?? 0) >= c.popular_threshold) ?? [];
       let rationale = "";
       const pinnedNearTop = popularNearTop.filter((b) => b.pinned);
-      // The entrance-distance rule applies to every popular booth, so popular booths pinned by the
-      // input (e.g. an organizer request) must be released with it or the layout is infeasible.
       const popularPinned = summary.popular_booths.filter((b) => b.pinned).map((b) => b.id);
-      if (top && popularNearTop.length > 0 && (c.popular_door_distance < 12 || pinnedNearTop.length > 0)) {
-        for (const id of new Set([...pinnedNearTop.map((b) => b.id), ...popularPinned])) {
-          actions.push({ type: "unpin_booth", booth_id: id });
-        }
-        if (c.popular_door_distance < 12) actions.push({ type: "set_popular_door_distance", value: 12 });
-        const ids = popularNearTop.map((b) => b.id).join(", ");
+      const ids = popularNearTop.map((b) => b.id).join(", ");
+      if (top && pinnedNearTop.length > 0) {
+        // Pinned popular booths crowd the hotspot: only release their pins and let the solver
+        // re-place them. No entrance-distance rule in the same step (on the real engine, adding it
+        // pushed the released booths into a worse arrangement), so the remaining pins stay feasible.
+        const release = pinnedNearTop.map((b) => b.id);
+        for (const id of release) actions.push({ type: "unpin_booth", booth_id: id });
+        rationale = `High-attraction booth${popularNearTop.length > 1 ? "s" : ""} ${ids} ${popularNearTop.length > 1 ? "are" : "is"} pinned where the hotspot forms; releasing the pin${release.length > 1 ? "s" : ""} lets the solver spread their visitor crowds. This releases the requested positions of ${release.join(", ")} (pinned by the input constraints), so it needs the organizer's approval.`;
+      } else if (top && popularNearTop.length > 0 && c.popular_door_distance < 12) {
+        // The entrance-distance rule applies to every popular booth, so popular booths pinned by the
+        // input elsewhere must be released with it or the layout is infeasible.
+        for (const id of popularPinned) actions.push({ type: "unpin_booth", booth_id: id });
+        actions.push({ type: "set_popular_door_distance", value: 12 });
         rationale = `High-attraction booth${popularNearTop.length > 1 ? "s" : ""} ${ids} sit${popularNearTop.length > 1 ? "" : "s"} in the entrance inflow; requiring popular booths to keep a distance from entrances separates arriving visitors from booth crowds.`;
         if (popularPinned.length > 0) {
           rationale += ` This releases the requested positions of ${popularPinned.join(", ")} (pinned by the input constraints), so it needs the organizer's approval.`;
