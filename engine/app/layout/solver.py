@@ -7,6 +7,9 @@ padded rectangles in one NoOverlap2D: any two booths are then at least one aisle
 x or y. Static areas (obstacle bounding boxes, keep-out rects, door clearance zones) are
 avoided with a four-way disjunction per booth, which tolerates static areas overlapping each
 other (NoOverlap2D would not).
+
+`steps` (for animating empty site -> first feasible -> final) come from a concurrent
+single-worker trace of the same model; see `_trace`.
 """
 
 from __future__ import annotations
@@ -14,17 +17,20 @@ from __future__ import annotations
 import hashlib
 import math
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
 
 from app.geometry import clearance_zones, door_segment, obstacle_polygon, zone_polygon
-from app.schemas import Booth, BoothSpec, Layout, LayoutRequest, LayoutResponse
+from app.schemas import Booth, BoothSpec, Layout, LayoutRequest, LayoutResponse, LayoutStep
 
 GRID = 0.5
 DISPLACEMENT_WEIGHT = 20
 ROTATION_CHANGE_PENALTY = 10
 SPINE_WEIGHT = 4
+MAX_STEPS = 12
+TRACE_MAX_DTIME = 2.0
 
 
 @dataclass
@@ -113,6 +119,93 @@ def _avoid(model: cp_model.CpModel, bv: _BoothVars, area: tuple[int, int, int, i
     model.add_bool_or(sides)
 
 
+def _booths(value, vars_: list[_BoothVars]) -> list[Booth]:
+    """Booths of a solution; `value` is solver.value or a solution callback's value."""
+    return [
+        Booth(
+            id=bv.spec.id,
+            x=value(bv.x) * GRID,
+            y=value(bv.y) * GRID,
+            w=bv.spec.w,
+            h=bv.spec.h,
+            rotation=90 if bv.rot is not None and value(bv.rot) else 0,
+        )
+        for bv in vars_
+    ]
+
+
+class _StepRecorder(cp_model.CpSolverSolutionCallback):
+    """Records every improving solution of a solve (CP-SAT reports each new incumbent once).
+
+    Values are copied raw and turned into booths after the solve, keeping the callback short.
+    """
+
+    def __init__(self, vars_: list[_BoothVars], t0: float) -> None:
+        super().__init__()
+        self._vars = [v for bv in vars_ for v in (bv.x, bv.y, bv.rot) if v is not None]
+        self._t0 = t0
+        self.raw: list[tuple[float, float, dict[int, int]]] = []
+
+    def on_solution_callback(self) -> None:
+        values = {v.index: self.value(v) for v in self._vars}
+        self.raw.append((time.perf_counter() - self._t0, self.objective_value, values))
+
+    def steps(self, vars_: list[_BoothVars]) -> list[LayoutStep]:
+        return [
+            LayoutStep(
+                t_s=round(t, 3),
+                objective=obj,
+                booths=_booths(lambda v, vals=vals: vals[v.index], vars_),
+            )
+            for t, obj, vals in self.raw
+        ]
+
+
+def _trace(model: cp_model.CpModel, vars_: list[_BoothVars], req: LayoutRequest, t0: float):
+    """Single-worker solve of the same model that records its improving solutions.
+
+    A solution callback on the 8-worker interleaved solve makes that solve non-deterministic
+    (workers race to report equal-objective incumbents, and the callback shifts the race), so
+    the main solve runs without one. This trace runs concurrently on one worker, where the
+    callback cannot change anything, with a deterministic-time budget: same request, same
+    steps. It supplies the intermediate frames; the main solve supplies the final one.
+    """
+    solver = cp_model.CpSolver()
+    solver.parameters.random_seed = req.seed
+    solver.parameters.num_workers = 1
+    solver.parameters.max_deterministic_time = min(TRACE_MAX_DTIME, req.time_limit_s * 0.25)
+    solver.parameters.max_time_in_seconds = req.time_limit_s * 3
+    recorder = _StepRecorder(vars_, t0)
+    solver.solve(model, recorder)
+    return recorder
+
+
+def downsample_steps(steps: list[LayoutStep], k: int = MAX_STEPS) -> list[LayoutStep]:
+    """At most k steps, keeping the first and last, spread evenly over the objective.
+
+    Early solutions improve fast and late ones barely move, so sampling by index would show
+    mostly near-final layouts; sampling by objective gives evenly sized visual changes.
+    For each of k-2 objective targets between the first and last value, the first solution
+    reaching it is kept.
+    """
+    if len(steps) <= k:
+        return list(steps)
+    first, last = steps[0].objective, steps[-1].objective
+    keep = {0, len(steps) - 1}
+    for i in range(1, k - 1):
+        target = first + (last - first) * i / (k - 1)
+        j = next(n for n, s in enumerate(steps) if s.objective <= target)
+        keep.add(j)
+    # Duplicate picks (big jumps) leave room: fill with the largest index gaps' midpoints.
+    while len(keep) < k:
+        idx = sorted(keep)
+        gap, at = max((b - a, a) for a, b in zip(idx, idx[1:], strict=False))
+        if gap < 2:
+            break
+        keep.add(at + gap // 2)
+    return [steps[i] for i in sorted(keep)]
+
+
 def _layout_id(venue_id: str, booths: list[Booth]) -> str:
     key = venue_id + ";" + ";".join(f"{b.id},{b.x},{b.y},{b.rotation}" for b in booths)
     return "L-" + hashlib.sha1(key.encode()).hexdigest()[:10]
@@ -194,7 +287,10 @@ def solve_layout(req: LayoutRequest) -> LayoutResponse:
     solver.parameters.interleave_search = True
     solver.parameters.max_deterministic_time = req.time_limit_s
     solver.parameters.max_time_in_seconds = req.time_limit_s * 3
-    status = solver.solve(model)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        tracer = pool.submit(_trace, model.clone(), vars_, req, t0)
+        status = solver.solve(model)
+        recorder = tracer.result()
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         layout = Layout(id=_layout_id(req.venue.id, []), venue_id=req.venue.id, booths=[])
@@ -205,21 +301,19 @@ def solve_layout(req: LayoutRequest) -> LayoutResponse:
             solve_time_s=time.perf_counter() - t0,
         )
 
-    booths = [
-        Booth(
-            id=bv.spec.id,
-            x=solver.value(bv.x) * GRID,
-            y=solver.value(bv.y) * GRID,
-            w=bv.spec.w,
-            h=bv.spec.h,
-            rotation=90 if bv.rot is not None and solver.value(bv.rot) else 0,
-        )
-        for bv in vars_
-    ]
+    booths = _booths(solver.value, vars_)
+    final = LayoutStep(
+        t_s=round(time.perf_counter() - t0, 3), objective=solver.objective_value, booths=booths
+    )
+    # Keep the trace's frames that are worse than the result, so objectives strictly improve
+    # and the last frame is the returned layout.
+    steps = [st for st in recorder.steps(vars_) if st.objective > final.objective]
+    steps.append(final)
     layout = Layout(id=_layout_id(req.venue.id, booths), venue_id=req.venue.id, booths=booths)
     return LayoutResponse(
         layout=layout,
         status="optimal" if status == cp_model.OPTIMAL else "feasible",
         objective=solver.objective_value,
         solve_time_s=time.perf_counter() - t0,
+        steps=downsample_steps(steps),
     )
