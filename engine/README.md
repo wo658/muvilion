@@ -17,7 +17,7 @@ uv run uvicorn app.main:app --reload --port 8000
 OpenAPI docs: http://localhost:8000/docs (CORS allows `http://localhost:3000`).
 
 ```bash
-uv run pytest            # ~12 s
+uv run pytest            # ~15 s
 uv run ruff check .
 uv run python scripts/demo.py   # layout -> validate -> simulate -> queue on the fixture
 ```
@@ -30,6 +30,7 @@ uv run python scripts/demo.py   # layout -> validate -> simulate -> queue on the
 | POST   | `/layout`   | `LayoutRequest` → `LayoutResponse` | CP-SAT placement on a 0.5 m grid |
 | POST   | `/validate` | `ValidateRequest` → `ValidateResponse` | Geometry + connectivity rules |
 | POST   | `/simulate` | `SimulateRequest` → `SimResult`   | JuPedSim run (`entry`, `browse`, `exit`) |
+| POST   | `/trajectories` | `SimulateRequest` → `Trajectories` | Agent positions of that run, for 3D replay |
 | POST   | `/queue`    | `QueueRequest` → `QueueResult`    | M/M/c registration desk |
 
 ### `/layout`
@@ -63,6 +64,18 @@ and nearby booths. Travel time = spawn → final goal for agents that finished. 
 (incl. seed) → identical result except `wall_time_s`; `run_id` is a hash of the request.
 `max_wall_time_s` (default 60) stops runaway runs and sets `truncated: true`.
 
+### `/trajectories`
+Same body as `/simulate`; returns the agent positions of that run with the same `run_id` and
+`layout_id`. Every live agent is sampled every `trajectory_dt` seconds of simulated time
+(default 0.5; frame `k` is at `k * dt`, `frames` is the number of sampled frames). Tracks have
+ids `0..n-1` in spawn order, `t0` = frame of the first sample and `xy` = flat
+`[x0, y0, x1, y1, ...]` in meters (1 cm), one pair per frame until the agent leaves or the run
+ends; dwelling agents repeat their position. `/simulate` keeps the last 16 runs' trajectories in
+memory, so calling `/trajectories` right after it costs no second run; on a miss the run is
+repeated (deterministic, so the result is identical). Size: about 1 MB of JSON (~150 kB
+gzipped) for 200 agents over 300 s. `trajectory_dt` is part of the request, so it changes
+`run_id` but not the metrics.
+
 ## curl
 
 ```bash
@@ -78,6 +91,13 @@ jq --argjson layout "$LAYOUT" \
   ../fixtures/sample_hall.json \
   | curl -s localhost:8000/simulate -H 'content-type: application/json' -d @- \
   | jq '{completed_fraction, mean_travel_time_s, max_density, hotspots: .hotspots[:3]}'
+
+# same request -> trajectories (served from the run cache after /simulate)
+jq --argjson layout "$LAYOUT" \
+  '{venue, booths, layout: $layout, scenario: {kind: "browse", agents: 200, duration_s: 300}}' \
+  ../fixtures/sample_hall.json \
+  | curl -s localhost:8000/trajectories -H 'content-type: application/json' -d @- \
+  | jq '{run_id, dt, frames, tracks: (.agents | length), first: .agents[0] | {id, t0, xy: .xy[:4]}}'
 
 curl -s localhost:8000/queue -H 'content-type: application/json' \
   -d '{"arrivals_per_min": 6, "service_time_s": 25, "servers": 3}'
@@ -95,7 +115,8 @@ app/
   sim/walkable.py       walkable polygon, booth-front points, door geometry
   sim/scenarios.py      per-agent plans for entry / browse / exit
   sim/metrics.py        density grid, hotspots, travel stats
-  sim/runner.py         JuPedSim loop
+  sim/runner.py         JuPedSim loop + trajectory recording
+  sim/cache.py          LRU of recent runs' trajectories (by run_id)
   registration_queue.py SimPy M/M/c
   routers/              one router per endpoint
 ```
