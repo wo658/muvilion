@@ -9,11 +9,13 @@ import { inlineCssVars } from "@/lib/ui/export-plan";
 import { eventsFromMessage } from "@/lib/ui/message-events";
 import { museStatus } from "@/lib/ui/muse-status";
 import { formatChange, formatSeconds, headline, nameList, shortLabel } from "@/lib/ui/plain";
-import { buildRunDigest } from "@/lib/ui/run-digest";
+import { buildRunDigest } from "@/lib/ask/digest";
 import { layoutSummary } from "@/lib/ui/summary";
 
-const indoor = (indoorRec as { events: AgentEvent[] }).events;
-const outdoor = (outdoorRec as { events: AgentEvent[] }).events;
+// The fallback is for streams without Muse's own messages, so these tests strip them.
+const withoutSay = (events: AgentEvent[]) => events.filter((e) => e.type !== "say");
+const indoor = withoutSay((indoorRec as { events: AgentEvent[] }).events);
+const outdoor = withoutSay((outdoorRec as { events: AgentEvent[] }).events);
 const JARGON = /p\/m²|CP-SAT|hotspot|iteration|run_id|OR-Tools|baseline/i;
 
 describe("headline formatter", () => {

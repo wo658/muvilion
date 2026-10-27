@@ -16,7 +16,7 @@ import { museMessages } from "@/lib/ui/fallback-say";
 import { eventsFromMessage } from "@/lib/ui/message-events";
 import { museStatus } from "@/lib/ui/muse-status";
 import { headline, venueShortName } from "@/lib/ui/plain";
-import { buildRunDigest } from "@/lib/ui/run-digest"; // swap for "@/lib/ask/digest" after the Ask merge
+import { buildRunDigest } from "@/lib/ask/digest";
 import { deriveRunState } from "@/lib/ui/run-state";
 import { layoutSummary, onSiteChecks } from "@/lib/ui/summary";
 import { DEFAULT_VENUE_ID, runRequestBody, venueById, VENUES } from "@/lib/venues";
@@ -28,8 +28,7 @@ import { SimpleCanvas } from "./simple-canvas";
 
 type Status = { live: boolean };
 type FeedTurn = AskTurn & { note?: "unavailable" | "error"; pending?: boolean };
-// Ask Muse sends a digest of the events on screen. `buildRunDigest` is imported from the local
-// adapter (lib/ui/run-digest.ts), which mirrors `@/lib/ask/digest`; it throws without a run event.
+// Ask Muse sends a digest of the events on screen; `buildRunDigest` throws without a run event.
 
 const EMPTY_TEXT = "Pick a space and I'll plan the booth layout, test it with virtual visitors, and fix what gets crowded.";
 
