@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Draft, spaceErrors, STEP_LABELS, type ProjectDraft, type StoredProject } from "@/lib/projects/model";
 import { readPlan } from "@/lib/projects/plan-file";
 import { PlanEditor } from "./plan-editor";
@@ -20,13 +20,19 @@ export function ProjectWizard({ project, onChange, onAnalyze, onBackup, saveStat
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [confirmNewFile, setConfirmNewFile] = useState(false);
+  const latest = useRef(d);
+  const requestId = useRef(0);
+  useEffect(() => { latest.current = d; }, [d]);
+  useEffect(() => () => { requestId.current++; }, []);
   const upload = async (file: Blob, name: string, page = 1) => {
+    const request = ++requestId.current;
     setLoading(true); setError("");
     try {
       const source = await readPlan(file, name, page);
-      onChange({ ...d, source, boundary: { x: 0.05, y: 0.05, w: 0.9, h: 0.9 }, scaleConfirmed: false, spaceConfirmed: false, marks: [] }, file);
-    } catch (err) { setError(err instanceof Error ? err.message : "도면을 열 수 없습니다. 다른 파일로 시도해 주세요."); }
-    finally { setLoading(false); }
+      if (request !== requestId.current) return;
+      onChange({ ...latest.current, source, boundary: { x: 0.05, y: 0.05, w: 0.9, h: 0.9 }, scaleConfirmed: false, spaceConfirmed: false, marks: [] }, file);
+    } catch (err) { if (request === requestId.current) setError(err instanceof Error ? err.message : "도면을 열 수 없습니다. 다른 파일로 시도해 주세요."); }
+    finally { if (request === requestId.current) setLoading(false); }
   };
   const chooseFile = (file?: File) => {
     if (!file || loading) return;
