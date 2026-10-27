@@ -10,7 +10,7 @@
  */
 import { generateText, streamText, tool, type LanguageModel, type ToolSet } from "ai";
 import { DesignBriefToolInput, normalizeBrief } from "./brief";
-import { AnalysisOutput, type AgentLLM } from "./llm";
+import { AnalysisOutput, NarrationToolInput, type AgentLLM } from "./llm";
 import { normalizeRevision, RevisionToolInput } from "./revision";
 
 const SYSTEM = `You are the layout reviewer inside an autonomous event-layout tool.
@@ -42,8 +42,23 @@ Fields (all optional except rationale; omit what should stay at the default):
 - place_near_door [{booth_id, door_id}]: booths that belong beside a door, e.g. a ticket kiosk at the main gate
 Unbuildable zones (e.g. fire lanes) are enforced by the engine already. Prefer few, well-justified choices.`;
 
-export function createModelLLM(model: LanguageModel, name: string, opts: { timeoutMs?: number } = {}): AgentLLM {
+/** Muse's user-facing voice (say events); shared with Ask Muse in spirit (lib/ask/answer.ts). */
+export const NARRATION_SYSTEM = `You are Muse, a friendly assistant that helps event organizers plan where booths go.
+The people reading you are NOT crowd-simulation experts. Write in plain, warm, concise American English.
+Rules:
+- One to three short sentences per message. Speak as "I". Concrete words: visitors, walkways, gate, packed, crowded, booths.
+- Never use technical terms: density, p/m², hotspot, solver, CP-SAT, OR-Tools, constraint, iteration, baseline, agent, keep-out, pin, threshold, popularity.
+- Never invent, estimate or compute numbers, and never spell numbers out in words. Every number and every booth or gate name you use must come from the message's "values", written as its {placeholder} (for example {crowded}). Do not write digits yourself.
+- Keep the meaning of the draft; you may reword it and choose what to emphasize. Do not add facts that are not in the values or the draft.`;
+
+export function createModelLLM(model: LanguageModel, name: string, opts: { timeoutMs?: number; narrationTimeoutMs?: number } = {}): AgentLLM {
   const timeout = opts.timeoutMs ?? 60_000;
+  const narrationTimeout = opts.narrationTimeoutMs ?? 15_000;
+
+  const narrationTool = tool({
+    description: "Submit the user-facing messages, one per requested line, as templates with {placeholders}.",
+    inputSchema: NarrationToolInput,
+  });
 
   const analysisTool = tool({
     description: "Submit your bottleneck analysis of the latest simulation.",
@@ -136,6 +151,28 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
         ].join("\n\n"),
       );
       return normalizeRevision(input);
+    },
+
+    async narrate({ lines }) {
+      const result = await generateText({
+        model,
+        instructions: NARRATION_SYSTEM,
+        prompt: [
+          "Write these messages for the user, in order. For each: `purpose` says what it must convey, `values` are the only facts and numbers you may use (as {placeholders}), `draft` is a correct plain version you may improve.",
+          JSON.stringify(lines.map((l, i) => ({ line: i + 1, moment: l.moment, purpose: l.purpose, values: l.slots, draft: l.draft }))),
+          `Call write_messages with exactly ${lines.length} message(s).`,
+        ].join("\n\n"),
+        tools: { write_messages: narrationTool },
+        toolChoice: { type: "tool", toolName: "write_messages" },
+        temperature: 0.4,
+        maxRetries: 1,
+        timeout: narrationTimeout,
+      });
+      const call = result.toolCalls.find((c) => c.toolName === "write_messages");
+      if (!call) throw new Error(`model did not call write_messages (finishReason=${result.finishReason})`);
+      const parsed = NarrationToolInput.parse(call.input);
+      if (parsed.messages.length !== lines.length) throw new Error(`expected ${lines.length} message(s), got ${parsed.messages.length}`);
+      return { templates: parsed.messages.map((m) => m.text), by: name };
     },
 
     async reportNarrative(input, onDelta) {

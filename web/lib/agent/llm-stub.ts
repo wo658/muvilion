@@ -158,5 +158,10 @@ export function createStubLLM(): AgentLLM {
       for (const c of chunks(text)) onDelta(c);
       return text;
     },
+
+    // The drafts are the stub's wording: deterministic, plain, numbers only from the slots.
+    async narrate({ lines }) {
+      return { templates: lines.map((l) => l.draft), by: "stub" };
+    },
   };
 }

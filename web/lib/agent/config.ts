@@ -9,6 +9,10 @@ export type AgentConfig = {
   /** generate→validate retries per iteration when validation fails. */
   maxFixAttempts: number;
   maxLlmCalls: number;
+  /** Model calls for `say` wording per run (separate budget; beyond it the stub wording is used). */
+  maxNarrationCalls: number;
+  /** Per narration call; a slower answer uses the stub wording for those messages. */
+  narrationTimeoutMs: number;
   targets: Targets;
   scenario: Scenario;
   gridCell: number;
@@ -30,6 +34,8 @@ export function loadAgentConfig(env: Env = process.env): AgentConfig {
     maxIterations: Math.max(0, Math.floor(num(env.AGENT_MAX_ITERATIONS, 3))),
     maxFixAttempts: Math.max(0, Math.floor(num(env.AGENT_MAX_FIX_ATTEMPTS, 2))),
     maxLlmCalls: Math.max(1, Math.floor(num(env.AGENT_MAX_LLM_CALLS, 20))),
+    maxNarrationCalls: Math.max(0, Math.floor(num(env.AGENT_MAX_NARRATION_CALLS, 12))),
+    narrationTimeoutMs: Math.max(1000, num(env.AGENT_NARRATION_TIMEOUT_MS, 15_000)),
     targets: {
       crowded_s_per_visitor: num(env.AGENT_TARGET_CROWDED_S_PER_VISITOR, 10),
       min_improvement: num(env.AGENT_MIN_IMPROVEMENT, 0.1),
