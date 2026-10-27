@@ -18,12 +18,13 @@ from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
 
-from app.geometry import clearance_zones, door_segment, obstacle_polygon
+from app.geometry import clearance_zones, door_segment, obstacle_polygon, zone_polygon
 from app.schemas import Booth, BoothSpec, Layout, LayoutRequest, LayoutResponse
 
 GRID = 0.5
 DISPLACEMENT_WEIGHT = 20
 ROTATION_CHANGE_PENALTY = 10
+SPINE_WEIGHT = 4
 
 
 @dataclass
@@ -55,9 +56,29 @@ def _static_areas(req: LayoutRequest) -> list[tuple[int, int, int, int]]:
     c = req.constraints
     areas = [_grid_box(obstacle_polygon(o).bounds) for o in req.venue.obstacles]
     areas += [_grid_box((r.x, r.y, r.x + r.w, r.y + r.h)) for r in c.keep_out]
+    areas += [_grid_box(zone_polygon(z).bounds) for z in req.venue.zones if not z.buildable]
     zones = clearance_zones(req.venue, c.door_clearance, c.min_aisle_width)
     areas += [_grid_box(z.bounds) for z in zones.values()]
     return areas
+
+
+def _attractor(req: LayoutRequest) -> tuple[int, int, int, int]:
+    """Doubled attractor point (cx2, cy2) and per-axis weights for the compactness term.
+
+    Default: the hall center with equal weights (booths cluster in the middle). When the venue
+    has a fire lane, booths line it instead: the attractor is the lane's center and distance
+    across the lane costs SPINE_WEIGHT times more than along it, which yields rows of booths
+    fronting the lane on both sides rather than a blob around the site center.
+    """
+    W, H = _units(req.venue.width), _units(req.venue.height)
+    lanes = [zone_polygon(z) for z in req.venue.zones if z.kind == "fire_lane"]
+    if not lanes:
+        return W, H, 1, 1
+    x0, y0, x1, y1 = max(lanes, key=lambda p: p.area).bounds
+    cx2, cy2 = round((x0 + x1) / GRID), round((y0 + y1) / GRID)
+    if x1 - x0 >= y1 - y0:  # east-west lane: pull booths toward it in y
+        return cx2, cy2, 1, SPINE_WEIGHT
+    return cx2, cy2, SPINE_WEIGHT, 1
 
 
 def _popular_areas(req: LayoutRequest) -> list[tuple[int, int, int, int]]:
@@ -69,6 +90,17 @@ def _popular_areas(req: LayoutRequest) -> list[tuple[int, int, int, int]]:
         for door in req.venue.doors
         if door.kind == "entrance"
     ]
+
+
+def _padded_interval(
+    model: cp_model.CpModel, start: cp_model.IntVar, size, aisle: int, limit: int
+) -> cp_model.IntervalVar:
+    """Interval [start, start + size + aisle); `size` may depend on the rotation flag."""
+    if isinstance(size, int):
+        return model.new_interval_var(start, size + aisle, start + size + aisle, "")
+    # A rotating booth's end is start + rot * k + c, which is not affine in one variable.
+    end = model.new_int_var(0, limit + aisle, "")
+    return model.new_interval_var(start, size + aisle, end, "")
 
 
 def _avoid(model: cp_model.CpModel, bv: _BoothVars, area: tuple[int, int, int, int]) -> None:
@@ -95,7 +127,7 @@ def solve_layout(req: LayoutRequest) -> LayoutResponse:
     prev = {b.id: b for b in req.previous.booths} if req.previous else {}
 
     model = cp_model.CpModel()
-    cx2, cy2 = W, H  # hall center, doubled to stay integral
+    cx2, cy2, wx, wy = _attractor(req)
     padded_x, padded_y, objective = [], [], []
     static = _static_areas(req)
     popular = _popular_areas(req)
@@ -113,8 +145,8 @@ def solve_layout(req: LayoutRequest) -> LayoutResponse:
         bv = _BoothVars(spec, x, y, rot, fx, fy)
         vars_.append(bv)
 
-        padded_x.append(model.new_interval_var(x, fx + aisle, x + fx + aisle, ""))
-        padded_y.append(model.new_interval_var(y, fy + aisle, y + fy + aisle, ""))
+        padded_x.append(_padded_interval(model, x, fx, aisle, W))
+        padded_y.append(_padded_interval(model, y, fy, aisle, H))
         for area in static:
             _avoid(model, bv, area)
         if spec.popularity >= c.popular_threshold:
@@ -130,12 +162,12 @@ def solve_layout(req: LayoutRequest) -> LayoutResponse:
             if rot is not None:
                 model.add(rot == (1 if prev_rot == 90 else 0))
 
-        # Compactness: L1 distance of the booth center to the hall center.
+        # Compactness: weighted L1 distance of the booth center to the attractor.
         dx = model.new_int_var(0, 2 * W, "")
         dy = model.new_int_var(0, 2 * H, "")
         model.add_abs_equality(dx, 2 * x + fx - cx2)
         model.add_abs_equality(dy, 2 * y + fy - cy2)
-        objective += [dx, dy]
+        objective += [wx * dx, wy * dy]
 
         if p is not None:
             px, py = _units(p.x), _units(p.y)
