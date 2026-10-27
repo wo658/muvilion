@@ -349,7 +349,7 @@ export function ReviewConsole({ chat, venueId: venueProp, onVenueChange, onClose
                   })}
                 />
                 <p className="mt-3 text-[11.5px] text-muted">
-                  Same agents, scenario and seed; only the layout differs. Booths outlined in teal were moved by the agent relative to the baseline.
+                  Same agents, scenario and seed; only the layout differs. Booths outlined in blue were moved by the agent relative to the baseline.
                   {state.run?.engine === "mock" && " Mock engine: trajectories are synthetic aisle-following walkers, not a pedestrian model."}
                 </p>
               </div>

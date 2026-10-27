@@ -10,6 +10,7 @@
  * Canvases render continuously only while playing (frameloop "always"); when paused they render on
  * demand (seek, camera move, data change).
  */
+import { TOKENS } from "@/lib/ui/tokens";
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
@@ -177,7 +178,7 @@ function SceneLights({ venue }: { venue: Venue }) {
   const target = useMemo(() => new THREE.Object3D(), []);
   return (
     <>
-      <hemisphereLight args={["#ffffff", "#d3cdbf", 1.05]} />
+      <hemisphereLight args={["#ffffff", TOKENS.modelShade, 1.05]} />
       <ambientLight intensity={0.2} />
       <primitive object={target} position={c} />
       <directionalLight

@@ -301,7 +301,7 @@ export function SimpleView() {
         </main>
 
         {/* Muse */}
-        <aside aria-label="Muse" className="flex min-h-[28rem] min-w-0 max-lg:max-h-[85dvh] flex-col overflow-hidden rounded-[20px] border border-hairline bg-[color-mix(in_srgb,var(--surface)_70%,var(--bg))] lg:min-h-0">
+        <aside aria-label="Muse" className="flex min-h-[28rem] min-w-0 max-lg:max-h-[85dvh] flex-col overflow-hidden rounded-[20px] border border-hairline bg-[linear-gradient(180deg,var(--muse-from)_0%,var(--muse-tint)_55%,color-mix(in_srgb,var(--muse-to)_55%,var(--muse-tint))_100%)] lg:min-h-0">
           <div className="flex items-center gap-2 border-b border-hairline px-4 py-3">
             <span className="text-[15px] font-semibold text-ink">Muse</span>
             <span className="text-[13px] text-muted">your layout assistant</span>

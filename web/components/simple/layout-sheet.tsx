@@ -104,7 +104,7 @@ export function LayoutSheet({
         <Section title="What you're using">
           <ul className="space-y-1">
             <li>The final layout Muse tested{headline?.after ? `: ${headline.label.toLowerCase()} ${headline.text}` : headline ? `: ${headline.before} in crowds per visitor` : ""}.</li>
-            {moves.length > 0 && <li>Booths outlined in teal sit somewhere new compared with the first try.</li>}
+            {moves.length > 0 && <li>Booths outlined in blue sit somewhere new compared with the first try.</li>}
           </ul>
         </Section>
 

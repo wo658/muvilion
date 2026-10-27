@@ -10,7 +10,7 @@ export function MuseAvatar({ size = 28 }: { size?: number }) {
   return (
     <span
       aria-hidden
-      className="grid shrink-0 place-items-center rounded-full bg-accent text-white shadow-[0_2px_6px_-2px_rgb(31_95_91/0.5)]"
+      className="grid shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,var(--accent),var(--muse-glow))] text-white shadow-[0_2px_6px_-2px_rgb(0_100_224/0.45)]"
       style={{ width: size, height: size }}
     >
       <svg viewBox="0 0 16 16" width={size * 0.5} height={size * 0.5} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
