@@ -1,6 +1,6 @@
 /**
  * Identical-conditions guard. A run locks one scenario (kind, agents, duration,
- * seed), the grid cell, the venue and the booth demand (popularity) up front;
+ * seed), the grid cell, the crowd threshold, the venue and the booth demand (popularity) up front;
  * every simulate request must be built through the guard and is re-checked
  * before it is sent, and every result must echo the locked scenario. (The engine's
  * run_id is a hash of the request, so identical conditions also give identical run_ids
@@ -40,18 +40,20 @@ export class ScenarioGuard {
   readonly scenario: Readonly<Scenario>;
   readonly gridCell: number;
   readonly maxWallTimeS: number;
+  readonly crowdThreshold: number;
   readonly fingerprint: string;
   private readonly conditionsKey: string;
   private readonly venue: Venue;
   private readonly booths: BoothSpec[];
 
-  constructor(scenario: Scenario, gridCell: number, venue: Venue, booths: BoothSpec[], maxWallTimeS = 60) {
+  constructor(scenario: Scenario, gridCell: number, venue: Venue, booths: BoothSpec[], maxWallTimeS = 60, crowdThreshold = 2) {
     this.scenario = Object.freeze(Scenario.parse(structuredClone(scenario)));
     this.gridCell = gridCell;
     this.maxWallTimeS = maxWallTimeS;
+    this.crowdThreshold = crowdThreshold;
     this.venue = structuredClone(venue);
     this.booths = structuredClone(booths);
-    this.conditionsKey = stable({ s: this.scenario, g: gridCell, w: maxWallTimeS, v: this.venue, b: this.booths });
+    this.conditionsKey = stable({ s: this.scenario, g: gridCell, w: maxWallTimeS, t: crowdThreshold, v: this.venue, b: this.booths });
     this.fingerprint = hashString(this.conditionsKey);
   }
 
@@ -64,6 +66,7 @@ export class ScenarioGuard {
       scenario: { ...this.scenario },
       grid_cell: this.gridCell,
       max_wall_time_s: this.maxWallTimeS,
+      crowd_threshold: this.crowdThreshold,
     });
     this.assertRequest(req);
     return req;
@@ -71,13 +74,15 @@ export class ScenarioGuard {
 
   assertRequest(input: SimulateRequestInput): void {
     const req = SimulateRequest.parse(input);
-    const key = stable({ s: req.scenario, g: req.grid_cell, w: req.max_wall_time_s, v: req.venue, b: req.booths });
+    const key = stable({ s: req.scenario, g: req.grid_cell, w: req.max_wall_time_s, t: req.crowd_threshold, v: req.venue, b: req.booths });
     if (key !== this.conditionsKey) {
       const diffs: string[] = [];
       if (stable(req.scenario) !== stable(this.scenario)) diffs.push(`scenario ${stable(req.scenario)} ≠ locked ${stable(this.scenario)}`);
       if (req.grid_cell !== this.gridCell) diffs.push(`grid_cell ${req.grid_cell} ≠ locked ${this.gridCell}`);
       if (req.max_wall_time_s !== this.maxWallTimeS)
         diffs.push(`max_wall_time_s ${req.max_wall_time_s} ≠ locked ${this.maxWallTimeS}`);
+      if (req.crowd_threshold !== this.crowdThreshold)
+        diffs.push(`crowd_threshold ${req.crowd_threshold} ≠ locked ${this.crowdThreshold}`);
       if (stable(req.venue) !== stable(this.venue)) diffs.push("venue changed");
       if (stable(req.booths) !== stable(this.booths)) diffs.push("booth specs changed");
       throw new ScenarioMismatchError(`simulate request violates identical conditions: ${diffs.join("; ")}`);
@@ -88,6 +93,11 @@ export class ScenarioGuard {
     if (stable(Scenario.parse(res.scenario)) !== stable(this.scenario)) {
       throw new ScenarioMismatchError(
         `engine ran a different scenario: ${stable(res.scenario)} ≠ locked ${stable(this.scenario)}`,
+      );
+    }
+    if (res.congestion.threshold !== this.crowdThreshold) {
+      throw new ScenarioMismatchError(
+        `engine used a different crowd threshold: ${res.congestion.threshold} ≠ locked ${this.crowdThreshold} p/m²`,
       );
     }
   }

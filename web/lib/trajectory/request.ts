@@ -19,6 +19,7 @@ export function simulateRequestFor(
     grid_cell: sim.params?.grid_cell ?? run.gridCell,
     max_wall_time_s: sim.params?.max_wall_time_s ?? 60,
     trajectory_dt: sim.params?.trajectory_dt ?? 0.5,
+    crowd_threshold: sim.params?.crowd_threshold ?? sim.result.congestion?.threshold ?? 2,
   };
 }
 

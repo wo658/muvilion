@@ -53,7 +53,9 @@ describe("UI message stream encoding", () => {
     const steps = parts.filter((p) => p.type === "data-step");
     expect(steps.length).toBeGreaterThan(5);
     expect(steps.every((p) => p.type === "data-step" && p.data.status === "done")).toBe(true);
-    expect(parts.filter((p) => p.type === "data-sim")).toHaveLength(3);
+    const sims = (recording as { events: AgentEvent[] }).events.filter((e) => e.type === "sim").length;
+    expect(sims).toBeGreaterThanOrEqual(2);
+    expect(parts.filter((p) => p.type === "data-sim")).toHaveLength(sims);
     expect(parts.filter((p) => p.type === "data-brief")).toHaveLength(1);
     const text = parts.find((p) => p.type === "text");
     const report = parts.find((p) => p.type === "data-report");
@@ -79,10 +81,14 @@ describe("deriveRunState", () => {
     const s = deriveRunState(last);
     expect(s.run?.mode).toBe("replay");
     expect(s.brief?.rationale).toBeTruthy();
-    expect(s.iterations.map((i) => i.iteration)).toEqual([0, 1, 2]);
+    const done = (recording as { events: AgentEvent[] }).events.find((e) => e.type === "done");
+    const n = done?.type === "done" ? done.data.iterations : 0;
+    expect(n).toBeGreaterThanOrEqual(2);
+    expect(s.iterations.map((i) => i.iteration)).toEqual([...Array(n).keys()]);
     expect(s.iterations[0].revision?.applied.length).toBeGreaterThan(0);
     expect(s.iterations[1].layout?.moves.length).toBeGreaterThan(0);
-    expect(s.done?.finalIteration).toBe(2);
+    expect(s.done?.finalIteration).toBe(done?.type === "done" ? done.data.finalIteration : -1);
+    expect(s.done?.finalIteration).toBeGreaterThan(0);
     expect(s.reportText).toBe(s.report?.markdown);
   });
 });

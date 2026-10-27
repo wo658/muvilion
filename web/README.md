@@ -39,8 +39,9 @@ which drives the pipeline panel and the **How it works** explainer.)
 
 The header's **Indoor hall / Outdoor plaza** control picks a sample venue (`lib/venues`): live runs
 POST that venue's project, replays stream its recording. A venue may override scenario fields for
-live runs and real-engine recordings (the outdoor plaza uses an entry rush of 400 visitors, seed 0);
-mock recordings pin `MOCK_RECORDING_ENV` (entry, 200, target 2.0 p/m², tuned for the mock).
+live runs and real-engine recordings (`scenario`; the outdoor plaza browses with 300 visitors, seed 0)
+and targets (`targets`; e.g. `{ crowded_s_per_visitor: 10 }`); the venue's fields win over the env.
+Mock recordings pin `MOCK_RECORDING_ENV` (entry, 200, target 3 crowded s/visitor, tuned for the mock).
 
 ## Scripts
 
@@ -103,12 +104,22 @@ The control flow is fixed in code; the LLM only does judgment.
    specs (`popular_door_distance`, missing booths, infeasible solve). On errors the LLM proposes
    constraint fixes (same revision tool) and the layout is regenerated, up to `AGENT_MAX_FIX_ATTEMPTS`.
 3. **simulate** — `POST /simulate`, built only through `ScenarioGuard`, which locks scenario
-   (kind/agents/duration/seed), grid cell, `max_wall_time_s`, venue and booth popularity for the
-   whole run, re-checks each request and checks the engine echoed the same scenario.
+   (kind/agents/duration/seed), grid cell, `max_wall_time_s`, `crowd_threshold`, venue and booth
+   popularity for the whole run, re-checks each request and checks the engine echoed the same
+   scenario and crowd threshold.
    Truncated results (`truncated=true`) are never comparable.
-4. **compare** (code) — vs previous and baseline; stop on target met (`max_density ≤
-   AGENT_TARGET_MAX_DENSITY` with no errors), no improvement (`< AGENT_MIN_IMPROVEMENT` vs best so far)
-   or `AGENT_MAX_ITERATIONS`.
+4. **compare** (code) — on **sustained congestion**: `congestion.crowded_s_per_visitor`, the time
+   the average visitor spent in 2 m grid cells at or above `crowd_threshold` (`AGENT_CROWD_THRESHOLD`,
+   default 2 p/m²); lower is better. Stops on
+   - *target met*: `crowded_s_per_visitor ≤ AGENT_TARGET_CROWDED_S_PER_VISITOR` (default 10; per-venue
+     `targets` override) with no validation errors;
+   - *no improvement*: relative reduction vs the best comparable iteration so far
+     `< AGENT_MIN_IMPROVEMENT` (default 0.10), or completion fell more than
+     `AGENT_MAX_COMPLETION_DROP` (default 0.05) below the baseline — less crowding because fewer
+     visitors got in or finished never counts as better;
+   - `AGENT_MAX_ITERATIONS`.
+   Crowded person-seconds, peak crowded area and worst hotspot mean density are shown alongside;
+   `max_density` (a single-instant peak) is a secondary, displayed-only metric.
 5. **analyze** — LLM reads a compact summary (metrics, hotspots with nearby booths, popularity,
    distance to entrance, violations; never raw grids) and returns causes via a forced tool call.
 6. **revise** — LLM returns actions via the `propose_revision` tool: `move_booth` (direction +
@@ -122,7 +133,8 @@ The control flow is fixed in code; the LLM only does judgment.
    assumptions, unconfirmed items (`venue.unknowns`, remaining warnings) and the
    not-a-certification disclaimer; the LLM writes only the Summary prose and is told not to state numbers.
 
-The best valid iteration (lowest max density) is reported as "final"; iteration 0 is the baseline.
+The best comparable iteration (valid, within the completion guard, lowest crowded s/visitor) is
+reported as "final"; iteration 0 is the baseline.
 
 ### Streaming
 
@@ -166,7 +178,9 @@ same time after the first layout so it plays before the simulation results arriv
 plan drawing, Inter + IBM Plex Mono figures, one deep-teal accent for interaction and "the agent
 changed this". Saturated color is reserved for crowding (transparent → amber → orange → red,
 `lib/ui/heat.ts`), used by the plan's soft density gradient, the 3D floor decal and pedestrians,
-which turn from grey to amber/red with their instantaneous local density. Tokens: `lib/ui/tokens.ts`.
+which turn from grey to amber/red with their instantaneous local density. The ramp is anchored on the
+crowd threshold: below 2 p/m² colors stay faint/neutral, at the threshold they turn solid amber, and
+they redden above it. Tokens: `lib/ui/tokens.ts`.
 
 ## 3D pedestrian replay
 
@@ -177,7 +191,8 @@ and linked cameras. Controls: play/pause, scrub (simulated seconds), 1×/5×/20�
 hidden outside their track, colored by local density (binned per frame into 1.5 m cells).
 
 Data: the UI rebuilds the iteration's exact `SimulateRequest` from the stream (`data-run` venue/booths,
-`data-layout`, `data-sim` result scenario + `params` {grid_cell, max_wall_time_s, trajectory_dt}) so
+`data-layout`, `data-sim` result scenario + `params` {grid_cell, max_wall_time_s, trajectory_dt,
+crowd_threshold}) so
 `/trajectories` returns the same `run_id` (the engine caches it). Replay runs fetch
 `/replay/traj/<run_id>.json`; live runs `POST /api/trajectories?expect=<run_id>`. Trajectories never go
 into the agent stream or LLM input. Coordinates: hall (x, y) → three.js world (x, h, −y)

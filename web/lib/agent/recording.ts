@@ -19,9 +19,10 @@ export const RECORDING_CLOCK = "2026-10-27T00:00:00.000Z";
 
 /**
  * The mock's synthetic crowding is tuned for the entry scenario; the loop's defaults (browse,
- * 3.0 p/m²) are tuned for the real engine. Mock recordings pin this so the replay shows revisions.
+ * 10 crowded s/visitor) are tuned for the real engine. Mock recordings pin this so the replay
+ * shows revisions.
  */
-export const MOCK_RECORDING_ENV = { AGENT_SCENARIO_KIND: "entry", AGENT_TARGET_MAX_DENSITY: "2.0" };
+export const MOCK_RECORDING_ENV = { AGENT_SCENARIO_KIND: "entry", AGENT_TARGET_CROWDED_S_PER_VISITOR: "3" };
 
 export async function recordRun(
   project: ProjectInput,

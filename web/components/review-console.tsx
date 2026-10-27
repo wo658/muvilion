@@ -292,7 +292,7 @@ export function ReviewConsole() {
               <Roles steps={state.steps} run={state.run} />
             </Card>
             {state.iterations.some((i) => i.sim) && (
-              <Card title="Iterations" right={state.run && <span className="num text-[11px] text-faint">target ≤ {state.run.targets.max_density} p/m²</span>}>
+              <Card title="Iterations" right={state.run && <span className="num text-[11px] text-faint">target ≤ {state.run.targets.crowded_s_per_visitor} s/visitor</span>}>
                 <MetricCards
                   iterations={state.iterations}
                   selected={current?.iteration ?? -1}
@@ -300,7 +300,7 @@ export function ReviewConsole() {
                     setSelected(i);
                     if (animKey) setPlacedKey(animKey);
                   }}
-                  target={state.run?.targets.max_density}
+                  target={state.run?.targets.crowded_s_per_visitor}
                   finalIteration={state.done?.finalIteration}
                 />
               </Card>

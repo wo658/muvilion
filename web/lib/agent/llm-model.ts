@@ -20,7 +20,9 @@ Rules:
 - Never invent or estimate metrics; every number you see comes from the engine. Do not restate numbers you were not given.
 - Units are meters and seconds; coordinates have origin at the hall's bottom-left, y up.
 - Prefer few, targeted changes that keep the rest of the layout stable.
-- Booths and doors are referred to by id.`;
+- Booths and doors are referred to by id.
+- The goal is sustained congestion, not a momentary peak: metrics.crowded_s_per_visitor is the time the average visitor spent in grid cells at or above crowd_threshold_p_per_m2 (lower is better); crowded_person_s, peak_crowded_area_m2 and the hotspots' mean densities show where and how long it lasts. max_density_p_per_m2 is a single-instant peak, secondary.
+- Less crowding because fewer visitors got in or finished (a lower completed_fraction) is not an improvement.`;
 
 const REVISION_GUIDE = `Available actions (use the "type" field and only the fields that action needs):
 - move_booth {booth_id, direction: away_from_entrance|away_from_hotspot|north|south|east|west, distance_m 1..20, hotspot_index?}: shift a booth's anchor; the solver places it as close as feasible.
@@ -102,7 +104,7 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
           "Latest iteration (engine output, summarized):",
           JSON.stringify(summary),
           previous ? `Previous iteration for comparison:\n${JSON.stringify(previous)}` : "This is the baseline iteration.",
-          "Explain the likely causes of each hotspot (by index), naming the booths and doors involved. Call submit_analysis.",
+          "Explain where and why visitors spend time in crowded areas: the likely cause of each hotspot (by index), naming the booths and doors involved. Call submit_analysis.",
         ].join("\n\n"),
       );
       return AnalysisOutput.parse(input);
@@ -117,7 +119,7 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
           `Your analysis:\n${JSON.stringify(analysis)}`,
           history.length ? `Changes already tried this run:\n${JSON.stringify(history)}` : "No changes tried yet.",
           REVISION_GUIDE,
-          "Propose 1-3 changes most likely to lower peak density without creating validation errors. Do not repeat a change that did not help. Call propose_revision.",
+          "Propose 1-3 changes most likely to reduce the time visitors spend in crowded areas (crowded_s_per_visitor) without lowering completion or creating validation errors. Do not repeat a change that did not help. Call propose_revision.",
         ].join("\n\n"),
       );
       return normalizeRevision(input);
@@ -144,7 +146,7 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
           "Write the Summary section (2-3 short paragraphs, markdown, no heading) of a layout review report for a human reviewer.",
           "Explain what the agent found, what it changed and why, and what the reviewer should double-check.",
           "Do NOT include any numbers or metric values: the before/after table, iteration history and assumptions are inserted by code right after your text.",
-          `Context:\n${JSON.stringify({ ...input, baseline: undefined, final: undefined })}`,
+          `Context:\n${JSON.stringify({ ...input, baseline: undefined, final: undefined, targets: undefined })}`,
         ].join("\n\n"),
         temperature: 0.3,
         maxRetries: 2,

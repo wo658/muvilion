@@ -18,7 +18,7 @@ function recordingEngine() {
 
 // The mock engine's crowding model is tuned for the entry scenario; pin it so these tests
 // don't follow the demo defaults in lib/agent/config.ts.
-const MOCK_ENV = { AGENT_SCENARIO_KIND: "entry", AGENT_TARGET_MAX_DENSITY: "2.0" };
+const MOCK_ENV = { AGENT_SCENARIO_KIND: "entry", AGENT_TARGET_CROWDED_S_PER_VISITOR: "3" };
 
 async function run(env: Record<string, string> = {}, engine?: Engine) {
   const events: AgentEvent[] = [];
@@ -42,8 +42,9 @@ describe("agent loop (mock engine + stub LLM)", () => {
     expect(done.status).toBe("completed");
     expect(done.stopReason).toBe("target_met");
     expect(done.iterations).toBeGreaterThanOrEqual(2);
-    expect(done.final!.max_density).toBeLessThan(done.baseline!.max_density);
-    expect(done.final!.max_density).toBeLessThanOrEqual(2.0);
+    expect(done.final!.crowded_s_per_visitor).toBeLessThan(done.baseline!.crowded_s_per_visitor);
+    expect(done.final!.crowded_s_per_visitor).toBeLessThanOrEqual(3);
+    expect(done.final!.completed_fraction).toBeGreaterThanOrEqual(done.baseline!.completed_fraction - 0.05);
     expect(done.final!.violations).toBe(0);
 
     // identical scenario for every simulation
@@ -52,6 +53,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
       expect(s.scenario).toEqual(sims[0].scenario);
       expect(s.grid_cell).toBe(sims[0].grid_cell);
       expect(s.booths).toEqual(sims[0].booths);
+      expect(s.crowd_threshold).toBe(2);
     }
 
     // revisions carry `previous` and the layout actually changes
@@ -75,6 +77,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
     expect(events[events.length - 1].type).toBe("done");
     const report = events.find((e) => e.type === "report");
     expect(report?.data.markdown).toContain("not a permit");
+    expect(report?.data.markdown).toContain("Time the average visitor spent in crowded areas (≥ 2 p/m²)");
     expect(report?.data.markdown).toContain("## Design brief");
     expect(report?.data.markdown).toContain("Ceiling height not shown on plan");
     // streamed report text == final markdown
@@ -93,7 +96,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
   });
 
   it("stops at AGENT_MAX_ITERATIONS", async () => {
-    const { result } = await run({ AGENT_MAX_ITERATIONS: "1", AGENT_TARGET_MAX_DENSITY: "0.1" });
+    const { result } = await run({ AGENT_MAX_ITERATIONS: "1", AGENT_TARGET_CROWDED_S_PER_VISITOR: "0.01", AGENT_MIN_IMPROVEMENT: "-1" });
     expect(result.done.stopReason).toBe("max_iterations");
     expect(result.done.iterations).toBe(2);
   });
@@ -109,11 +112,19 @@ describe("agent loop (mock engine + stub LLM)", () => {
     expect(events.some((e) => e.type === "error" && /different scenario/.test(e.data.message))).toBe(true);
   });
 
+  it("aborts with an error if the engine used a different crowd threshold", async () => {
+    const inner = createMockEngine();
+    const cheating: Engine = { ...inner, simulate: async (r) => inner.simulate({ ...r, crowd_threshold: 1.5 }) };
+    const { result, events } = await run({}, cheating);
+    expect(result.done.status).toBe("error");
+    expect(events.some((e) => e.type === "error" && /crowd threshold/.test(e.data.message))).toBe(true);
+  });
+
   it("treats truncated simulations as not comparable (never target_met)", async () => {
     const inner = createMockEngine();
     const truncating: Engine = {
       ...inner,
-      simulate: async (r) => ({ ...(await inner.simulate(r)), max_density: 0.5, truncated: true }),
+      simulate: async (r) => ({ ...(await inner.simulate(r)), congestion: { ...(await inner.simulate(r)).congestion, crowded_s_per_visitor: 0 }, truncated: true }),
     };
     const { result, events } = await run({ AGENT_MAX_ITERATIONS: "1" }, truncating);
     expect(result.done.stopReason).toBe("max_iterations");

@@ -5,12 +5,12 @@
  */
 import { z } from "zod";
 import type { IterationSummary } from "./analysis";
-import type { AnalysisInfo, Metrics, RevisionInfo } from "./events";
+import type { AnalysisInfo, Metrics, RevisionInfo, Targets } from "./events";
 import type { Brief, SiteSummary } from "./brief";
 import type { RejectedAction, Revision } from "./revision";
 
 export const AnalysisOutput = z.object({
-  summary: z.string().describe("2-4 sentences: what limits pedestrian flow and why. No invented numbers."),
+  summary: z.string().describe("2-4 sentences: where and why visitors spend time in crowded areas. No invented numbers."),
   causes: z
     .array(
       z.object({
@@ -41,6 +41,7 @@ export type ReportNarrativeInput = {
   finalIteration: number;
   baseline: Metrics;
   final: Metrics;
+  targets: Targets;
   revisions: Pick<RevisionInfo, "iteration" | "purpose" | "rationale" | "applied">[];
   analyses: Pick<AnalysisInfo, "iteration" | "summary">[];
   unknowns: string[];

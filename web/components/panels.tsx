@@ -161,7 +161,7 @@ export function MetricCards({
         const m = it.sim!.metrics;
         const ok = it.comparison?.valid;
         const active = it.iteration === selected;
-        const met = target !== undefined && m.max_density <= target;
+        const met = target !== undefined && m.crowded_s_per_visitor <= target;
         return (
           <button
             key={it.iteration}
@@ -183,7 +183,7 @@ export function MetricCards({
             </div>
             {target !== undefined && (
               <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-sunken">
-                <div className="h-full rounded-full" style={{ width: `${Math.min(100, (m.max_density / (target * 1.8)) * 100)}%`, background: met ? "var(--ok)" : "var(--heat-2)" }} />
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, (m.crowded_s_per_visitor / (target * 1.8)) * 100)}%`, background: met ? "var(--ok)" : "var(--heat-2)" }} />
               </div>
             )}
             <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-[11px]">
@@ -257,7 +257,7 @@ export function Conditions({ run }: { run: RunInfo }) {
       <dl>
         {item("Scenario", `${s.kind} · ${s.agents} agents · ${s.duration_s} s`)}
         {item("Seed · grid", `${s.seed} · ${run.gridCell} m`)}
-        {item("Target", `max ≤ ${run.targets.max_density} p/m²`)}
+        {item("Target", `crowded ≤ ${run.targets.crowded_s_per_visitor} s/visitor`)}
         {item("Revisions", `up to ${run.maxIterations}`)}
         {item("Fingerprint", run.scenarioFingerprint)}
       </dl>
