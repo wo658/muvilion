@@ -7,6 +7,7 @@
  *   so the report renders progressively as a normal text part.
  */
 import type { UIMessageStreamWriter } from "ai";
+import { PLACEMENT_MS } from "@/lib/ui/placement";
 import type { AgentEvent, AgentUIMessage } from "./events";
 
 export type Recording = {
@@ -45,7 +46,7 @@ export function createEventEncoder(writer: UIMessageStreamWriter<AgentUIMessage>
 }
 
 /** Time the console spends on the empty site → placed layout animation (components/placement). */
-export const PLACEMENT_PAUSE_MS = 4200;
+export const PLACEMENT_PAUSE_MS = PLACEMENT_MS + 150;
 
 /**
  * Pacing for replay so the timeline visibly streams; `speed` 0 disables delays. `prev` is the
