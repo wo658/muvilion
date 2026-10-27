@@ -131,7 +131,7 @@ export function boothName(s: BoothSpec): string {
   return label.toLowerCase() === KIND_NAMES[s.kind][0] ? `the ${KIND_NAMES[s.kind][0]}` : label;
 }
 
-const joinAnd = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+export const joinAnd = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
 /** "Food Truck 3", "Food Truck 3 and Market 4", "the food trucks", "4 of the food trucks". */
 export function boothsPhrase(ids: string[], specs: BoothSpec[]): string {
@@ -544,7 +544,7 @@ export function resultLine(
 }
 
 /** "Ground slope and drainage not shown on site plan" → "ground slope and drainage". */
-function unknownSubject(u: string): string | null {
+export function unknownSubject(u: string): string | null {
   const m = u.match(/^(.*?)\s+(?:not shown on (?:the )?(?:site )?plan|unconfirmed|not specified|not confirmed|unknown)\.?$/i);
   if (!m) return null;
   return m[1][0].toLowerCase() + m[1].slice(1);
