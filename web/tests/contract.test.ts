@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import sample from "@/fixtures/sample_hall.json";
+import outdoor from "@/fixtures/outdoor_plaza.json";
 import {
   LayoutRequest,
   LayoutResponse,
@@ -23,10 +24,18 @@ describe("contract", () => {
     expect(p.booths.find((b) => b.id === "B03")?.popularity).toBe(0.95);
   });
 
-  it("web copy of the fixture matches the repo-root fixture", () => {
-    const root = resolve(__dirname, "../../fixtures/sample_hall.json");
+  it.each(["sample_hall.json", "outdoor_plaza.json"])("web copy of %s matches the repo-root fixture", (name) => {
+    const root = resolve(__dirname, "../../fixtures", name);
     if (!existsSync(root)) return;
-    expect(JSON.parse(readFileSync(root, "utf8"))).toEqual(sample);
+    expect(JSON.parse(readFileSync(root, "utf8"))).toEqual(JSON.parse(readFileSync(resolve(__dirname, "../fixtures", name), "utf8")));
+  });
+
+  it("parses the outdoor plaza fixture", () => {
+    const p = ProjectInput.parse(outdoor);
+    expect(p.venue.setting).toBe("outdoor");
+    expect(p.venue.zones.some((z) => z.kind === "fire_lane" && !z.buildable)).toBe(true);
+    expect(p.booths.filter((b) => b.kind === "food_truck")).toHaveLength(6);
+    expect(p.booths.filter((b) => b.kind === "tent")).toHaveLength(18);
   });
 
   it("fills Pydantic defaults", () => {

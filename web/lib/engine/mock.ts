@@ -3,11 +3,12 @@
  * without the Python engine. It is NOT a pedestrian model; it only has to react
  * plausibly to the knobs the agent turns:
  *
- * - /layout: back-to-back booth rows on a grid whose aisle = min_aisle_width.
- *   Honors wall_margin, door_clearance, obstacles, keep_out, fixed and
- *   popular_door_distance; with `previous` each booth takes the free slot nearest
- *   its old position (minimal displacement).
- * - /validate: plain rectangle checks using the engine's rule ids (wall_margin is a
+ * - /layout: back-to-back booth rows on a grid whose aisle = min_aisle_width (one grid per
+ *   footprint size). Honors wall_margin, door_clearance, obstacles, unbuildable zones, keep_out,
+ *   fixed and popular_door_distance; with `previous` each booth takes the free slot nearest
+ *   its old position (minimal displacement). `steps` imitates the solver's improving solutions.
+ * - /validate: plain rectangle checks using the engine's rule ids, plus booth_on_unbuildable_zone
+ *   (mock-only id; the engine's zone rule id may differ) (wall_margin is a
  *   warning; reachability rules — connectivity, entrance_blocked, booth_unreachable,
  *   door_unreachable — are not modeled).
  * - /simulate: a synthetic peak-density field = entrance inflow + crowding around
@@ -39,6 +40,7 @@ import {
   type ValidateRequestInput,
   type Hotspot,
   type LayoutConstraints,
+  type LayoutStep,
   type Rect,
   type Venue,
   type Violation,
@@ -64,8 +66,10 @@ import {
 
 // ---------- layout ----------
 
+/** Footprints booths may not overlap: obstacles, unbuildable zones, door clearances and keep-outs. */
 function blockedRects(venue: Venue, c: LayoutConstraints): Rect[] {
   const out: Rect[] = venue.obstacles.map((o) => polygonBBox(o.polygon));
+  for (const z of venue.zones) if (!z.buildable) out.push(polygonBBox(z.polygon));
   for (const d of venue.doors) {
     const r = doorClearanceRect(d, venue, c.door_clearance, c.min_aisle_width / 2);
     if (r) out.push(r);
@@ -74,13 +78,15 @@ function blockedRects(venue: Venue, c: LayoutConstraints): Rect[] {
   return out;
 }
 
-function candidateSlots(venue: Venue, specs: BoothSpec[], c: LayoutConstraints): Rect[] {
-  const cw = Math.max(...specs.map((b) => b.w));
-  const ch = Math.max(...specs.map((b) => b.h));
+type Size = { w: number; h: number };
+const sizeKey = (s: Size) => `${s.w}x${s.h}`;
+
+/** Back-to-back booth rows for one footprint size, separated by aisles of `min_aisle_width`. */
+function candidateSlots(venue: Venue, size: Size, c: LayoutConstraints, blocked: Rect[]): Rect[] {
+  const { w: cw, h: ch } = size;
   const m = c.wall_margin;
   const aisle = c.min_aisle_width;
   const slots: Rect[] = [];
-  // Rows come in back-to-back pairs separated by an aisle.
   for (let y0 = m; y0 + ch <= venue.height - m + 1e-9; y0 += 2 * ch + aisle) {
     for (const y of [y0, y0 + ch]) {
       if (y + ch > venue.height - m + 1e-9) continue;
@@ -89,15 +95,43 @@ function candidateSlots(venue: Venue, specs: BoothSpec[], c: LayoutConstraints):
       }
     }
   }
-  const blocked = blockedRects(venue, c);
   return slots.filter((s) => !blocked.some((b) => rectsOverlap(s, b)));
+}
+
+/** A slot stays usable next to `r` if it touches it back to back or leaves at least one aisle. */
+function compatible(s: Rect, r: Rect, aisle: number): boolean {
+  if (rectsOverlap(s, r)) return false;
+  const gap = rectGap(s, r);
+  return gap <= 1e-6 || gap >= aisle - 1e-6;
 }
 
 export function mockLayout(input: LayoutRequestInput): LayoutResponse {
   const req = LayoutRequest.parse(input);
+  const warm = greedyLayout(req);
+  if (warm.status !== "infeasible" || !req.previous) return warm;
+  // A solver would still find a layout where the warm-start greedy fill gets stuck; retry cold
+  // and keep reporting the displacement from `previous`.
+  const cold = greedyLayout({ ...req, previous: null });
+  if (cold.status === "infeasible") return warm;
+  const prev = new Map(req.previous.booths.map((b) => [b.id, b]));
+  const moved = cold.layout.booths.reduce((s, b) => s + (prev.has(b.id) ? dist(b, prev.get(b.id)!) : 0), 0);
+  return LayoutResponse.parse({ ...cold, objective: round(moved, 3), solve_time_s: 0.02, steps: [{ t_s: 0.02, objective: round(moved, 3), booths: cold.layout.booths }] });
+}
+
+function greedyLayout(req: LayoutRequest): LayoutResponse {
   const { venue, booths: specs, constraints: c, previous } = req;
   const prevById = new Map((previous?.booths ?? []).map((b) => [b.id, b]));
-  let free = candidateSlots(venue, specs, c);
+  const blocked = blockedRects(venue, c);
+  // One slot grid per distinct footprint (food trucks, tents, kiosks…); placing a booth removes
+  // every slot of every grid that would overlap it or leave less than an aisle.
+  const free = new Map<string, Rect[]>();
+  for (const s of specs) {
+    const k = sizeKey(s);
+    if (!free.has(k)) free.set(k, candidateSlots(venue, s, c, blocked));
+  }
+  const take = (r: Rect) => {
+    for (const [k, list] of free) free.set(k, list.filter((s) => compatible(s, r, c.min_aisle_width)));
+  };
   const placed: Booth[] = [];
   let displacement = 0;
 
@@ -107,21 +141,23 @@ export function mockLayout(input: LayoutRequestInput): LayoutResponse {
     if (!p) continue;
     const r = { x: p.x, y: p.y, w: spec.w, h: spec.h };
     placed.push({ id: spec.id, ...r, rotation: 0 });
-    free = free.filter((s) => !rectsOverlap(s, r));
+    take(r);
   }
 
   const isPopular = (s: BoothSpec) => c.popular_door_distance > 0 && s.popularity >= c.popular_threshold;
   const rest = specs.filter((s) => !c.fixed[s.id]);
-  // 2) constrained popular booths first (most popular first), then the rest in input order.
+  // 2) constrained popular booths first (most popular first), then the rest in input order;
+  //    within each group larger footprints go first so they still find room.
+  const bySize = (a: BoothSpec, b: BoothSpec) => b.w * b.h - a.w * a.h;
   const order = [
-    ...rest.filter(isPopular).sort((a, b) => b.popularity - a.popularity),
-    ...rest.filter((s) => !isPopular(s)),
+    ...rest.filter(isPopular).sort((a, b) => b.popularity - a.popularity || bySize(a, b)),
+    ...rest.filter((s) => !isPopular(s)).sort(bySize),
   ];
   const entranceDist = (r: Rect) => distanceToNearestEntrance(r, venue);
   let unplaced = 0;
   for (const spec of order) {
-    const eligible = free.filter(
-      (s) => s.w >= spec.w && s.h >= spec.h && (!isPopular(spec) || !inPopularZone(s, venue, c.popular_door_distance)),
+    const eligible = (free.get(sizeKey(spec)) ?? []).filter(
+      (s) => !isPopular(spec) || !inPopularZone(s, venue, c.popular_door_distance),
     );
     if (eligible.length === 0) {
       unplaced++;
@@ -145,17 +181,81 @@ export function mockLayout(input: LayoutRequestInput): LayoutResponse {
     for (const s of eligible) if (score(s) < score(best) - 1e-9) best = s;
     if (prev) displacement += dist(best, prev);
     placed.push({ id: spec.id, x: best.x, y: best.y, w: spec.w, h: spec.h, rotation: 0 });
-    free = free.filter((s) => s !== best);
+    take(best);
   }
 
   placed.sort((a, b) => a.id.localeCompare(b.id));
   const layoutId = `L-${hashString(JSON.stringify(placed.map((b) => [b.id, b.x, b.y])))}`;
+  const objective = round(displacement, 3);
+  const solveTime = previous ? 0.01 : 0.4;
   return LayoutResponse.parse({
     layout: { id: layoutId, venue_id: venue.id, booths: placed },
     status: unplaced > 0 ? "infeasible" : "feasible",
-    objective: round(displacement, 3),
-    solve_time_s: 0.01,
+    objective,
+    solve_time_s: solveTime,
+    steps: unplaced > 0 ? [] : mockSteps(venue, placed, objective, solveTime, previous !== null),
   });
+}
+
+/**
+ * Plausible "improving solutions" for the placement animation. A real CP-SAT run reports a
+ * rough first feasible arrangement and then better ones; the mock imitates that by starting
+ * from the final slots handed out in id order (same footprint ↔ same slot set, so every step is
+ * overlap-free) and swapping booths into their final slots, entrance side first. The objective
+ * falls with every step; the last step equals the returned layout. Warm-started revisions
+ * report a single step.
+ */
+function mockSteps(venue: Venue, final: Booth[], objective: number, solveTime: number, warm: boolean): LayoutStep[] {
+  if (warm || final.length === 0) return [{ t_s: solveTime, objective, booths: final }];
+  const target = new Map(final.map((b) => [b.id, { x: b.x, y: b.y }]));
+  const pos = new Map<string, { x: number; y: number }>();
+  const classes = new Map<string, Booth[]>();
+  for (const b of final) {
+    const k = sizeKey(b);
+    if (!classes.has(k)) classes.set(k, []);
+    classes.get(k)!.push(b);
+  }
+  for (const list of classes.values()) {
+    const ids = list.map((b) => b.id).sort();
+    // reading order: far side first, left to right
+    const slots = list.map((b) => ({ x: b.x, y: b.y })).sort((a, b) => b.y - a.y || a.x - b.x);
+    ids.forEach((id, i) => pos.set(id, slots[i]));
+  }
+  const misplaced = () => final.filter((b) => pos.get(b.id)!.x !== b.x || pos.get(b.id)!.y !== b.y);
+  const snapshot = (): Booth[] => final.map((b) => ({ ...b, ...pos.get(b.id)! }));
+  const score = () => {
+    let d = 0;
+    for (const b of final) d += dist(pos.get(b.id)!, b);
+    return round(objective + misplaced().length * 10 + d * 1e-3, 3);
+  };
+  const steps: { booths: Booth[]; objective: number }[] = [{ booths: snapshot(), objective: score() }];
+  const order = misplaced()
+    .map((b) => b.id)
+    .sort((a, b) => distanceToNearestEntrance(boothRect(final.find((x) => x.id === a)!), venue) - distanceToNearestEntrance(boothRect(final.find((x) => x.id === b)!), venue));
+  const rounds = Math.min(9, order.length);
+  const perRound = Math.max(1, Math.ceil(order.length / Math.max(1, rounds)));
+  let i = 0;
+  while (misplaced().length > 0 && steps.length < 12) {
+    for (let n = 0; n < perRound && i < order.length; i++) {
+      const id = order[i];
+      const want = target.get(id)!;
+      const cur = pos.get(id)!;
+      if (cur.x === want.x && cur.y === want.y) continue;
+      const k = sizeKey(final.find((b) => b.id === id)!);
+      const holder = classes.get(k)!.find((b) => b.id !== id && pos.get(b.id)!.x === want.x && pos.get(b.id)!.y === want.y);
+      if (holder) pos.set(holder.id, cur);
+      pos.set(id, want);
+      n++;
+    }
+    if (i >= order.length) for (const b of final) pos.set(b.id, target.get(b.id)!);
+    steps.push({ booths: snapshot(), objective: score() });
+  }
+  if (misplaced().length > 0) {
+    for (const b of final) pos.set(b.id, target.get(b.id)!);
+    steps[steps.length - 1] = { booths: snapshot(), objective: score() };
+  }
+  const n = steps.length;
+  return steps.map((s, k) => ({ t_s: round(0.05 + ((solveTime - 0.05) * k) / Math.max(1, n - 1), 3), objective: s.objective, booths: s.booths }));
 }
 
 // ---------- validate ----------
@@ -174,6 +274,9 @@ export function mockValidate(input: ValidateRequestInput): ValidateResponse {
       add("wall_margin", `${b.id} is closer than ${m} m to a wall`, [b.id], r, "warning");
     for (const o of venue.obstacles)
       if (rectsOverlap(r, polygonBBox(o.polygon))) add("booth_over_obstacle", `${b.id} overlaps ${o.kind} ${o.id}`, [b.id], r);
+    for (const z of venue.zones)
+      if (!z.buildable && rectsOverlap(r, polygonBBox(z.polygon)))
+        add("booth_on_unbuildable_zone", `${b.id} is on unbuildable ${z.kind.replace(/_/g, " ")} ${z.id}`, [b.id], r);
     for (const d of venue.doors) {
       const z = doorClearanceRect(d, venue, c.door_clearance, c.min_aisle_width / 2);
       if (z && rectsOverlap(r, z)) add("door_clearance", `${b.id} blocks the ${c.door_clearance} m clearance of door ${d.id}`, [b.id], r);
