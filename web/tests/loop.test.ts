@@ -65,7 +65,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
     // the design brief comes before the first layout and sets its constraints
     const briefAt = events.findIndex((e) => e.type === "brief");
     const firstLayout = events.findIndex((e) => e.type === "layout");
-    expect(briefAt).toBe(events.findIndex((e) => e.type !== "run" && e.type !== "step"));
+    expect(briefAt).toBe(events.findIndex((e) => e.type !== "run" && e.type !== "step" && e.type !== "say"));
     expect(briefAt).toBeLessThan(firstLayout);
     const brief = events[briefAt];
     expect(brief.type === "brief" && layouts[0].data.constraints).toEqual(brief.type === "brief" && brief.data.constraints);

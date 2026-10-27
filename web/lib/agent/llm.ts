@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { IterationSummary } from "./analysis";
 import type { AnalysisInfo, Metrics, RevisionInfo, Targets } from "./events";
 import type { Brief, SiteSummary } from "./brief";
+import type { NarrationLine } from "./narrate";
 import type { RejectedAction, Revision } from "./revision";
 
 export const AnalysisOutput = z.object({
@@ -54,6 +55,20 @@ export type RevisionResult = { revision: Revision; rejected: RejectedAction[] };
 export type BriefInput = { site: SiteSummary };
 export type BriefResult = { brief: Brief; rejected: RejectedAction[] };
 
+/** Lines to phrase (facts as slots + a deterministic draft each); see lib/agent/narrate.ts. */
+export type NarrateInput = { lines: NarrationLine[] };
+/**
+ * One template per line, using the lines' `{slot}` placeholders; `by` names who wrote them
+ * ("stub" when the stub did, including after a fallback). Code fills and checks them.
+ */
+export type NarrateOutput = { templates: string[]; by: string };
+
+export const NarrationToolInput = z.object({
+  messages: z
+    .array(z.object({ text: z.string().describe("The message as a template: every number and name from `values` written as its {placeholder}.") }))
+    .describe("Exactly one message per requested line, in the same order."),
+});
+
 export interface AgentLLM {
   /** Short id shown in the UI, e.g. "stub" or "meta:muse-spark-1.3". */
   readonly name: string;
@@ -64,11 +79,18 @@ export interface AgentLLM {
   proposeFixes(input: FixInput): Promise<RevisionResult>;
   /** Prose sections of the report. Must not state metric values; tables are inserted by code. */
   reportNarrative(input: ReportNarrativeInput, onDelta: (text: string) => void): Promise<string>;
+  /** Plain-language wording for `say` events (templates over code-computed slots). */
+  narrate(input: NarrateInput): Promise<NarrateOutput>;
 }
 
-/** Enforces a per-run cap on LLM calls (AGENT_MAX_LLM_CALLS). */
-export function withCallCap(llm: AgentLLM, maxCalls: number): AgentLLM & { calls(): number } {
+/**
+ * Enforces a per-run cap on LLM calls (AGENT_MAX_LLM_CALLS). Narration has its own budget
+ * (AGENT_MAX_NARRATION_CALLS) so it can never use up the calls the loop's decisions need; the
+ * narrator turns a cap error into the stub wording.
+ */
+export function withCallCap(llm: AgentLLM, maxCalls: number, maxNarrationCalls = Infinity): AgentLLM & { calls(): number; narrationCalls(): number } {
   let calls = 0;
+  let narrationCalls = 0;
   const tick = () => {
     calls++;
     if (calls > maxCalls) throw new Error(`LLM call cap reached (AGENT_MAX_LLM_CALLS=${maxCalls})`);
@@ -76,6 +98,12 @@ export function withCallCap(llm: AgentLLM, maxCalls: number): AgentLLM & { calls
   return {
     name: llm.name,
     calls: () => calls,
+    narrationCalls: () => narrationCalls,
+    narrate: async (i) => {
+      narrationCalls++;
+      if (narrationCalls > maxNarrationCalls) throw new Error(`narration call cap reached (AGENT_MAX_NARRATION_CALLS=${maxNarrationCalls})`);
+      return llm.narrate(i);
+    },
     designBrief: async (i) => (tick(), llm.designBrief(i)),
     analyze: async (i) => (tick(), llm.analyze(i)),
     revise: async (i) => (tick(), llm.revise(i)),
@@ -106,5 +134,6 @@ export function withFallback(primary: AgentLLM, fallback: AgentLLM, onFallback: 
     revise: wrap("revise", (i) => primary.revise(i), (i) => fallback.revise(i)),
     proposeFixes: wrap("proposeFixes", (i) => primary.proposeFixes(i), (i) => fallback.proposeFixes(i)),
     reportNarrative: wrap("reportNarrative", (i, d) => primary.reportNarrative(i, d), (i, d) => fallback.reportNarrative(i, d)),
+    narrate: wrap("narrate", (i) => primary.narrate(i), (i) => fallback.narrate(i)),
   };
 }
