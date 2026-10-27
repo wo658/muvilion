@@ -1,9 +1,9 @@
-import { SimpleView } from "@/components/simple/simple-view";
+import { Workspace } from "@/components/workspace/workspace";
 
 export default function Page() {
   return (
     <main className="flex-1">
-      <SimpleView />
+      <Workspace />
     </main>
   );
 }

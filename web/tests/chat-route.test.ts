@@ -93,6 +93,35 @@ describe("POST /api/chat", () => {
     expect((await capped.json()).error).toBe("cap_reached");
   });
 
+  it("/api/agent preserves a custom project scenario after the shared-stream merge", async () => {
+    vi.stubEnv("LIVE_AGENT", "on");
+    vi.stubEnv("ENGINE_MOCK", "1");
+    vi.stubEnv("AGENT_LLM", "stub");
+    const { POST } = await import("@/app/api/agent/route");
+    const { venueById } = await import("@/lib/venues");
+    const project = structuredClone(venueById("sample-hall")!.project);
+    project.venue.id = "custom-project";
+    const scenario = { kind: "entry", agents: 123, duration_s: 150, seed: 17 };
+    const response = await POST(new Request("http://localhost/api/agent", {
+      method: "POST", body: JSON.stringify({ mode: "live", project, scenario }),
+    }));
+    expect(response.status).toBe(200);
+    const message = await lastMessage(response);
+    const run = message?.parts.find((p) => p.type === "data-run");
+    expect(run?.type === "data-run" && run.data.scenario).toEqual(scenario);
+    expect(run?.type === "data-run" && run.data.venue.id).toBe("custom-project");
+  });
+
+  it("/api/agent rejects invalid custom scenarios before acquiring a run", async () => {
+    vi.stubEnv("LIVE_AGENT", "on");
+    const { POST } = await import("@/app/api/agent/route");
+    const response = await POST(new Request("http://localhost/api/agent", {
+      method: "POST", body: JSON.stringify({ mode: "live", scenario: { agents: -1 } }),
+    }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("bad_scenario");
+  });
+
   it("a live run streams the loop with run metadata", async () => {
     vi.stubEnv("LIVE_AGENT", "on");
     vi.stubEnv("ENGINE_MOCK", "1");

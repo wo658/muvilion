@@ -32,7 +32,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const url = new URL(req.url);
-  const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; venue?: string; project?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; venue?: string; project?: unknown; scenario?: unknown };
   const speed = url.searchParams.get("speed");
   const run = startRunStream(
     {
@@ -40,6 +40,7 @@ export async function POST(req: Request) {
       speed: speed !== null ? Number(speed) : body.speed,
       venue: url.searchParams.get("venue") ?? body.venue,
       project: body.project,
+      scenario: body.scenario,
     },
     { signal: req.signal },
   );

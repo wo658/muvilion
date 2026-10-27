@@ -15,6 +15,7 @@
 # Node
 node_modules/
 .next/
+/web/public/pdf.worker.min.mjs
 out/
 *.tsbuildinfo
 next-env.d.ts
@@ -32,3 +33,7 @@ __pycache__/
 
 # Engine layout memo (see engine/app/layout/cache.py)
 engine/.cache/
+
+# Local tooling state
+.pnpm-store/
+.claude/
