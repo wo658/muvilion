@@ -1,6 +1,7 @@
-"""Run layout -> validate -> simulate (+ queue) on the sample fixture and print metrics.
+"""Run layout -> validate -> simulate (+ queue) on a fixture and print metrics.
 
 uv run python scripts/demo.py                 # in-process, no server needed
+uv run python scripts/demo.py --fixture outdoor_plaza
 uv run python scripts/demo.py --url http://localhost:8000
 """
 
@@ -13,7 +14,7 @@ import warnings
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT.parent / "fixtures" / "sample_hall.json"
+FIXTURES = ROOT.parent / "fixtures"
 
 
 def make_client(url: str | None):
@@ -33,18 +34,32 @@ def make_client(url: str | None):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", help="engine base URL; omit to run in-process")
+    ap.add_argument(
+        "--fixture",
+        default="sample_hall",
+        help="fixture name in fixtures/ (sample_hall, outdoor_plaza) or a path to a JSON file",
+    )
     ap.add_argument("--agents", type=int, default=200)
     ap.add_argument("--duration", type=float, default=300.0)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
     client = make_client(args.url)
-    sample = json.loads(FIXTURE.read_text())
+    path = Path(args.fixture)
+    if not path.suffix:
+        path = FIXTURES / f"{args.fixture}.json"
+    sample = json.loads(path.read_text())
     venue, specs = sample["venue"], sample["booths"]
 
     lay = client.post("/layout", json={"venue": venue, "booths": specs, "seed": args.seed}).json()
     layout = lay["layout"]
-    print(f"layout  {layout['id']}  status={lay['status']}  solve={lay['solve_time_s']:.2f}s")
+    print(f"venue   {venue['name']}  ({venue.get('setting', 'indoor')}, {len(specs)} booths)")
+    print(
+        f"layout  {layout['id']}  status={lay['status']}  solve={lay['solve_time_s']:.2f}s  "
+        f"steps={len(lay['steps'])}"
+    )
+    for st in lay["steps"]:
+        print(f"    step t={st['t_s']:.2f}s  objective={st['objective']:.0f}")
     if lay["status"] == "infeasible":
         return
 

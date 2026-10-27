@@ -6,6 +6,19 @@ no persistence. The data contract lives in `app/schemas.py` (meters / seconds, o
 hall's bottom-left, x right, y up; a booth's `(x, y)` is its bottom-left corner and
 `rotation: 90` swaps its `w`/`h` footprint).
 
+Venues are `setting: "indoor"` (walls, doors) or `"outdoor"` (a fence with gates; gates are
+`doors` and behave exactly like doors). `zones` are walkable ground areas (`fire_lane`,
+`lawn`, `paved`, `stage_front`, `queue_area`); booths may not overlap a zone with
+`buildable: false`, but people walk on every zone. Obstacle kinds include `tree`, `fountain`
+and `structure` (all non-walkable). `BoothSpec.kind` (`booth`, `tent`, `food_truck`, `kiosk`)
+is visual only: every footprint is a rectangle.
+
+Fixtures: `fixtures/sample_hall.json` (indoor 40×30 m, 24 booths) and
+`fixtures/outdoor_plaza.json` (outdoor 60×40 m park plaza: fence with two entrance gates, an
+exit gate and fire-lane emergency gates, a 4 m east-west fire lane at y 18–22, an unbuildable
+stage-front lawn, trees, a fountain, a stage, restrooms; 18 tents, 6 food trucks of 6×2.5 m,
+1 kiosk).
+
 ## Run
 
 ```bash
@@ -20,6 +33,7 @@ OpenAPI docs: http://localhost:8000/docs (CORS allows `http://localhost:3000`).
 uv run pytest            # ~15 s
 uv run ruff check .
 uv run python scripts/demo.py   # layout -> validate -> simulate -> queue on the fixture
+uv run python scripts/demo.py --fixture outdoor_plaza --agents 200
 ```
 
 ## Endpoints
@@ -35,23 +49,42 @@ uv run python scripts/demo.py   # layout -> validate -> simulate -> queue on the
 
 ### `/layout`
 Booths are placed inside the hall minus `wall_margin`, avoiding obstacle bounding boxes,
-`keep_out` rects and door clearance zones (`door_clearance` deep, door width + one aisle wide).
+unbuildable zone bounding boxes, `keep_out` rects and door/gate clearance zones
+(`door_clearance` deep, door width + one aisle wide).
 Every pair of booths is at least `min_aisle_width` apart along x or y. Non-square booths may
 rotate 0/90. `fixed` pins booths; booths at or above `popular_threshold` keep
-`popular_door_distance` from entrances. Objective: compactness around the hall center, plus a
+`popular_door_distance` from entrances. Objective: compactness around the hall center; when
+the venue has a fire lane, booths are pulled toward the lane instead (distance across the lane
+weighs 4× distance along it), which lines both sides of the lane with rows of booths. Plus a
 heavily weighted displacement term from `previous` when given (revisions move as little as
 possible). The solver uses a deterministic-time budget (`time_limit_s`) so the same request
-returns the same layout. `status: "infeasible"` returns an empty booth list.
+returns the same layout. `status: "infeasible"` returns an empty booth list and no steps.
+
+`steps` lets the web animate empty site → first feasible → better → final: up to 12 improving
+solutions `{t_s, objective, booths}` in the order found, objectives strictly decreasing
+(minimization), sampled evenly over the objective range, first one = first feasible solution,
+last one = the returned `layout`. `t_s` is wall time since the request started (the only
+non-reproducible field). The intermediate steps come from a single-worker CP-SAT solve of the
+same model that runs alongside the main 8-worker solve with a deterministic budget of
+`min(2, time_limit_s / 4)`: a solution callback on the main solve would make its result vary
+between runs, while a single worker reports the same solutions every time. Typical numbers
+(default `time_limit_s` 10, 18-core dev machine): indoor ~4 s, outdoor ~4.5 s, 12 steps each.
 
 ### `/validate`
 Rules (`rule_id`, severity): `booth_overlap` (error), `booth_outside_hall` (error),
 `wall_margin` (warning), `booth_over_obstacle` (error), `door_clearance` (error), `keep_out`
-(error), `aisle_width` (error), `booth_unreachable` / `door_unreachable` / `entrance_blocked`
-(error). Connectivity erodes the free floor by half the aisle width and checks that every booth
-and every exit/emergency door touches the component connected to an entrance.
+(error), `aisle_width` (error), `zone_unbuildable` (error, booth over a `buildable: false`
+zone), `fire_lane_blocked` (error, anything — booth or obstacle — that keeps a fire lane from
+being clear over its full width end to end, along the long side of its bounding box),
+`booth_unreachable` / `door_unreachable` / `entrance_blocked` (error). Connectivity erodes the
+free floor by half the aisle width and checks that every booth and every exit/emergency door
+(gate) touches the component connected to an entrance; zones are walkable and never block.
+`source` is `internal:geometry` for geometry rules and `venue:zones/<zone id>` for zone rules
+(they come from the site plan's designations, not from a building code).
 
 ### `/simulate`
-Walkable area = hall − booths − obstacles (gaps < 0.7 m removed). Scenarios:
+Walkable area = hall (or site) − booths − obstacles (gaps < 0.7 m removed); zones are
+walkable, gates are the doors. Scenarios:
 - `entry`: agents arrive at the entrance over the first half of `duration_s`, visit one booth
   (weighted by popularity²), dwell, then disperse to a point in the hall.
 - `browse`: agents start scattered, visit 2–4 booths, then leave by the nearest exit/entrance.
@@ -75,6 +108,24 @@ memory, so calling `/trajectories` right after it costs no second run; on a miss
 repeated (deterministic, so the result is identical). Size: about 1 MB of JSON (~150 kB
 gzipped) for 200 agents over 300 s. `trajectory_dt` is part of the request, so it changes
 `run_id` but not the metrics.
+
+### Outdoor plaza numbers
+Default layout, 300 s, seed 0 (wall times on an 18-core dev machine, single run):
+
+| Scenario | Agents | Done | Max density | Top hotspot | Wall |
+|----------|--------|------|-------------|-------------|------|
+| `entry`  | 200 | 0.99 | 2.00 p/m² | (16,8) near M12 | 6 s |
+| `browse` | 200 | 0.78 | 3.00 p/m² | (16,16) near F3, M01 | 14 s |
+| `exit`   | 200 | 1.00 | 1.25 p/m² | main gate | 0.4 s |
+
+Before/after demo: pin the six food trucks in two rows just inside the main gate
+(`constraints.fixed`: F1 (16,6), F2 (25,6), F3 (34,6), F4 (16,11.5), F5 (25,11.5),
+F6 (34,11.5)) and run `entry` with 400 agents: max density 3.50 p/m² with the top hotspots
+between the trucks at the gate. Revising with `previous` = that layout and
+`popular_door_distance: 12, popular_threshold: 0.7` moves only the trucks (and two tents) and
+brings the peak to 2.50 p/m², with the top hotspot moving off the gate to the trucks' new spot
+(seed 0; peaks are per 2 m cell and vary by about ±0.5 p/m² between seeds: seed 1 gives
+3.50 → 3.25). Wall time ≈ 20 s per run.
 
 ## curl
 
@@ -110,7 +161,7 @@ app/
   main.py               FastAPI app, CORS, routers
   schemas.py            shared contract (mirrored by the web app)
   geometry.py           Shapely helpers shared by all features
-  layout/solver.py      CP-SAT model
+  layout/solver.py      CP-SAT model + steps trace
   validation/rules.py   rule functions + validate()
   sim/walkable.py       walkable polygon, booth-front points, door geometry
   sim/scenarios.py      per-agent plans for entry / browse / exit
