@@ -7,7 +7,7 @@ import Page from "@/app/page";
 describe("routes render", () => {
   it("/details renders the expert review console", () => {
     const html = renderToStaticMarkup(createElement(DetailsPage));
-    expect(html).toContain("Pavilion");
+    expect(html).toContain("muvilion");
     expect(html).toContain("Watch recorded run");
     expect(html).toContain("Inspector");
   });

@@ -180,7 +180,7 @@ export function ReviewConsole({ chat, venueId: venueProp, onVenueChange, onClose
       <header className="z-30 flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline bg-surface px-3 py-2 lg:px-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <Logo />
-          <span className="text-[13.5px] font-semibold tracking-tight text-ink max-sm:hidden">Pavilion</span>
+          <span className="text-[13.5px] font-semibold tracking-tight text-ink max-sm:hidden">muvilion</span>
           <span className="text-hairline-strong max-sm:hidden">/</span>
           <Segmented
             label="Venue"
