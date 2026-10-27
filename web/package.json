@@ -11,7 +11,8 @@
     "test": "vitest run",
     "record:replay": "tsx scripts/record-replay.ts",
     "smoke:tools": "tsx scripts/smoke-tools.ts",
-    "sync:fixtures": "cp ../fixtures/sample_hall.json fixtures/sample_hall.json"
+    "sync:fixtures": "cp ../fixtures/sample_hall.json fixtures/sample_hall.json",
+    "gen:engine-types": "cd ../engine && uv run python -m scripts.dump_openapi > ../web/lib/engine/openapi.json && cd ../web && openapi-typescript lib/engine/openapi.json -o lib/engine/openapi.gen.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.78",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "tsx": "4.23.15",
     "typescript": "^5",
