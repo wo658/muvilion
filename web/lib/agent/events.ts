@@ -175,6 +175,27 @@ export type DoneInfo = {
 
 export type ErrorInfo = { message: string; iteration?: number; step?: StepName; recoverable: boolean };
 
+/**
+ * What Muse tells a non-expert user at a moment of the run, in plain language. The simple view
+ * shows only these (plus the canvas and one headline number); everything else is behind
+ * "details". Any number in `text` must come from the run's own results, never from the model.
+ */
+export type SayMoment = "intro" | "brief" | "placed" | "simulated" | "revising" | "revised" | "result" | "caution";
+export type SayInfo = {
+  moment: SayMoment;
+  /** One to three short sentences, no jargon (no "p/m²", "CP-SAT", "hotspot"). */
+  text: string;
+  tone: "neutral" | "good" | "warn";
+  /** Iteration the message is about (selects that layout on the canvas), if any. */
+  iteration?: number;
+  /** Booths the message points at (highlighted on the canvas). */
+  booth_ids?: string[];
+  /** Whether a person must approve something mentioned here (e.g. overriding an organizer request). */
+  needs_approval?: boolean;
+  /** Which component produced the wording: the model or the deterministic stub. */
+  by: string;
+};
+
 /** Data part payloads, keyed by data part name (`data-<name>` on the wire). */
 export type AgentDataParts = {
   run: RunInfo;
@@ -189,6 +210,7 @@ export type AgentDataParts = {
   report: ReportInfo;
   done: DoneInfo;
   error: ErrorInfo;
+  say: SayInfo;
 };
 
 export type AgentUIMessage = UIMessage<never, AgentDataParts>;
