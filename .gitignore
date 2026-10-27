@@ -29,3 +29,6 @@ __pycache__/
 
 # Worktrees
 .worktrees/
+
+# Engine layout memo (see engine/app/layout/cache.py)
+engine/.cache/
