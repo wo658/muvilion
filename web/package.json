@@ -11,7 +11,7 @@
     "test": "vitest run",
     "record:replay": "tsx scripts/record-replay.ts",
     "smoke:tools": "tsx scripts/smoke-tools.ts",
-    "sync:fixtures": "cp ../fixtures/sample_hall.json fixtures/sample_hall.json",
+    "sync:fixtures": "cp ../fixtures/sample_hall.json ../fixtures/outdoor_plaza.json fixtures/",
     "gen:engine-types": "cd ../engine && uv run python -m scripts.dump_openapi > ../web/lib/engine/openapi.json && cd ../web && openapi-typescript lib/engine/openapi.json -o lib/engine/openapi.gen.ts"
   },
   "dependencies": {

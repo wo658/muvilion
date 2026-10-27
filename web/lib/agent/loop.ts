@@ -2,6 +2,7 @@
  * The layout improvement loop. Control flow is fixed here; the LLM is consulted
  * only for judgment (analyze, revise, fix proposals, report prose).
  *
+ *   design brief (LLM reads the empty site → intent; code → first LayoutRequest constraints)
  *   iteration 0 (baseline) … N:
  *     generate (/layout) → validate (/validate + agent checks)
  *       └ on errors: LLM proposes constraint fixes → regenerate (≤ maxFixAttempts)
@@ -37,6 +38,7 @@ import type { AgentConfig } from "./config";
 import {
   stepId,
   type AnalysisInfo,
+  type BriefInfo,
   type Decision,
   type DoneInfo,
   type Emit,
@@ -45,6 +47,7 @@ import {
 } from "./events";
 import type { AgentLLM, AnalysisOutput, RevisionResult } from "./llm";
 import { reportBody, reportHeader } from "./report";
+import { applyBrief, summarizeSite } from "./brief";
 import { applyRevision } from "./revision";
 import { ScenarioGuard } from "./scenario";
 
@@ -158,7 +161,32 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
     by: llm.name,
   });
 
+  let brief: BriefInfo | null = null;
   try {
+    // ---- design brief: Muse decides intent, code derives constraints, OR-Tools later decides coordinates ----
+    const site = summarizeSite(venue, specs, guard.scenario, request.constraints);
+    const initial = request;
+    const b = await step(
+      0,
+      "brief",
+      "Read the site and write the design brief",
+      async () => {
+        const r = await llm.designBrief({ site });
+        return { r, t: applyBrief({ venue, specs, request: initial }, r.brief) };
+      },
+      ({ t }) => `${t.applied.length} constraint choice(s) applied, ${t.rejected.length} rejected`,
+    );
+    brief = {
+      rationale: b.r.brief.rationale,
+      items: b.r.brief.items,
+      applied: b.t.applied,
+      rejected: [...b.r.rejected, ...b.t.rejected],
+      constraints: b.t.request.constraints,
+      by: llm.name,
+    };
+    emit({ type: "brief", data: brief });
+    request = b.t.request;
+
     for (let it = 0; ; it++) {
       // ---- generate + validate (with bounded fix attempts) ----
       let layoutRes: LayoutResponse;
@@ -376,6 +404,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
         finalIteration,
         revisions,
         analyses,
+        brief,
         remainingWarnings: finalRec.validation.violations
           .filter((v) => v.severity === "warning")
           .map((v) => `${v.message} [${v.rule_id}, ${v.source}]`),
@@ -394,6 +423,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
             revisions: revisions.map(({ iteration, purpose, rationale, applied }) => ({ iteration, purpose, rationale, applied })),
             analyses: analyses.map(({ iteration, summary }) => ({ iteration, summary })),
             unknowns: venue.unknowns,
+            brief: brief && { rationale: brief.rationale, applied: brief.applied.map((a) => a.effect) },
           },
           (delta) => emit({ type: "report-delta", delta }),
         );

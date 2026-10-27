@@ -1,13 +1,12 @@
 /**
- * Produces the replay recording: the real loop with the stub LLM and a fixed clock.
- * By default it runs against the mock engine with default config (env ignored), so the
+ * Produces the replay recordings (one per venue): the real loop with the stub LLM and a fixed
+ * clock. By default it runs against the mock engine with MOCK_RECORDING_ENV (env ignored), so the
  * output is byte-for-byte reproducible; scripts/record-replay.ts can pass the real engine
  * instead (also deterministic for the same engine version). A test checks that a
  * mock-engine fixture is still genuine loop output.
  */
-import sample from "@/fixtures/sample_hall.json";
 import type { Engine } from "@/lib/engine/client";
-import { ProjectInput, type Layout, type Trajectories } from "@/lib/engine/contract";
+import type { Layout, ProjectInput, Trajectories } from "@/lib/engine/contract";
 import { createMockEngine } from "@/lib/engine/mock";
 import { loadAgentConfig, type AgentConfig } from "./config";
 import { simulateRequestFor } from "@/lib/trajectory/request";
@@ -18,18 +17,25 @@ import type { Recording } from "./stream";
 
 export const RECORDING_CLOCK = "2026-10-27T00:00:00.000Z";
 
-export async function recordSampleRun(
+/**
+ * The mock's synthetic crowding is tuned for the entry scenario; the loop's defaults (browse,
+ * 3.0 p/m²) are tuned for the real engine. Mock recordings pin this so the replay shows revisions.
+ */
+export const MOCK_RECORDING_ENV = { AGENT_SCENARIO_KIND: "entry", AGENT_TARGET_MAX_DENSITY: "2.0" };
+
+export async function recordRun(
+  project: ProjectInput,
   engine: Engine = createMockEngine(),
-  config: AgentConfig = loadAgentConfig({}),
+  config: AgentConfig = loadAgentConfig(MOCK_RECORDING_ENV),
 ): Promise<Recording> {
   const events: AgentEvent[] = [];
   const llm = createStubLLM();
   await runAgentLoop({
-    project: ProjectInput.parse(sample),
+    project: structuredClone(project),
     engine,
     llm,
     config,
-    runId: "sample-run",
+    runId: `replay-${project.venue.id}`,
     mode: "live",
     emit: (e) => events.push(e),
     now: () => new Date(RECORDING_CLOCK),

@@ -18,9 +18,10 @@ import type {
   ValidateResponse,
   Venue,
 } from "@/lib/engine/contract";
+import type { BriefApplied, BriefItem } from "./brief";
 import type { AppliedAction, RejectedAction, RevisionAction } from "./revision";
 
-export const STEP_NAMES = ["generate", "validate", "simulate", "compare", "analyze", "revise", "report"] as const;
+export const STEP_NAMES = ["brief", "generate", "validate", "simulate", "compare", "analyze", "revise", "report"] as const;
 export type StepName = (typeof STEP_NAMES)[number];
 
 export type Metrics = {
@@ -114,6 +115,17 @@ export type RevisionInfo = {
   by: string;
 };
 
+/** The design brief (first step): LLM intent + the constraints code derived from it. */
+export type BriefInfo = {
+  rationale: string;
+  items: BriefItem[];
+  applied: BriefApplied[];
+  rejected: RejectedAction[];
+  /** Constraints of the first LayoutRequest. */
+  constraints: LayoutConstraints;
+  by: string;
+};
+
 export type Decision = "continue" | "target_met" | "no_improvement" | "max_iterations" | "stopped";
 export type ComparisonInfo = {
   iteration: number;
@@ -144,6 +156,7 @@ export type ErrorInfo = { message: string; iteration?: number; step?: StepName; 
 export type AgentDataParts = {
   run: RunInfo;
   step: StepInfo;
+  brief: BriefInfo;
   layout: LayoutInfo;
   validation: ValidationInfo;
   sim: SimInfo;

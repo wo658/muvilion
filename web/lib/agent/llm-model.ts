@@ -9,6 +9,7 @@
  * - The report prose streams via `streamText(...).textStream`.
  */
 import { generateText, streamText, tool, type LanguageModel, type ToolSet } from "ai";
+import { DesignBriefToolInput, normalizeBrief } from "./brief";
 import { AnalysisOutput, type AgentLLM } from "./llm";
 import { normalizeRevision, RevisionToolInput } from "./revision";
 
@@ -29,6 +30,16 @@ const REVISION_GUIDE = `Available actions (use the "type" field and only the fie
 - set_popular_door_distance {value m}: popular booths (popularity >= popular_threshold) must stay this far from entrances.
 - set_popular_threshold {value 0..1}, set_min_aisle_width {value 1.2..6 m}, set_door_clearance {value 0..15 m}`;
 
+const BRIEF_GUIDE = `You are writing the design brief for an EMPTY site, before any layout exists.
+State intent only; a CP-SAT solver (OR-Tools) computes every booth coordinate from your constraints.
+Fields (all optional except rationale; omit what should stay at the default):
+- min_aisle_width (1.2..6 m), door_clearance (0..15 m)
+- popular_threshold (0..1) and popular_door_distance (0..40 m): popular booths stay that far from entrances
+- keep_clear_at_doors [{door_id, depth_m 1..20, width_m 1..40}]: open areas in front of doors/gates (arrival plazas, queue space)
+- keep_out [{x,y,w,h}]: other areas no booth may use (meters, origin bottom-left, y up)
+- place_near_door [{booth_id, door_id}]: booths that belong beside a door, e.g. a ticket kiosk at the main gate
+Unbuildable zones (e.g. fire lanes) are enforced by the engine already. Prefer few, well-justified choices.`;
+
 export function createModelLLM(model: LanguageModel, name: string, opts: { timeoutMs?: number } = {}): AgentLLM {
   const timeout = opts.timeoutMs ?? 60_000;
 
@@ -41,8 +52,18 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
     inputSchema: RevisionToolInput,
   });
 
-  async function forcedToolCall(toolName: "submit_analysis" | "propose_revision", prompt: string): Promise<unknown> {
-    const tools: ToolSet = toolName === "submit_analysis" ? { submit_analysis: analysisTool } : { propose_revision: revisionTool };
+  const briefTool = tool({
+    description: "Submit the design brief: initial layout constraints for the empty site.",
+    inputSchema: DesignBriefToolInput,
+  });
+
+  async function forcedToolCall(toolName: "submit_analysis" | "propose_revision" | "submit_design_brief", prompt: string): Promise<unknown> {
+    const tools: ToolSet =
+      toolName === "submit_analysis"
+        ? { submit_analysis: analysisTool }
+        : toolName === "submit_design_brief"
+          ? { submit_design_brief: briefTool }
+          : { propose_revision: revisionTool };
     const result = await generateText({
       model,
       instructions: SYSTEM,
@@ -60,6 +81,19 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
 
   return {
     name,
+
+    async designBrief({ site }) {
+      const input = await forcedToolCall(
+        "submit_design_brief",
+        [
+          "Site and booths to place (computed by code from the venue file):",
+          JSON.stringify(site),
+          BRIEF_GUIDE,
+          "Write the design brief. Call submit_design_brief.",
+        ].join("\n\n"),
+      );
+      return normalizeBrief(input);
+    },
 
     async analyze({ summary, previous }) {
       const input = await forcedToolCall(
@@ -96,7 +130,7 @@ export function createModelLLM(model: LanguageModel, name: string, opts: { timeo
           `The generated layout failed validation (fix attempt ${attempt + 1}).`,
           JSON.stringify(summary),
           REVISION_GUIDE,
-          "Propose the smallest constraint changes that resolve the error-severity violations (e.g. unpin a conflicting booth, remove a keep-out that makes the problem infeasible, relax popular_door_distance). Call propose_revision.",
+          "Propose the smallest constraint changes that resolve the error-severity violations (e.g. unpin a conflicting booth, remove a keep-out that makes the problem infeasible, relax popular_door_distance). zone_unbuildable / fire_lane_blocked mean a booth stands on an unbuildable zone or breaks the fire lane: unpin it or free up buildable room. Call propose_revision.",
         ].join("\n\n"),
       );
       return normalizeRevision(input);

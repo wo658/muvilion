@@ -6,6 +6,7 @@
 import { z } from "zod";
 import type { IterationSummary } from "./analysis";
 import type { AnalysisInfo, Metrics, RevisionInfo } from "./events";
+import type { Brief, SiteSummary } from "./brief";
 import type { RejectedAction, Revision } from "./revision";
 
 export const AnalysisOutput = z.object({
@@ -43,13 +44,20 @@ export type ReportNarrativeInput = {
   revisions: Pick<RevisionInfo, "iteration" | "purpose" | "rationale" | "applied">[];
   analyses: Pick<AnalysisInfo, "iteration" | "summary">[];
   unknowns: string[];
+  /** The design brief's reasoning and the constraint choices code applied from it. */
+  brief: { rationale: string; applied: string[] } | null;
 };
 
 export type RevisionResult = { revision: Revision; rejected: RejectedAction[] };
 
+export type BriefInput = { site: SiteSummary };
+export type BriefResult = { brief: Brief; rejected: RejectedAction[] };
+
 export interface AgentLLM {
   /** Short id shown in the UI, e.g. "stub" or "meta:muse-spark-1.3". */
   readonly name: string;
+  /** Read the empty site and booth list; state initial layout intent (constraints, not coordinates). */
+  designBrief(input: BriefInput): Promise<BriefResult>;
   analyze(input: AnalyzeInput): Promise<AnalysisOutput>;
   revise(input: ReviseInput): Promise<RevisionResult>;
   proposeFixes(input: FixInput): Promise<RevisionResult>;
@@ -67,6 +75,7 @@ export function withCallCap(llm: AgentLLM, maxCalls: number): AgentLLM & { calls
   return {
     name: llm.name,
     calls: () => calls,
+    designBrief: async (i) => (tick(), llm.designBrief(i)),
     analyze: async (i) => (tick(), llm.analyze(i)),
     revise: async (i) => (tick(), llm.revise(i)),
     proposeFixes: async (i) => (tick(), llm.proposeFixes(i)),
@@ -91,6 +100,7 @@ export function withFallback(primary: AgentLLM, fallback: AgentLLM, onFallback: 
     };
   return {
     name: primary.name,
+    designBrief: wrap("designBrief", (i) => primary.designBrief(i), (i) => fallback.designBrief(i)),
     analyze: wrap("analyze", (i) => primary.analyze(i), (i) => fallback.analyze(i)),
     revise: wrap("revise", (i) => primary.revise(i), (i) => fallback.revise(i)),
     proposeFixes: wrap("proposeFixes", (i) => primary.proposeFixes(i), (i) => fallback.proposeFixes(i)),

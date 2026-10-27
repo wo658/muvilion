@@ -116,8 +116,8 @@ export type RevisionContext = {
   specs: BoothSpec[];
   /** The request that produced `layout`. */
   request: LayoutRequest;
-  /** The layout being revised (becomes `previous`). */
-  layout: Layout;
+  /** The layout being revised (becomes `previous`); null for the initial request (design brief). */
+  layout: Layout | null;
   /** Hotspots from the simulation of `layout` (empty for validation fixes). */
   hotspots: Hotspot[];
 };
@@ -143,7 +143,7 @@ function unit(from: Point, to: Point): Point {
 export function applyRevision(ctx: RevisionContext, revision: Revision): TranslatedRevision {
   const base = LayoutRequest.parse(ctx.request);
   const c = structuredClone(base.constraints);
-  const prevBooths: Booth[] = structuredClone(ctx.layout.booths);
+  const prevBooths: Booth[] = structuredClone(ctx.layout?.booths ?? []);
   const byId = new Map(prevBooths.map((b) => [b.id, b]));
   const known = new Set(ctx.specs.map((s) => s.id));
   const applied: AppliedAction[] = [];
@@ -269,7 +269,7 @@ export function applyRevision(ctx: RevisionContext, revision: Revision): Transla
   const request = LayoutRequest.parse({
     ...base,
     constraints: c,
-    previous: { ...ctx.layout, booths: prevBooths },
+    previous: ctx.layout ? { ...ctx.layout, booths: prevBooths } : base.previous,
   });
   return { request, applied, rejected };
 }

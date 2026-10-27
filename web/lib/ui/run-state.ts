@@ -2,6 +2,7 @@
 import type {
   AgentUIMessage,
   AnalysisInfo,
+  BriefInfo,
   ComparisonInfo,
   DoneInfo,
   ErrorInfo,
@@ -29,6 +30,7 @@ export type IterationView = {
 
 export type RunState = {
   run?: RunInfo;
+  brief?: BriefInfo;
   steps: StepInfo[];
   iterations: IterationView[];
   reportText: string;
@@ -57,6 +59,9 @@ export function deriveRunState(message: AgentUIMessage | undefined): RunState {
     switch (p.type) {
       case "data-run":
         s.run = p.data;
+        break;
+      case "data-brief":
+        s.brief = p.data;
         break;
       case "data-step":
         s.steps.push(p.data);

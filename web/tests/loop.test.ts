@@ -60,11 +60,22 @@ describe("agent loop (mock engine + stub LLM)", () => {
     expect(layouts.slice(1).every((l) => l.data.hasPrevious)).toBe(true);
     expect(layouts.slice(1).some((l) => l.data.moves.length > 0)).toBe(true);
 
+    // the design brief comes before the first layout and sets its constraints
+    const briefAt = events.findIndex((e) => e.type === "brief");
+    const firstLayout = events.findIndex((e) => e.type === "layout");
+    expect(briefAt).toBe(events.findIndex((e) => e.type !== "run" && e.type !== "step"));
+    expect(briefAt).toBeLessThan(firstLayout);
+    const brief = events[briefAt];
+    expect(brief.type === "brief" && layouts[0].data.constraints).toEqual(brief.type === "brief" && brief.data.constraints);
+    const firstStep = events.find((e) => e.type === "step");
+    expect(firstStep?.type === "step" && firstStep.data.step).toBe("brief");
+
     // event order: run first, done last; one report with the disclaimer and unknowns
     expect(events[0].type).toBe("run");
     expect(events[events.length - 1].type).toBe("done");
     const report = events.find((e) => e.type === "report");
     expect(report?.data.markdown).toContain("not a permit");
+    expect(report?.data.markdown).toContain("## Design brief");
     expect(report?.data.markdown).toContain("Ceiling height not shown on plan");
     // streamed report text == final markdown
     const streamed = events.flatMap((e) => (e.type === "report-delta" ? [e.delta] : [])).join("");
