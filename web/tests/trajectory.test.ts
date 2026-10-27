@@ -127,3 +127,32 @@ describe("mock trajectories", () => {
     expect(finished / t.agents.length).toBeGreaterThan(0.8);
   });
 });
+
+describe("3D helpers", () => {
+  it("maps hall (x, y) to world (x, h, -y)", async () => {
+    const { toWorld, hallCenter } = await import("@/lib/trajectory/coords");
+    expect(toWorld(3, 4)).toEqual([3, 0, -4]);
+    expect(toWorld(3, 4, 2)).toEqual([3, 2, -4]);
+    expect(hallCenter(40, 30)).toEqual([20, 0, -15]);
+  });
+
+  it("colors dwelling agents amber and walking agents blue", async () => {
+    const { speedColor } = await import("@/lib/trajectory/playback");
+    const dwell = speedColor(0);
+    const walk = speedColor(1.5);
+    expect(dwell[0]).toBeGreaterThan(dwell[2]);
+    expect(walk[2]).toBeGreaterThan(walk[0]);
+  });
+
+  it("playback clock clamps seeks to [0, duration] and notifies", async () => {
+    const { createClock } = await import("@/components/hall-3d/clock");
+    const c = createClock({ duration: 300 });
+    let n = 0;
+    c.subscribe(() => n++);
+    c.set({ t: 500 });
+    expect(c.t).toBe(300);
+    c.set({ t: -1 });
+    expect(c.t).toBe(0);
+    expect(n).toBe(2);
+  });
+});
