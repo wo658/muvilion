@@ -32,6 +32,8 @@ export type Metrics = {
   violations: number;
   warnings: number;
   hotspots: number;
+  /** Engine hit max_wall_time_s: partial, non-reproducible, excluded from comparison. */
+  truncated: boolean;
 };
 
 export type Targets = {

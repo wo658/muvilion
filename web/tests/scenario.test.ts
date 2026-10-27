@@ -39,6 +39,7 @@ describe("ScenarioGuard (identical conditions)", () => {
       { ...ok, scenario: { ...ok.scenario, duration_s: 299 } },
       { ...ok, scenario: { ...ok.scenario, kind: "exit" as const } },
       { ...ok, grid_cell: 1 },
+      { ...ok, max_wall_time_s: 600 },
       { ...ok, venue: { ...ok.venue, width: 41 } },
       { ...ok, booths: ok.booths.map((b) => (b.id === "B03" ? { ...b, popularity: 0.1 } : b)) },
     ];

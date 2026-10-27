@@ -97,13 +97,13 @@ export function createStubLLM(): AgentLLM {
       for (const id of new Set(errors.flatMap((v) => v.booth_ids))) {
         if (pinned.has(id)) actions.push({ type: "unpin_booth", booth_id: id });
       }
-      const infeasible = errors.some((v) => v.rule_id === "layout-infeasible" || v.rule_id === "booth-missing");
-      if (infeasible || errors.some((v) => v.rule_id === "keep-out")) {
+      const infeasible = errors.some((v) => v.rule_id === "layout_infeasible" || v.rule_id === "booth_missing");
+      if (infeasible || errors.some((v) => v.rule_id === "keep_out")) {
         if (c.keep_out.length > 0) actions.push({ type: "remove_keep_out", index: c.keep_out.length - 1 });
         else if (c.popular_door_distance > 0) actions.push({ type: "set_popular_door_distance", value: Math.max(0, c.popular_door_distance - 4) });
         else if (c.min_aisle_width > 2.4) actions.push({ type: "set_min_aisle_width", value: Math.max(2.4, c.min_aisle_width - 0.3) });
       }
-      if (errors.some((v) => v.rule_id === "popular-door-distance") && c.popular_door_distance > 0) {
+      if (errors.some((v) => v.rule_id === "popular_door_distance") && c.popular_door_distance > 0) {
         actions.push({ type: "set_popular_door_distance", value: Math.max(0, c.popular_door_distance - 2) });
       }
       if (actions.length === 0) actions.push({ type: "set_min_aisle_width", value: Math.max(1.2, c.min_aisle_width - 0.2) });

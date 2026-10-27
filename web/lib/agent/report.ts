@@ -43,11 +43,11 @@ export function metricsTable(baseline: Row, final: Row): string {
 
 export function historyTable(rows: Row[]): string {
   return [
-    "| Iteration | Max density (p/m²) | p90 travel (s) | Completed | Errors | Valid |",
+    "| Iteration | Max density (p/m²) | p90 travel (s) | Completed | Errors | Comparable |",
     "|---|---|---|---|---|---|",
     ...rows.map(
       (r) =>
-        `| ${r.iteration} | ${round(r.metrics.max_density, 2)} | ${round(r.metrics.p90_travel_time_s, 1)} | ${fmt.completed(r.metrics)} | ${r.metrics.violations} | ${r.valid ? "yes" : "no"} |`,
+        `| ${r.iteration} | ${round(r.metrics.max_density, 2)} | ${round(r.metrics.p90_travel_time_s, 1)} | ${fmt.completed(r.metrics)} | ${r.metrics.violations} | ${r.valid ? "yes" : r.metrics.truncated ? "no (truncated)" : "no"} |`,
     ),
   ].join("\n");
 }
@@ -115,7 +115,7 @@ export function reportBody(p: ReportParts): string {
   lines.push(
     `- Pedestrian metrics come from the ${p.engineKind === "mock" ? "**mock engine** (synthetic density field for demo purposes, not a pedestrian simulation)" : "engine's JuPedSim simulation"}; one scenario and seed per run, so results are a single sample, not a distribution.`,
     "- Booth popularity values are planning estimates of relative attraction, taken as given.",
-    "- Densities are peak values per grid cell over the run; hotspot thresholds are the engine's.",
+    "- Densities are peak values per grid cell over the run; hotspot thresholds are the engine's. Travel times count finished agents only.",
     "- Geometric checks cover booth/obstacle/door-clearance/aisle rules only; egress capacity, fire code and accessibility were not assessed.",
     `- Analysis and revision proposals by \`${p.llmName}\`; all metrics and coordinates in this report are computed by tools.`,
     "",

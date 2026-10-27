@@ -10,6 +10,15 @@
  * - Coordinates: origin at the hall's bottom-left corner, x to the right, y UP.
  *   (SVG is y-down, so the renderer must flip y.)
  * - Booth position (x, y) is the booth's bottom-left corner after rotation.
+ * - Booth.w/h are the spec dimensions; the floor footprint is (h, w) when rotation=90
+ *   (use `footprint()` in lib/geometry.ts).
+ * - layout.id = "L-"+hash(placements); run_id = "S-"+hash(request): identical
+ *   conditions give the same run_id.
+ * - Travel times count finished agents only (0 if none finished).
+ * - Validation rule ids (engine/app/validation/rules.py): aisle_width,
+ *   booth_outside_hall, booth_over_obstacle, booth_overlap, booth_unreachable,
+ *   connectivity, door_clearance, door_unreachable, entrance_blocked, keep_out,
+ *   wall_margin (warning).
  *
  * Fields with a Pydantic default use `.default(...)`, so `z.input<>` matches
  * what may be sent and `z.infer<>` (output) has every field filled in.
@@ -123,6 +132,8 @@ export const LayoutRequest = z.object({
   time_limit_s: z.number().positive().max(60).default(10.0),
 });
 export type LayoutRequest = z.infer<typeof LayoutRequest>;
+/** What may be sent (Pydantic-defaulted fields optional). */
+export type LayoutRequestInput = z.input<typeof LayoutRequest>;
 
 export const LayoutStatus = z.enum(["optimal", "feasible", "infeasible"]);
 export const LayoutResponse = z.object({
@@ -150,6 +161,8 @@ export const ValidateRequest = z.object({
   constraints: LayoutConstraints.default(() => LayoutConstraints.parse({})),
 });
 export type ValidateRequest = z.infer<typeof ValidateRequest>;
+/** What may be sent (Pydantic-defaulted fields optional). */
+export type ValidateRequestInput = z.input<typeof ValidateRequest>;
 
 export const ValidateResponse = z.object({
   ok: z.boolean(),
@@ -171,8 +184,12 @@ export const SimulateRequest = z.object({
   booths: z.array(BoothSpec),
   scenario: Scenario,
   grid_cell: z.number().positive().default(2.0),
+  /** Safety cap on real compute time; hitting it returns partial metrics with truncated=true. */
+  max_wall_time_s: z.number().positive().max(600).default(60.0),
 });
 export type SimulateRequest = z.infer<typeof SimulateRequest>;
+/** What may be sent (Pydantic-defaulted fields optional). */
+export type SimulateRequestInput = z.input<typeof SimulateRequest>;
 
 export const DensityGrid = z.object({
   cell: z.number(),
@@ -187,7 +204,7 @@ export const Hotspot = z.object({
   zone: Rect,
   peak_density: z.number(),
   mean_density: z.number(),
-  /** Booths whose footprint is within one cell of the hotspot. */
+  /** Booths whose footprint is within one cell of the hotspot. (Engine returns up to 5 hotspots, by peak.) */
   nearby_booth_ids: z.array(z.string()).default([]),
 });
 export type Hotspot = z.infer<typeof Hotspot>;
@@ -204,6 +221,8 @@ export const SimResult = z.object({
   grid: DensityGrid,
   sim_time_s: z.number(),
   wall_time_s: z.number(),
+  /** True when the run stopped early at max_wall_time_s (then not reproducible; not comparable). */
+  truncated: z.boolean().default(false),
 });
 export type SimResult = z.infer<typeof SimResult>;
 
@@ -215,6 +234,8 @@ export const QueueRequest = z.object({
   seed: z.number().int().default(0),
 });
 export type QueueRequest = z.infer<typeof QueueRequest>;
+/** What may be sent (Pydantic-defaulted fields optional). */
+export type QueueRequestInput = z.input<typeof QueueRequest>;
 
 export const QueueResult = z.object({
   mean_wait_s: z.number(),

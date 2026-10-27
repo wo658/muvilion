@@ -10,19 +10,19 @@ import {
   QueueResult,
   SimResult,
   ValidateResponse,
-  type LayoutRequest,
-  type QueueRequest,
-  type SimulateRequest,
-  type ValidateRequest,
+  type LayoutRequestInput,
+  type QueueRequestInput,
+  type SimulateRequestInput,
+  type ValidateRequestInput,
 } from "./contract";
 
 export interface Engine {
   readonly kind: "http" | "mock";
   health(): Promise<HealthResponse>;
-  layout(req: LayoutRequest): Promise<LayoutResponse>;
-  validate(req: ValidateRequest): Promise<ValidateResponse>;
-  simulate(req: SimulateRequest): Promise<SimResult>;
-  queue(req: QueueRequest): Promise<QueueResult>;
+  layout(req: LayoutRequestInput): Promise<LayoutResponse>;
+  validate(req: ValidateRequestInput): Promise<ValidateResponse>;
+  simulate(req: SimulateRequestInput): Promise<SimResult>;
+  queue(req: QueueRequestInput): Promise<QueueResult>;
 }
 
 export class EngineError extends Error {
@@ -41,7 +41,11 @@ export interface HttpEngineOptions {
   baseUrl?: string;
   /** Default timeout (ms) for short calls (health, validate, queue). */
   timeoutMs?: number;
-  /** Timeout (ms) for /simulate, which can run for a while. */
+  /**
+   * Minimum timeout (ms) for /simulate. The effective timeout is
+   * max(this, (max_wall_time_s + 30) s). Measured on the fixture (200 agents, 300 s):
+   * entry ~4 s, browse ~11 s, exit ~0.3 s; layout ~3.6 s.
+   */
   simulateTimeoutMs?: number;
   fetch?: typeof fetch;
 }
@@ -49,7 +53,7 @@ export interface HttpEngineOptions {
 export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
   const baseUrl = (opts.baseUrl ?? process.env.ENGINE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
   const timeoutMs = opts.timeoutMs ?? Number(process.env.ENGINE_TIMEOUT_MS ?? 30_000);
-  const simulateTimeoutMs = opts.simulateTimeoutMs ?? Number(process.env.ENGINE_SIMULATE_TIMEOUT_MS ?? 180_000);
+  const simulateTimeoutMs = opts.simulateTimeoutMs ?? Number(process.env.ENGINE_SIMULATE_TIMEOUT_MS ?? 90_000);
   const doFetch = opts.fetch ?? fetch;
 
   async function call<S extends z.ZodType>(
@@ -97,9 +101,11 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
     kind: "http",
     health: () => call("GET", "/health", HealthResponse, undefined, Math.min(timeoutMs, 5_000)),
     // Solver time limit plus network/serialization headroom.
-    layout: (req) => call("POST", "/layout", LayoutResponse, req, req.time_limit_s * 1000 + timeoutMs),
+    layout: (req) => call("POST", "/layout", LayoutResponse, req, (req.time_limit_s ?? 10) * 1000 + timeoutMs),
     validate: (req) => call("POST", "/validate", ValidateResponse, req, timeoutMs),
-    simulate: (req) => call("POST", "/simulate", SimResult, req, simulateTimeoutMs),
+    // The engine stops at max_wall_time_s (truncated=true); leave headroom for setup + serialization.
+    simulate: (req) =>
+      call("POST", "/simulate", SimResult, req, Math.max(simulateTimeoutMs, ((req.max_wall_time_s ?? 60) + 30) * 1000)),
     queue: (req) => call("POST", "/queue", QueueResult, req, timeoutMs),
   };
 }

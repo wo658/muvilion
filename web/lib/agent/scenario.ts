@@ -2,7 +2,9 @@
  * Identical-conditions guard. A run locks one scenario (kind, agents, duration,
  * seed), the grid cell, the venue and the booth demand (popularity) up front;
  * every simulate request must be built through the guard and is re-checked
- * before it is sent, and every result must echo the locked scenario. Comparing
+ * before it is sent, and every result must echo the locked scenario. (The engine's
+ * run_id is a hash of the request, so identical conditions also give identical run_ids
+ * for identical layouts.) Truncated results are marked invalid by the loop. Comparing
  * iterations is only meaningful if nothing but the layout changed.
  */
 import {
@@ -11,6 +13,7 @@ import {
   type BoothSpec,
   type Layout,
   type SimResult,
+  type SimulateRequestInput,
   type Venue,
 } from "@/lib/engine/contract";
 import { hashString } from "@/lib/geometry";
@@ -36,17 +39,19 @@ function stable(v: unknown): string {
 export class ScenarioGuard {
   readonly scenario: Readonly<Scenario>;
   readonly gridCell: number;
+  readonly maxWallTimeS: number;
   readonly fingerprint: string;
   private readonly conditionsKey: string;
   private readonly venue: Venue;
   private readonly booths: BoothSpec[];
 
-  constructor(scenario: Scenario, gridCell: number, venue: Venue, booths: BoothSpec[]) {
+  constructor(scenario: Scenario, gridCell: number, venue: Venue, booths: BoothSpec[], maxWallTimeS = 60) {
     this.scenario = Object.freeze(Scenario.parse(structuredClone(scenario)));
     this.gridCell = gridCell;
+    this.maxWallTimeS = maxWallTimeS;
     this.venue = structuredClone(venue);
     this.booths = structuredClone(booths);
-    this.conditionsKey = stable({ s: this.scenario, g: gridCell, v: this.venue, b: this.booths });
+    this.conditionsKey = stable({ s: this.scenario, g: gridCell, w: maxWallTimeS, v: this.venue, b: this.booths });
     this.fingerprint = hashString(this.conditionsKey);
   }
 
@@ -58,17 +63,21 @@ export class ScenarioGuard {
       booths: structuredClone(this.booths),
       scenario: { ...this.scenario },
       grid_cell: this.gridCell,
+      max_wall_time_s: this.maxWallTimeS,
     });
     this.assertRequest(req);
     return req;
   }
 
-  assertRequest(req: SimulateRequest): void {
-    const key = stable({ s: req.scenario, g: req.grid_cell, v: req.venue, b: req.booths });
+  assertRequest(input: SimulateRequestInput): void {
+    const req = SimulateRequest.parse(input);
+    const key = stable({ s: req.scenario, g: req.grid_cell, w: req.max_wall_time_s, v: req.venue, b: req.booths });
     if (key !== this.conditionsKey) {
       const diffs: string[] = [];
       if (stable(req.scenario) !== stable(this.scenario)) diffs.push(`scenario ${stable(req.scenario)} ≠ locked ${stable(this.scenario)}`);
       if (req.grid_cell !== this.gridCell) diffs.push(`grid_cell ${req.grid_cell} ≠ locked ${this.gridCell}`);
+      if (req.max_wall_time_s !== this.maxWallTimeS)
+        diffs.push(`max_wall_time_s ${req.max_wall_time_s} ≠ locked ${this.maxWallTimeS}`);
       if (stable(req.venue) !== stable(this.venue)) diffs.push("venue changed");
       if (stable(req.booths) !== stable(this.booths)) diffs.push("booth specs changed");
       throw new ScenarioMismatchError(`simulate request violates identical conditions: ${diffs.join("; ")}`);

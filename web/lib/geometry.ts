@@ -17,8 +17,13 @@ export function polygonBBox(poly: Point[]): Rect {
   return { x, y, w: Math.max(Math.max(...xs) - x, 1e-6), h: Math.max(Math.max(...ys) - y, 1e-6) };
 }
 
-export function boothRect(b: Pick<Booth, "x" | "y" | "w" | "h">): Rect {
-  return { x: b.x, y: b.y, w: b.w, h: b.h };
+/** Floor footprint size: rotation 90 swaps the spec's w and h (engine geometry.footprint_size). */
+export function footprint(b: Pick<Booth, "w" | "h"> & { rotation?: 0 | 90 }): { w: number; h: number } {
+  return b.rotation === 90 ? { w: b.h, h: b.w } : { w: b.w, h: b.h };
+}
+
+export function boothRect(b: Pick<Booth, "x" | "y" | "w" | "h"> & { rotation?: 0 | 90 }): Rect {
+  return { x: b.x, y: b.y, ...footprint(b) };
 }
 
 export function center(r: Rect): Point {
@@ -49,10 +54,40 @@ export function pointRectDistance(p: Point, r: Rect): number {
 
 /**
  * The clearance zone in front of a door: a rect extending `depth` meters into the
- * hall from the door segment (doors lie on the hall boundary).
+ * hall from the door segment (doors lie on the hall boundary), widened by
+ * `sidePad` on both ends (engine uses min_aisle_width / 2).
  */
-export function doorClearanceRect(d: Door, venue: Pick<Venue, "width" | "height">, depth: number): Rect | null {
+export function doorClearanceRect(
+  d: Door,
+  venue: Pick<Venue, "width" | "height">,
+  depth: number,
+  sidePad = 0,
+): Rect | null {
   if (depth <= 0) return null;
+  const r = doorClearanceRectRaw(d, venue, depth);
+  if (!r || sidePad <= 0) return r;
+  const horizontal = Math.abs(d.a.y - d.b.y) < 1e-6;
+  const x = horizontal ? Math.max(0, r.x - sidePad) : r.x;
+  const y = horizontal ? r.y : Math.max(0, r.y - sidePad);
+  const x2 = horizontal ? Math.min(venue.width, r.x + r.w + sidePad) : r.x + r.w;
+  const y2 = horizontal ? r.y + r.h : Math.min(venue.height, r.y + r.h + sidePad);
+  return { x, y, w: x2 - x, h: y2 - y };
+}
+
+/**
+ * Zone popular booths must stay out of: the entrance segment buffered by `d`
+ * with square caps (engine layout/solver.py `_popular_areas`), clipped to the hall.
+ */
+export function popularZoneRect(d: Door, venue: Pick<Venue, "width" | "height">, dist: number): Rect | null {
+  if (dist <= 0) return null;
+  const x = Math.max(0, Math.min(d.a.x, d.b.x) - dist);
+  const y = Math.max(0, Math.min(d.a.y, d.b.y) - dist);
+  const x2 = Math.min(venue.width, Math.max(d.a.x, d.b.x) + dist);
+  const y2 = Math.min(venue.height, Math.max(d.a.y, d.b.y) + dist);
+  return { x, y, w: Math.max(x2 - x, 1e-6), h: Math.max(y2 - y, 1e-6) };
+}
+
+function doorClearanceRectRaw(d: Door, venue: Pick<Venue, "width" | "height">, depth: number): Rect | null {
   const minX = Math.min(d.a.x, d.b.x);
   const maxX = Math.max(d.a.x, d.b.x);
   const minY = Math.min(d.a.y, d.b.y);
@@ -104,4 +139,12 @@ export function hashString(s: string): string {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h.toString(16).padStart(8, "0");
+}
+
+/** True if a booth rect overlaps any entrance's popular-distance zone. */
+export function inPopularZone(r: Rect, venue: Venue, dist: number): boolean {
+  return entrances(venue).some((d) => {
+    const z = popularZoneRect(d, venue, dist);
+    return z !== null && rectsOverlap(r, z);
+  });
 }

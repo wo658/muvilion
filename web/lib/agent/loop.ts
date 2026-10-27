@@ -82,7 +82,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
   const now = opts.now ?? (() => new Date());
   const venue = project.venue;
   const specs = project.booths;
-  const guard = new ScenarioGuard(config.scenario, config.gridCell, venue, specs);
+  const guard = new ScenarioGuard(config.scenario, config.gridCell, venue, specs, config.simMaxWallTimeS);
   const initialConstraints = project.constraints ?? defaultConstraints();
 
   emit({
@@ -245,7 +245,9 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
           guard.assertResult(res);
           return res;
         },
-        (r) => `max ${r.max_density} p/m², p90 ${r.p90_travel_time_s}s, ${r.hotspots.length} hotspot(s)`,
+        (r) =>
+          `max ${r.max_density} p/m², p90 ${r.p90_travel_time_s}s, ${r.hotspots.length} hotspot(s)` +
+          (r.truncated ? " — TRUNCATED at max_wall_time_s (not comparable)" : ""),
       );
       const metrics = metricsOf(sim, validation.violations);
       emit({ type: "sim", data: { iteration: it, result: sim, metrics } });
@@ -261,7 +263,8 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
       const outcome: IterationOutcome = {
         iteration: it,
         metrics,
-        valid: metrics.violations === 0 && lr.status !== "infeasible",
+        // Truncated runs are partial and not reproducible, so they never count for comparison.
+        valid: metrics.violations === 0 && lr.status !== "infeasible" && !sim.truncated,
       };
       records.push({ iteration: it, request, layout: lr, validation, sim, outcome, summary });
 
@@ -387,9 +390,9 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
           },
           (delta) => emit({ type: "report-delta", delta }),
         );
-        const body = reportBody(parts);
+        const body = (narrative.endsWith("\n") ? "" : "\n") + reportBody(parts);
         emit({ type: "report-delta", delta: body });
-        return header + narrative.trim() + "\n" + body;
+        return header + narrative + body;
       });
       emit({ type: "report", data: { markdown: report, baselineIteration, finalIteration } });
     } catch (err) {

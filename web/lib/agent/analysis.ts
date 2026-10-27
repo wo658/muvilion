@@ -13,7 +13,7 @@ import type {
   Venue,
   Violation,
 } from "@/lib/engine/contract";
-import { boothRect, center, distanceToNearestEntrance, round } from "@/lib/geometry";
+import { boothRect, center, distanceToNearestEntrance, inPopularZone, round } from "@/lib/geometry";
 import type { BoothMove, Decision, Metrics, Targets } from "./events";
 
 export function countViolations(v: Violation[]) {
@@ -33,13 +33,14 @@ export function metricsOf(sim: SimResult, violations: Violation[]): Metrics {
     violations: errors,
     warnings,
     hotspots: sim.hotspots.length,
+    truncated: sim.truncated,
   };
 }
 
 /**
  * Agent-side rules that /validate cannot check because ValidateRequest carries no
  * booth specs: popular booths vs. `popular_door_distance`, missing booths, and an
- * infeasible solve.
+ * infeasible solve. (Agent-side rule ids are not engine rule ids; source "agent:*".)
  */
 export function agentChecks(
   venue: Venue,
@@ -50,7 +51,7 @@ export function agentChecks(
   const out: Violation[] = [];
   if (res.status === "infeasible") {
     out.push({
-      rule_id: "layout-infeasible",
+      rule_id: "layout_infeasible",
       severity: "error",
       message: "Layout solver reported the constraints as infeasible",
       booth_ids: [],
@@ -62,7 +63,7 @@ export function agentChecks(
   const missing = specs.filter((s) => !placed.has(s.id)).map((s) => s.id);
   if (missing.length > 0) {
     out.push({
-      rule_id: "booth-missing",
+      rule_id: "booth_missing",
       severity: "error",
       message: `${missing.length} booth(s) not placed: ${missing.join(", ")}`,
       booth_ids: missing,
@@ -74,12 +75,12 @@ export function agentChecks(
     const pop = new Map(specs.map((s) => [s.id, s.popularity]));
     for (const b of res.layout.booths) {
       if ((pop.get(b.id) ?? 0) < c.popular_threshold) continue;
-      const d = distanceToNearestEntrance(boothRect(b), venue);
-      if (d < c.popular_door_distance - 1e-6) {
+      // Same semantics as the engine solver: a square zone of half-width d around each entrance segment.
+      if (inPopularZone(boothRect(b), venue, c.popular_door_distance)) {
         out.push({
-          rule_id: "popular-door-distance",
+          rule_id: "popular_door_distance",
           severity: "error",
-          message: `Popular booth ${b.id} is ${round(d, 1)} m from an entrance (< ${c.popular_door_distance} m)`,
+          message: `Popular booth ${b.id} is inside the ${c.popular_door_distance} m zone around an entrance`,
           booth_ids: [b.id],
           location: center(boothRect(b)),
           source: "agent:constraints",
@@ -212,7 +213,9 @@ export function decide(
     decision: "continue",
     reason: cur.valid
       ? `max density ${m.max_density} > target ${targets.max_density} p/m²`
-      : `${m.violations} validation error(s) remain`,
+      : m.truncated
+        ? "simulation was truncated by the engine's wall-time cap; result not comparable"
+        : `${m.violations} validation error(s) remain`,
     best,
   };
 }

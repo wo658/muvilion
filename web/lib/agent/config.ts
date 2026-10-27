@@ -12,6 +12,8 @@ export type AgentConfig = {
   targets: Targets;
   scenario: Scenario;
   gridCell: number;
+  /** Engine compute cap per simulation (SimulateRequest.max_wall_time_s); locked per run. */
+  simMaxWallTimeS: number;
   layoutSeed: number;
   layoutTimeLimitS: number;
 };
@@ -37,6 +39,7 @@ export function loadAgentConfig(env: Env = process.env): AgentConfig {
       seed: Math.floor(num(env.AGENT_SCENARIO_SEED, 42)),
     }),
     gridCell: num(env.AGENT_GRID_CELL, 2),
+    simMaxWallTimeS: num(env.AGENT_SIM_MAX_WALL_TIME_S, 60),
     layoutSeed: Math.floor(num(env.AGENT_LAYOUT_SEED, 0)),
     layoutTimeLimitS: num(env.AGENT_LAYOUT_TIME_LIMIT_S, 10),
   };

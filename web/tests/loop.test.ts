@@ -5,14 +5,14 @@ import { withCallCap } from "@/lib/agent/llm";
 import { createStubLLM } from "@/lib/agent/llm-stub";
 import { runAgentLoop } from "@/lib/agent/loop";
 import type { Engine } from "@/lib/engine/client";
-import { defaultConstraints, type SimulateRequest } from "@/lib/engine/contract";
+import { SimulateRequest, defaultConstraints } from "@/lib/engine/contract";
 import { createMockEngine } from "@/lib/engine/mock";
 import { project } from "./helpers";
 
 function recordingEngine() {
   const inner = createMockEngine();
   const sims: SimulateRequest[] = [];
-  const engine: Engine = { ...inner, simulate: async (r) => (sims.push(structuredClone(r)), inner.simulate(r)) };
+  const engine: Engine = { ...inner, simulate: async (r) => (sims.push(SimulateRequest.parse(structuredClone(r))), inner.simulate(r)) };
   return { engine, sims };
 }
 
@@ -64,7 +64,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
     expect(report?.data.markdown).toContain("Ceiling height not shown on plan");
     // streamed report text == final markdown
     const streamed = events.flatMap((e) => (e.type === "report-delta" ? [e.delta] : [])).join("");
-    expect(streamed.replace(/\s+/g, " ").trim()).toBe(report!.data.markdown.replace(/\s+/g, " ").trim());
+    expect(streamed).toBe(report!.data.markdown);
     // all steps finish
     const steps = new Map<string, string>();
     for (const e of events) if (e.type === "step") steps.set(e.data.id, e.data.status);
@@ -87,11 +87,23 @@ describe("agent loop (mock engine + stub LLM)", () => {
     const inner = createMockEngine();
     const cheating: Engine = {
       ...inner,
-      simulate: async (r) => inner.simulate({ ...r, scenario: { ...r.scenario, seed: r.scenario.seed + 1 } }),
+      simulate: async (r) => inner.simulate({ ...r, scenario: { ...r.scenario, seed: (r.scenario.seed ?? 0) + 1 } }),
     };
     const { result, events } = await run({}, cheating);
     expect(result.done.status).toBe("error");
     expect(events.some((e) => e.type === "error" && /different scenario/.test(e.data.message))).toBe(true);
+  });
+
+  it("treats truncated simulations as not comparable (never target_met)", async () => {
+    const inner = createMockEngine();
+    const truncating: Engine = {
+      ...inner,
+      simulate: async (r) => ({ ...(await inner.simulate(r)), max_density: 0.5, truncated: true }),
+    };
+    const { result, events } = await run({ AGENT_MAX_ITERATIONS: "1" }, truncating);
+    expect(result.done.stopReason).toBe("max_iterations");
+    const cmp = events.filter((e) => e.type === "comparison");
+    expect(cmp.every((c) => !c.data.valid && c.data.metrics.truncated)).toBe(true);
   });
 
   it("repairs validation errors through proposeFixes", async () => {

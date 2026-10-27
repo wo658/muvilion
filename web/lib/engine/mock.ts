@@ -7,7 +7,9 @@
  *   Honors wall_margin, door_clearance, obstacles, keep_out, fixed and
  *   popular_door_distance; with `previous` each booth takes the free slot nearest
  *   its old position (minimal displacement).
- * - /validate: plain geometric checks against the same constraints.
+ * - /validate: plain rectangle checks using the engine's rule ids (wall_margin is a
+ *   warning; reachability rules — connectivity, entrance_blocked, booth_unreachable,
+ *   door_unreachable — are not modeled).
  * - /simulate: a synthetic peak-density field = entrance inflow + crowding around
  *   booths weighted by popularity and amplified near entrances. The hotspot
  *   therefore sits near the entrance and shrinks when popular booths move away.
@@ -27,6 +29,10 @@ import {
   ValidateResponse,
   type Booth,
   type BoothSpec,
+  type LayoutRequestInput,
+  type QueueRequestInput,
+  type SimulateRequestInput,
+  type ValidateRequestInput,
   type Hotspot,
   type LayoutConstraints,
   type Rect,
@@ -47,6 +53,7 @@ import {
   prng,
   rectContainsPoint,
   rectGap,
+  inPopularZone,
   rectsOverlap,
   round,
 } from "@/lib/geometry";
@@ -56,7 +63,7 @@ import {
 function blockedRects(venue: Venue, c: LayoutConstraints): Rect[] {
   const out: Rect[] = venue.obstacles.map((o) => polygonBBox(o.polygon));
   for (const d of venue.doors) {
-    const r = doorClearanceRect(d, venue, c.door_clearance);
+    const r = doorClearanceRect(d, venue, c.door_clearance, c.min_aisle_width / 2);
     if (r) out.push(r);
   }
   out.push(...c.keep_out);
@@ -82,7 +89,7 @@ function candidateSlots(venue: Venue, specs: BoothSpec[], c: LayoutConstraints):
   return slots.filter((s) => !blocked.some((b) => rectsOverlap(s, b)));
 }
 
-export function mockLayout(input: LayoutRequest): LayoutResponse {
+export function mockLayout(input: LayoutRequestInput): LayoutResponse {
   const req = LayoutRequest.parse(input);
   const { venue, booths: specs, constraints: c, previous } = req;
   const prevById = new Map((previous?.booths ?? []).map((b) => [b.id, b]));
@@ -110,7 +117,7 @@ export function mockLayout(input: LayoutRequest): LayoutResponse {
   let unplaced = 0;
   for (const spec of order) {
     const eligible = free.filter(
-      (s) => s.w >= spec.w && s.h >= spec.h && (!isPopular(spec) || entranceDist(s) >= c.popular_door_distance),
+      (s) => s.w >= spec.w && s.h >= spec.h && (!isPopular(spec) || !inPopularZone(s, venue, c.popular_door_distance)),
     );
     if (eligible.length === 0) {
       unplaced++;
@@ -149,47 +156,39 @@ export function mockLayout(input: LayoutRequest): LayoutResponse {
 
 // ---------- validate ----------
 
-export function mockValidate(input: ValidateRequest): ValidateResponse {
+export function mockValidate(input: ValidateRequestInput): ValidateResponse {
   const { venue, layout, constraints: c } = ValidateRequest.parse(input);
   const v: Violation[] = [];
-  const add = (rule_id: string, message: string, booth_ids: string[], r?: Rect) =>
-    v.push({
-      rule_id,
-      severity: "error",
-      message,
-      booth_ids,
-      location: r ? center(r) : null,
-      source: "internal:geometry",
-    });
+  const add = (rule_id: string, message: string, booth_ids: string[], r?: Rect, severity: "error" | "warning" = "error") =>
+    v.push({ rule_id, severity, message, booth_ids, location: r ? center(r) : null, source: "internal:geometry" });
   const m = c.wall_margin;
   const rects = layout.booths.map((b) => ({ b, r: boothRect(b) }));
   for (const { b, r } of rects) {
-    if (r.x < m - 1e-6 || r.y < m - 1e-6 || r.x + r.w > venue.width - m + 1e-6 || r.y + r.h > venue.height - m + 1e-6)
-      add("wall-margin", `${b.id} is closer than ${m} m to a wall or outside the hall`, [b.id], r);
+    const outside = r.x < -1e-6 || r.y < -1e-6 || r.x + r.w > venue.width + 1e-6 || r.y + r.h > venue.height + 1e-6;
+    if (outside) add("booth_outside_hall", `${b.id} extends outside the hall`, [b.id], r);
+    else if (r.x < m - 1e-6 || r.y < m - 1e-6 || r.x + r.w > venue.width - m + 1e-6 || r.y + r.h > venue.height - m + 1e-6)
+      add("wall_margin", `${b.id} is closer than ${m} m to a wall`, [b.id], r, "warning");
     for (const o of venue.obstacles)
-      if (rectsOverlap(r, polygonBBox(o.polygon))) add("obstacle-overlap", `${b.id} overlaps ${o.kind} ${o.id}`, [b.id], r);
+      if (rectsOverlap(r, polygonBBox(o.polygon))) add("booth_over_obstacle", `${b.id} overlaps ${o.kind} ${o.id}`, [b.id], r);
     for (const d of venue.doors) {
-      const z = doorClearanceRect(d, venue, c.door_clearance);
-      if (z && rectsOverlap(r, z)) add("door-clearance", `${b.id} blocks the ${c.door_clearance} m clearance of door ${d.id}`, [b.id], r);
+      const z = doorClearanceRect(d, venue, c.door_clearance, c.min_aisle_width / 2);
+      if (z && rectsOverlap(r, z)) add("door_clearance", `${b.id} blocks the ${c.door_clearance} m clearance of door ${d.id}`, [b.id], r);
     }
     c.keep_out.forEach((k, i) => {
-      if (rectsOverlap(r, k)) add("keep-out", `${b.id} overlaps keep-out area #${i + 1}`, [b.id], r);
+      if (rectsOverlap(r, k)) add("keep_out", `${b.id} overlaps keep-out area #${i + 1}`, [b.id], r);
     });
-    const pin = c.fixed[b.id];
-    if (pin && (Math.abs(pin.x - b.x) > 1e-3 || Math.abs(pin.y - b.y) > 1e-3))
-      add("fixed-position", `${b.id} is not at its pinned position`, [b.id], r);
   }
   for (let i = 0; i < rects.length; i++) {
     for (let j = i + 1; j < rects.length; j++) {
       const a = rects[i];
       const b = rects[j];
       if (rectsOverlap(a.r, b.r)) {
-        add("booth-overlap", `${a.b.id} overlaps ${b.b.id}`, [a.b.id, b.b.id], a.r);
+        add("booth_overlap", `${a.b.id} overlaps ${b.b.id}`, [a.b.id, b.b.id], a.r);
         continue;
       }
       const gap = rectGap(a.r, b.r);
       if (gap > 1e-6 && gap < c.min_aisle_width - 1e-6)
-        add("aisle-width", `Aisle between ${a.b.id} and ${b.b.id} is ${round(gap)} m (< ${c.min_aisle_width} m)`, [a.b.id, b.b.id], a.r);
+        add("aisle_width", `Aisle between ${a.b.id} and ${b.b.id} is ${round(gap)} m (< ${c.min_aisle_width} m)`, [a.b.id, b.b.id], a.r);
     }
   }
   return ValidateResponse.parse({ ok: v.every((x) => x.severity !== "error"), violations: v });
@@ -203,7 +202,7 @@ const GAIN = 1.6;
 const AMP = 3;
 const DECAY = 6;
 
-export function mockSimulate(input: SimulateRequest): SimResult {
+export function mockSimulate(input: SimulateRequestInput): SimResult {
   const req = SimulateRequest.parse(input);
   const { venue, layout, booths: specs, scenario, grid_cell: cell } = req;
   const cols = Math.ceil(venue.width / cell);
@@ -258,6 +257,7 @@ export function mockSimulate(input: SimulateRequest): SimResult {
     grid: { cell, cols, rows, peak },
     sim_time_s: scenario.duration_s,
     wall_time_s: 0.05,
+    truncated: false,
   });
 }
 
@@ -310,7 +310,7 @@ function findHotspots(peak: number[], cols: number, rows: number, cell: number, 
 
 // ---------- queue ----------
 
-export function mockQueue(input: QueueRequest): QueueResult {
+export function mockQueue(input: QueueRequestInput): QueueResult {
   const q = QueueRequest.parse(input);
   const lambda = q.arrivals_per_min / 60;
   const rho = (lambda * q.service_time_s) / q.servers;
