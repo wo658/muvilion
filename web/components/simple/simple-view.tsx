@@ -6,20 +6,17 @@
  * console, which shares this view's chat so it shows the same run).
  */
 import { Chat, useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { diffLayouts } from "@/lib/agent/analysis";
-import type { AgentUIMessage, SayInfo } from "@/lib/agent/events";
-import { askMuse, trimHistory, type AskTurn } from "@/lib/ui/ask-client";
-import { approvalItems, approvalReducer, sayId } from "@/lib/ui/approvals";
-import { museMessages } from "@/lib/ui/fallback-say";
-import { eventsFromMessage } from "@/lib/ui/message-events";
+import type { AgentUIMessage } from "@/lib/agent/events";
+import { askUserMessage, createChatTransport, isRunMessage, latestRunMessage, runUserMessage } from "@/lib/chat/transport";
+import { approvalItems, approvalReducer, type ApprovalState } from "@/lib/ui/approvals";
+import { buildFeed, chatErrorInfo, runSays, type FeedItem } from "@/lib/ui/feed";
 import { museStatus } from "@/lib/ui/muse-status";
-import { headline, venueShortName } from "@/lib/ui/plain";
-import { buildRunDigest } from "@/lib/ask/digest";
-import { deriveRunState } from "@/lib/ui/run-state";
+import { headline, venueShortName, type Headline } from "@/lib/ui/plain";
+import { deriveRunState, type RunState } from "@/lib/ui/run-state";
 import { layoutSummary, onSiteChecks } from "@/lib/ui/summary";
-import { DEFAULT_VENUE_ID, runRequestBody, venueById, VENUES } from "@/lib/venues";
+import { DEFAULT_VENUE_ID, venueById, VENUES } from "@/lib/venues";
 import { ReviewConsole } from "../review-console";
 import { placementKey } from "../stage";
 import { LayoutSheet } from "./layout-sheet";
@@ -27,28 +24,38 @@ import { ApprovalButtons, AskBox, HeadlineText, MuseBubble, ResultCard, Typing, 
 import { SimpleCanvas } from "./simple-canvas";
 
 type Status = { live: boolean };
-type FeedTurn = AskTurn & { note?: "unavailable" | "error"; pending?: boolean };
-// Ask Muse sends a digest of the events on screen; `buildRunDigest` throws without a run event.
 
 const EMPTY_TEXT = "Pick a space and I'll plan the booth layout, test it with virtual visitors, and fix what gets crowded.";
 
+/** One conversation per venue: switching venue shows that venue's chat (kept while the page is open). */
+const newChat = (venueId: string) => new Chat<AgentUIMessage>({ id: `muse-${venueId}`, transport: createChatTransport() });
+
+/** The headline of a run: first test vs the final one (or the latest one while it runs). */
+function runHeadline(state: RunState): Headline | null {
+  const its = state.iterations;
+  const baseSim = its.find((i) => i.iteration === 0)?.sim?.metrics.crowded_s_per_visitor;
+  if (baseSim === undefined) return null;
+  const latestSim = [...its].reverse().find((i) => i.iteration > 0 && i.sim);
+  const afterSim = state.done ? (state.done.final ?? undefined)?.crowded_s_per_visitor : latestSim?.sim?.metrics.crowded_s_per_visitor;
+  return headline(baseSim, state.done?.finalIteration === 0 ? undefined : afterSim);
+}
+
 export function SimpleView() {
-  const [chat] = useState(() => new Chat<AgentUIMessage>({ transport: new DefaultChatTransport<AgentUIMessage>({ api: "/api/agent" }) }));
-  const { messages, sendMessage, setMessages, status: chatStatus, error, stop, clearError } = useChat<AgentUIMessage>({ chat });
-  const [status, setStatus] = useState<Status | null>(null);
+  const [chats] = useState(() => new Map(VENUES.map((v) => [v.id, newChat(v.id)])));
   const [venueId, setVenueId] = useState(DEFAULT_VENUE_ID);
+  const chat = chats.get(venueId)!;
+  const { messages, sendMessage, status: chatStatus, error, stop, clearError, regenerate } = useChat<AgentUIMessage>({ chat });
+  const [status, setStatus] = useState<Status | null>(null);
   const [details, setDetails] = useState(false);
+  /** The run message on the canvas (null = the latest run). */
+  const [runId, setRunId] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [placedKey, setPlacedKey] = useState<string | null>(null);
-  const [approvals, dispatch] = useReducer(approvalReducer, {});
-  const [turns, setTurns] = useState<FeedTurn[]>([]);
-  const [asking, setAsking] = useState(false);
+  const [approvals, setApprovals] = useState<ApprovalState>({});
   const [sheet, setSheet] = useState(false);
-  const [lastMode, setLastMode] = useState<"live" | "replay" | null>(null);
   const askInput = useRef<HTMLInputElement>(null);
   const feedEnd = useRef<HTMLDivElement>(null);
-  const askAbort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -62,14 +69,18 @@ export function SimpleView() {
   }, []);
 
   const busy = chatStatus === "submitted" || chatStatus === "streaming";
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const state = useMemo(() => deriveRunState(lastAssistant), [lastAssistant]);
-  const events = useMemo(() => eventsFromMessage(lastAssistant), [lastAssistant]);
-  const says = useMemo(() => museMessages(events), [events]);
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const pending = lastUser?.metadata?.intent ?? null;
+  const last = messages[messages.length - 1];
+  const streamingId = busy && last?.role === "assistant" ? last.id : undefined;
+  const runMsg = useMemo(() => latestRunMessage(messages, runId), [messages, runId]);
+  const state = useMemo(() => deriveRunState(runMsg), [runMsg]);
+  const says = useMemo(() => runSays(runMsg), [runMsg]);
   const option = venueById(venueId) ?? VENUES[0];
   const venue = state.run?.venue ?? option.project.venue;
   const specs = state.run?.booths ?? option.project.booths;
   const visitors = state.run?.scenario.agents ?? option.scenario?.agents ?? 300;
+  const runBusy = busy && pending === "run";
 
   // ---- which layout is on the canvas ----
   const its = state.iterations;
@@ -89,50 +100,73 @@ export function SimpleView() {
 
   // ---- the headline: first test vs the final (or latest) one ----
   const baseSim = baseIt?.sim?.metrics.crowded_s_per_visitor;
-  const latestSim = [...its].reverse().find((i) => i.iteration > 0 && i.sim);
   const afterSim = state.done
     ? (state.done.final ?? undefined)?.crowded_s_per_visitor
-    : latestSim?.sim?.metrics.crowded_s_per_visitor;
+    : [...its].reverse().find((i) => i.iteration > 0 && i.sim)?.sim?.metrics.crowded_s_per_visitor;
   const finalIsBaseline = state.done?.finalIteration === 0;
-  const h = baseSim === undefined ? null : headline(baseSim, finalIsBaseline ? undefined : afterSim);
+  const h = runHeadline(state);
 
   // ---- feed ----
-  const focusedMsg = focused ? says.find((m, i) => sayId(m, i) === focused) : undefined;
-  const highlight = focusedMsg?.booth_ids;
-  const items = approvalItems(says, approvals);
+  const feed = useMemo(() => buildFeed(messages, approvals, { streamingId }), [messages, approvals, streamingId]);
+  const focusedItem = focused ? feed.find((f): f is Extract<FeedItem, { kind: "say" }> => f.kind === "say" && f.id === focused) : undefined;
+  const highlight = focusedItem && focusedItem.messageId === runMsg?.id ? focusedItem.say.booth_ids : undefined;
+  const items = runMsg ? approvalItems(says, approvals, runMsg.id) : [];
   const cautions = says.filter((m) => m.moment === "caution");
   const finished = Boolean(state.done) && !busy;
   const statusText = museStatus(state.steps, state.run);
+  const hasRun = messages.some(isRunMessage) || runBusy;
+  const lastFeed = feed[feed.length - 1];
+  const answerStreaming = busy && pending === "ask" && last?.role === "assistant" && last.parts.some((p) => p.type === "text" && p.text);
 
   useEffect(() => {
     feedEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [says.length, turns.length, finished, busy, turns[turns.length - 1]?.text.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [feed.length, busy, lastFeed?.kind === "answer" ? lastFeed.text.length : 0, Boolean(error)]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const resetRun = () => {
-    askAbort.current?.abort();
-    clearError();
-    setMessages([]);
+  const resetView = () => {
+    setRunId(null);
     setSelected(null);
     setFocused(null);
     setPlacedKey(null);
-    dispatch({ type: "reset" });
-    setTurns([]);
     setSheet(false);
   };
   const start = (m: "live" | "replay") => {
-    resetRun();
-    setLastMode(m);
-    void sendMessage({ text: m === "live" ? "Start live run" : "Replay recorded run" }, { body: runRequestBody(m, option.id) });
+    if (busy) return;
+    if (error) clearError();
+    resetView();
+    void sendMessage(runUserMessage(m, option.id));
+  };
+  const ask = (question: string) => {
+    if (busy || !runMsg || !state.done) return;
+    if (error) clearError();
+    void sendMessage(askUserMessage(question, option.id, runMsg.id));
+  };
+  const retry = () => {
+    clearError();
+    void regenerate();
   };
   const pickVenue = (id: string) => {
     if (id === venueId || busy) return;
-    resetRun();
-    setLastMode(null);
+    resetView();
     setVenueId(id);
   };
-  const clickMessage = (m: SayInfo, id: string) => {
-    if (focused === id) return setFocused(null);
-    setFocused(id);
+  /** Show a run message on the canvas (its layout as already placed, no placement animation). */
+  const showRun = (messageId: string, iteration?: number) => {
+    const m = messages.find((x) => x.id === messageId);
+    if (!m) return;
+    const s = deriveRunState(m);
+    setRunId(messageId);
+    setSelected(iteration ?? null);
+    const k = placementKey(s.run, s.iterations.find((i) => i.iteration === 0));
+    if (k) setPlacedKey(k);
+  };
+  const clickSay = (item: Extract<FeedItem, { kind: "say" }>) => {
+    if (focused === item.id) return setFocused(null);
+    setFocused(item.id);
+    const m = item.say;
+    if (item.messageId !== runMsg?.id) {
+      showRun(item.messageId, m.iteration);
+      return;
+    }
     if (m.iteration !== undefined && its.some((i) => i.iteration === m.iteration && i.layout)) {
       setSelected(m.iteration);
       if (animKey) setPlacedKey(animKey);
@@ -143,45 +177,17 @@ export function SimpleView() {
     setSelected(s === "before" ? 0 : (afterIt?.iteration ?? null));
     if (animKey) setPlacedKey(animKey);
   };
-
-  const ask = async (question: string) => {
-    if (asking || !state.run) return;
-    const history = trimHistory(turns.filter((t) => !t.note));
-    setTurns((t) => [...t, { role: "user", text: question }, { role: "muse", text: "", pending: true }]);
-    setAsking(true);
-    const ctrl = new AbortController();
-    askAbort.current = ctrl;
-    const update = (patch: Partial<FeedTurn>) =>
-      setTurns((t) => {
-        const next = [...t];
-        next[next.length - 1] = { ...next[next.length - 1], ...patch };
-        return next;
-      });
-    let digest;
-    try {
-      digest = buildRunDigest(events);
-    } catch {
-      update({ pending: false, note: "error", text: "I need a finished plan before I can answer questions about it." });
-      setAsking(false);
-      return;
-    }
-    const res = await askMuse({ question, digest, history }, (text) => update({ text, pending: false }), { signal: ctrl.signal });
-    if (ctrl.signal.aborted) return;
-    if (res.status === "busy") update({ pending: false, note: "error", text: "Lots of questions right now. Please try again in a moment." });
-    else if (res.status === "unavailable") update({ pending: false, note: "unavailable", text: "Ask isn't available yet. Open Details to read the full report in the meantime." });
-    else if (res.status === "error") update({ pending: false, note: "error", text: res.text || "Sorry, I couldn't answer that just now. Please try again." });
-    else update({ pending: false, text: res.text || "I don't have an answer for that one." });
-    setAsking(false);
-  };
+  const decide = (id: string, choice: "approved" | "kept" | null) =>
+    setApprovals((a) => approvalReducer(a, choice ? { type: "decide", id, choice } : { type: "undo", id }));
 
   const suggestions = useMemo(() => {
-    const asked = new Set(turns.filter((t) => t.role === "user").map((t) => t.text));
+    const asked = new Set(messages.filter((m) => m.role === "user" && m.metadata?.intent === "ask").map((m) => m.parts.map((p) => (p.type === "text" ? p.text : "")).join("")));
     const moved = [...says.filter((m) => m.moment === "revising"), ...says.filter((m) => m.moment === "revised")].flatMap((m) => m.booth_ids ?? []);
     const kinds = new Set(moved.map((id) => specs.find((s) => s.id === id)?.kind));
     const first = moved[0] ? specs.find((s) => s.id === moved[0]) : undefined;
     const why = kinds.has("food_truck") ? "Why move the food trucks?" : first ? `Why move ${venueShortName(first.label)}?` : "What did you change?";
     return [why, `Is it safe for ${visitors} people?`, "What still needs checking?", "What did you change?"].filter((s, i, a) => a.indexOf(s) === i && !asked.has(s)).slice(0, 4);
-  }, [says, specs, turns, visitors]);
+  }, [says, specs, messages, visitors]);
 
   const summary = layoutSummary({
     venueName: venueShortName(venue.name),
@@ -199,10 +205,7 @@ export function SimpleView() {
       <ReviewConsole
         chat={chat}
         venueId={venueId}
-        onVenueChange={(id) => {
-          resetRun();
-          setVenueId(id);
-        }}
+        onVenueChange={pickVenue}
         onClose={() => setDetails(false)}
       />
     );
@@ -210,7 +213,6 @@ export function SimpleView() {
 
   const live = Boolean(status?.live);
   const primaryLabel = live ? "Let Muse plan it" : "Watch an example";
-  const hasRun = Boolean(state.run) || busy;
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg lg:h-dvh">
@@ -294,7 +296,7 @@ export function SimpleView() {
             {h ? (
               <HeadlineText h={h} />
             ) : (
-              <p className="text-[15px] text-muted">{busy ? "The crowd test results will show up here." : `${venueShortName(venue.name)} · ${specs.length} booths to place`}</p>
+              <p className="text-[15px] text-muted">{runBusy ? "The crowd test results will show up here." : `${venueShortName(venue.name)} · ${specs.length} booths to place`}</p>
             )}
             {h && <p className="text-[12.5px] text-faint">Orange on the floor = where it gets crowded</p>}
           </div>
@@ -308,59 +310,53 @@ export function SimpleView() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             <ul className="flex flex-col gap-3.5">
-              {!hasRun && <MuseBubble>{EMPTY_TEXT}</MuseBubble>}
-              {says.map((m, i) => {
-                const id = sayId(m, i);
+              {messages.length === 0 && <MuseBubble>{EMPTY_TEXT}</MuseBubble>}
+              {feed.map((f) => {
+                if (f.kind === "user") return <UserBubble key={f.id}>{f.text}</UserBubble>;
+                if (f.kind === "answer")
+                  return (
+                    <MuseBubble key={f.id}>
+                      <span className="whitespace-pre-wrap">{f.text}</span>
+                    </MuseBubble>
+                  );
+                if (f.kind === "result") {
+                  const m = messages.find((x) => x.id === f.messageId);
+                  return (
+                    <ResultCard
+                      key={f.id}
+                      h={m ? runHeadline(deriveRunState(m)) : null}
+                      onUse={() => {
+                        if (f.messageId !== runMsg?.id) showRun(f.messageId);
+                        setSheet(true);
+                      }}
+                      onAsk={() => {
+                        if (f.messageId !== runMsg?.id) showRun(f.messageId);
+                        askInput.current?.focus();
+                      }}
+                    />
+                  );
+                }
+                const m = f.say;
                 const clickable = m.iteration !== undefined || Boolean(m.booth_ids?.length);
                 return (
                   <MuseBubble
-                    key={id}
+                    key={f.id}
                     tone={m.tone}
-                    selected={focused === id}
-                    onClick={clickable ? () => clickMessage(m, id) : undefined}
+                    selected={focused === f.id}
+                    onClick={clickable ? () => clickSay(f) : undefined}
                     label={clickable ? `${m.text} (show on the model)` : undefined}
-                    footer={
-                      m.needs_approval ? (
-                        <ApprovalButtons
-                          choice={approvals[id] ?? null}
-                          onChoose={(c) => dispatch(c ? { type: "decide", id, choice: c } : { type: "undo", id })}
-                        />
-                      ) : undefined
-                    }
+                    footer={m.needs_approval ? <ApprovalButtons choice={f.choice} onChoose={(c) => decide(f.id, c)} /> : undefined}
                   >
                     {m.text}
                   </MuseBubble>
                 );
               })}
-              {error && (
-                <MuseBubble tone="warn">
-                  I couldn&apos;t finish this time{error.message ? ` (${error.message})` : ""}.
-                  {lastMode === "live" && (
-                    <button type="button" className="ml-1 underline underline-offset-2" onClick={() => start("replay")}>
-                      Watch an example instead
-                    </button>
-                  )}
-                </MuseBubble>
-              )}
-              {busy && <Typing status={statusText} />}
-              {finished && state.done?.status === "completed" && (
-                <ResultCard h={h} onUse={() => setSheet(true)} onAsk={() => askInput.current?.focus()} />
-              )}
-              {turns.map((t, i) =>
-                t.role === "user" ? (
-                  <UserBubble key={`t${i}`}>{t.text}</UserBubble>
-                ) : t.pending ? (
-                  <Typing key={`t${i}`} status="Thinking…" />
-                ) : (
-                  <MuseBubble key={`t${i}`} tone={t.note ? "warn" : "neutral"}>
-                    <span className="whitespace-pre-wrap">{t.text}</span>
-                  </MuseBubble>
-                ),
-              )}
+              {error && <ErrorBubble error={error} intent={pending} live={Boolean(status?.live)} onRetry={retry} onExample={() => start("replay")} />}
+              {busy && !answerStreaming && <Typing status={pending === "ask" ? "Thinking…" : statusText} />}
             </ul>
             <div ref={feedEnd} />
           </div>
-          <AskBox enabled={finished} busy={asking} suggestions={suggestions} onAsk={(q) => void ask(q)} inputRef={askInput} />
+          <AskBox enabled={finished} busy={busy} suggestions={suggestions} onAsk={ask} inputRef={askInput} />
         </aside>
       </div>
 
@@ -385,6 +381,48 @@ export function SimpleView() {
         />
       )}
     </div>
+  );
+}
+
+function ErrorBubble({
+  error,
+  intent,
+  live,
+  onRetry,
+  onExample,
+}: {
+  error: Error;
+  intent: "run" | "ask" | null;
+  live: boolean;
+  onRetry: () => void;
+  onExample: () => void;
+}) {
+  const info = chatErrorInfo(error);
+  const text =
+    info.kind === "busy"
+      ? intent === "ask"
+        ? "Lots of questions right now. Please try again in a moment."
+        : "Lots of plans are running right now. Please try again in a moment."
+      : info.kind === "live_disabled"
+        ? "Live planning is switched off right now."
+        : intent === "ask"
+          ? "Sorry, I couldn't answer that just now."
+          : `I couldn't finish this time${info.message ? ` (${info.message})` : ""}.`;
+  const link = "ml-1 underline underline-offset-2 hover:text-ink";
+  return (
+    <MuseBubble tone="warn">
+      {text}
+      {info.kind !== "live_disabled" && (
+        <button type="button" className={link} onClick={onRetry}>
+          Try again
+        </button>
+      )}
+      {intent === "run" && (live || info.kind === "live_disabled") && (
+        <button type="button" className={link} onClick={onExample}>
+          Watch an example instead
+        </button>
+      )}
+    </MuseBubble>
   );
 }
 

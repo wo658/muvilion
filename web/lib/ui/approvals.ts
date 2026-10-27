@@ -28,10 +28,14 @@ export const sayId = (m: SayInfo, index: number) => `${index}:${m.moment}:${m.it
 
 export type ApprovalItem = { id: string; text: string; choice: ApprovalChoice | null };
 
-export function approvalItems(messages: SayInfo[], state: ApprovalState): ApprovalItem[] {
+/** Key of a Muse message's approval in the conversation: the run message id plus its say id. */
+export const approvalKey = (messageId: string, m: SayInfo, index: number) => `${messageId}/${sayId(m, index)}`;
+
+/** Approvals of one run's Muse messages; `messageId` keys them by run message (approvalKey). */
+export function approvalItems(messages: SayInfo[], state: ApprovalState, messageId?: string): ApprovalItem[] {
   return messages.flatMap((m, i) => {
     if (!m.needs_approval) return [];
-    const id = sayId(m, i);
+    const id = messageId === undefined ? sayId(m, i) : approvalKey(messageId, m, i);
     return [{ id, text: m.text, choice: state[id] ?? null }];
   });
 }

@@ -7,32 +7,14 @@
  * Live runs require LIVE_AGENT=on and use `project` (default: the venue's sample project);
  * replays stream the recording of `venue` (default: the indoor hall).
  */
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { createUIMessageStreamResponse } from "ai";
 import { connection } from "next/server";
-import indoorRecording from "@/fixtures/replay/sample-hall.json";
-import outdoorRecording from "@/fixtures/replay/riverside-plaza.json";
-import { createAgentLLM, createRunDeps, runAgentLoop } from "@/lib/agent";
-import { acquireLiveRun, capStatus } from "@/lib/agent/caps";
-import { applyVenueOverrides, liveAgentEnabled, loadAgentConfig } from "@/lib/agent/config";
-import type { AgentEvent, AgentUIMessage } from "@/lib/agent/events";
-import { asReplay, createEventEncoder, replayDelayMs } from "@/lib/agent/stream";
+import { capStatus } from "@/lib/agent/caps";
+import { liveAgentEnabled, loadAgentConfig } from "@/lib/agent/config";
 import { getModel } from "@/lib/agent/model";
-import { ProjectInput } from "@/lib/engine/contract";
-import { DEFAULT_VENUE_ID, venueById } from "@/lib/venues";
-
-const RECORDINGS: Record<string, { events: AgentEvent[] }> = {
-  "sample-hall": indoorRecording as { events: AgentEvent[] },
-  "riverside-plaza": outdoorRecording as { events: AgentEvent[] },
-};
+import { errorResponse, startRunStream } from "@/lib/agent/run-stream";
 
 export const maxDuration = 300;
-
-const sleep = (ms: number, signal?: AbortSignal) =>
-  new Promise<void>((resolve) => {
-    if (ms <= 0 || signal?.aborted) return resolve();
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => (clearTimeout(t), resolve()), { once: true });
-  });
 
 export async function GET() {
   await connection();
@@ -51,95 +33,16 @@ export async function GET() {
 export async function POST(req: Request) {
   const url = new URL(req.url);
   const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; venue?: string; project?: unknown };
-  const live = liveAgentEnabled();
-  const mode = url.searchParams.get("mode") ?? body.mode ?? (live ? "live" : "replay");
-  const speed = Number(url.searchParams.get("speed") ?? body.speed ?? 1);
-
-  if (mode !== "live" && mode !== "replay") {
-    return Response.json({ error: "bad_mode", message: `mode must be "live" or "replay"` }, { status: 400 });
-  }
-
-  const venueId = url.searchParams.get("venue") ?? body.venue ?? DEFAULT_VENUE_ID;
-  const venue = venueById(venueId);
-  if (!venue) return Response.json({ error: "bad_venue", message: `unknown venue "${venueId}"` }, { status: 400 });
-
-  if (mode === "replay") {
-    const recording = RECORDINGS[venue.id];
-    if (!recording) return Response.json({ error: "no_recording", message: `no replay recorded for ${venue.id}` }, { status: 404 });
-    const events = asReplay(recording.events);
-    const stream = createUIMessageStream<AgentUIMessage>({
-      execute: async ({ writer }) => {
-        writer.write({ type: "start" });
-        const emit = createEventEncoder(writer);
-        let prev: AgentEvent | undefined;
-        for (const e of events) {
-          if (req.signal.aborted) break;
-          await sleep(replayDelayMs(e, speed, prev), req.signal);
-          emit(e);
-          prev = e;
-        }
-        emit.close();
-        writer.write({ type: "finish" });
-      },
-    });
-    return createUIMessageStreamResponse({ stream, headers: { "x-agent-mode": "replay" } });
-  }
-
-  if (!live) {
-    return Response.json(
-      { error: "live_disabled", message: "Live agent runs are disabled (LIVE_AGENT is not \"on\"). Use mode=replay." },
-      { status: 403 },
-    );
-  }
-
-  const parsed = ProjectInput.safeParse(body.project ?? venue.project);
-  if (!parsed.success) {
-    return Response.json({ error: "bad_project", message: parsed.error.message }, { status: 400 });
-  }
-
-  const cap = acquireLiveRun();
-  if (!cap.ok) return Response.json({ error: "cap_reached", message: cap.reason }, { status: 429 });
-
-  const deps = createRunDeps();
-  const { engine } = deps;
-  // The venue's scenario and target overrides apply when the project is that venue's.
-  const config = applyVenueOverrides(deps.config, venueById(parsed.data.venue.id));
-  const timeoutS = Number(process.env.AGENT_RUN_TIMEOUT_S ?? 280);
-  const signal = AbortSignal.any([req.signal, AbortSignal.timeout(timeoutS * 1000)]);
-
-  const stream = createUIMessageStream<AgentUIMessage>({
-    execute: async ({ writer }) => {
-      writer.write({ type: "start" });
-      const emit = createEventEncoder(writer);
-      try {
-        const llm = createAgentLLM(process.env, config, (what, err) =>
-          emit({
-            type: "error",
-            data: {
-              message: `model call "${what}" failed (${err instanceof Error ? err.message : String(err)}); used the rule-based fallback for this step`,
-              recoverable: true,
-            },
-          }),
-        );
-        await runAgentLoop({
-          project: parsed.data,
-          engine,
-          llm,
-          config,
-          emit,
-          runId: crypto.randomUUID(),
-          mode: "live",
-          signal,
-        });
-      } catch (err) {
-        emit({ type: "error", data: { message: err instanceof Error ? err.message : String(err), recoverable: false } });
-      } finally {
-        cap.release();
-        emit.close();
-        writer.write({ type: "finish" });
-      }
+  const speed = url.searchParams.get("speed");
+  const run = startRunStream(
+    {
+      mode: url.searchParams.get("mode") ?? body.mode,
+      speed: speed !== null ? Number(speed) : body.speed,
+      venue: url.searchParams.get("venue") ?? body.venue,
+      project: body.project,
     },
-    onError: (err) => (err instanceof Error ? err.message : String(err)),
-  });
-  return createUIMessageStreamResponse({ stream, headers: { "x-agent-mode": "live" } });
+    { signal: req.signal },
+  );
+  if (!run.ok) return errorResponse(run);
+  return createUIMessageStreamResponse({ stream: run.stream, headers: { "x-agent-mode": run.mode } });
 }
