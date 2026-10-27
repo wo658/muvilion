@@ -184,6 +184,8 @@ class SimulateRequest(BaseModel):
     max_wall_time_s: float = Field(default=60.0, gt=0, le=600)
     # Sampling interval for recorded agent positions (served by POST /trajectories).
     trajectory_dt: float = Field(default=0.5, gt=0, le=5)
+    # A grid cell counts as crowded while its density is at or above this (p/m^2).
+    crowd_threshold: float = Field(default=2.0, gt=0)
 
 
 class DensityGrid(BaseModel):
@@ -202,6 +204,22 @@ class Hotspot(BaseModel):
     nearby_booth_ids: list[str] = []
 
 
+class Congestion(BaseModel):
+    """Sustained congestion: how much crowding there was and for how long, not just its peak."""
+
+    threshold: float
+    # Sum over sampled frames of (people standing in crowded cells) x frame interval.
+    crowded_person_s: float
+    # Sum over sampled frames of (area of crowded cells) x frame interval.
+    crowded_area_m2s: float
+    # crowded_person_s / number of agents that entered: time the average visitor spent crowded.
+    crowded_s_per_visitor: float
+    # Largest crowded area at any single sampled frame.
+    peak_crowded_area_m2: float
+    # Highest Hotspot.mean_density (density averaged over the run), 0 when there are no hotspots.
+    worst_hotspot_mean_density: float
+
+
 class SimResult(BaseModel):
     run_id: str
     scenario: Scenario
@@ -210,6 +228,7 @@ class SimResult(BaseModel):
     mean_travel_time_s: float
     p90_travel_time_s: float
     max_density: float
+    congestion: Congestion
     hotspots: list[Hotspot]
     grid: DensityGrid
     sim_time_s: float

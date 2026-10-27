@@ -354,6 +354,45 @@
         ],
         "title": "BoothSpec"
       },
+      "Congestion": {
+        "properties": {
+          "threshold": {
+            "type": "number",
+            "title": "Threshold"
+          },
+          "crowded_person_s": {
+            "type": "number",
+            "title": "Crowded Person S"
+          },
+          "crowded_area_m2s": {
+            "type": "number",
+            "title": "Crowded Area M2S"
+          },
+          "crowded_s_per_visitor": {
+            "type": "number",
+            "title": "Crowded S Per Visitor"
+          },
+          "peak_crowded_area_m2": {
+            "type": "number",
+            "title": "Peak Crowded Area M2"
+          },
+          "worst_hotspot_mean_density": {
+            "type": "number",
+            "title": "Worst Hotspot Mean Density"
+          }
+        },
+        "type": "object",
+        "required": [
+          "threshold",
+          "crowded_person_s",
+          "crowded_area_m2s",
+          "crowded_s_per_visitor",
+          "peak_crowded_area_m2",
+          "worst_hotspot_mean_density"
+        ],
+        "title": "Congestion",
+        "description": "Sustained congestion: how much crowding there was and for how long, not just its peak."
+      },
       "DensityGrid": {
         "properties": {
           "cell": {
@@ -881,6 +920,9 @@
             "type": "number",
             "title": "Max Density"
           },
+          "congestion": {
+            "$ref": "#/components/schemas/Congestion"
+          },
           "hotspots": {
             "items": {
               "$ref": "#/components/schemas/Hotspot"
@@ -914,6 +956,7 @@
           "mean_travel_time_s",
           "p90_travel_time_s",
           "max_density",
+          "congestion",
           "hotspots",
           "grid",
           "sim_time_s",
@@ -958,6 +1001,12 @@
             "exclusiveMinimum": 0.0,
             "title": "Trajectory Dt",
             "default": 0.5
+          },
+          "crowd_threshold": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Crowd Threshold",
+            "default": 2.0
           }
         },
         "type": "object",

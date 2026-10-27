@@ -7,7 +7,7 @@ import math
 import numpy as np
 from shapely.geometry import Polygon, box
 
-from app.schemas import DensityGrid, Hotspot, Rect
+from app.schemas import Congestion, DensityGrid, Hotspot, Rect
 
 MIN_FREE_FRACTION = 0.5  # cells mostly covered by booths use this share of area as floor
 HOTSPOT_REL = 0.5  # cells at >= this fraction of the max peak are hotspot candidates
@@ -17,8 +17,18 @@ MAX_HOTSPOTS = 5
 
 
 class DensityAccumulator:
-    def __init__(self, width: float, height: float, cell: float, walkable: Polygon) -> None:
+    def __init__(
+        self,
+        width: float,
+        height: float,
+        cell: float,
+        walkable: Polygon,
+        crowd_threshold: float = 2.0,
+        sample_dt: float = 1.0,
+    ) -> None:
         self.cell = cell
+        self.crowd_threshold = crowd_threshold
+        self.sample_dt = sample_dt
         self.cols = max(1, math.ceil(width / cell - 1e-9))
         self.rows = max(1, math.ceil(height / cell - 1e-9))
         free = np.zeros((self.rows, self.cols))
@@ -31,6 +41,9 @@ class DensityAccumulator:
         self.peak = np.zeros((self.rows, self.cols))
         self.total = np.zeros((self.rows, self.cols))
         self.samples = 0
+        self.crowded_person_s = 0.0
+        self.crowded_area_m2s = 0.0
+        self.peak_crowded_area_m2 = 0.0
 
     def add(self, positions: np.ndarray) -> None:
         counts = np.zeros((self.rows, self.cols))
@@ -42,6 +55,22 @@ class DensityAccumulator:
         np.maximum(self.peak, density, out=self.peak)
         self.total += density
         self.samples += 1
+        # Each sample stands for sample_dt seconds of the run.
+        crowded = (density >= self.crowd_threshold) & self.walkable_cell
+        crowded_area = float(self.area[crowded].sum())
+        self.crowded_person_s += float(counts[crowded].sum()) * self.sample_dt
+        self.crowded_area_m2s += crowded_area * self.sample_dt
+        self.peak_crowded_area_m2 = max(self.peak_crowded_area_m2, crowded_area)
+
+    def congestion(self, entered: int, hotspots: list[Hotspot]) -> Congestion:
+        return Congestion(
+            threshold=self.crowd_threshold,
+            crowded_person_s=round(self.crowded_person_s, 2),
+            crowded_area_m2s=round(self.crowded_area_m2s, 2),
+            crowded_s_per_visitor=round(self.crowded_person_s / max(1, entered), 3),
+            peak_crowded_area_m2=round(self.peak_crowded_area_m2, 2),
+            worst_hotspot_mean_density=max((h.mean_density for h in hotspots), default=0.0),
+        )
 
     @property
     def mean(self) -> np.ndarray:

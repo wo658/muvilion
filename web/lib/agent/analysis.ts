@@ -25,7 +25,13 @@ export function countViolations(v: Violation[]) {
 
 export function metricsOf(sim: SimResult, violations: Violation[]): Metrics {
   const { errors, warnings } = countViolations(violations);
+  const c = sim.congestion;
   return {
+    crowded_s_per_visitor: c.crowded_s_per_visitor,
+    crowded_person_s: c.crowded_person_s,
+    peak_crowded_area_m2: c.peak_crowded_area_m2,
+    worst_hotspot_mean_density: c.worst_hotspot_mean_density,
+    crowd_threshold: c.threshold,
     max_density: sim.max_density,
     p90_travel_time_s: sim.p90_travel_time_s,
     mean_travel_time_s: sim.mean_travel_time_s,
@@ -143,6 +149,14 @@ export function summarizeIteration(args: {
     constraints: args.constraints,
     metrics: args.sim
       ? {
+          // Primary: sustained crowding (cells at or above the crowd threshold), lower is better.
+          crowd_threshold_p_per_m2: args.sim.congestion.threshold,
+          crowded_s_per_visitor: args.sim.congestion.crowded_s_per_visitor,
+          crowded_person_s: args.sim.congestion.crowded_person_s,
+          crowded_area_m2s: args.sim.congestion.crowded_area_m2s,
+          peak_crowded_area_m2: args.sim.congestion.peak_crowded_area_m2,
+          worst_hotspot_mean_density_p_per_m2: args.sim.congestion.worst_hotspot_mean_density,
+          // Secondary: the single highest instantaneous cell density.
           max_density_p_per_m2: args.sim.max_density,
           mean_travel_time_s: args.sim.mean_travel_time_s,
           p90_travel_time_s: args.sim.p90_travel_time_s,
@@ -170,52 +184,94 @@ export type IterationSummary = ReturnType<typeof summarizeIteration>;
 
 export type IterationOutcome = { iteration: number; metrics: Metrics; valid: boolean };
 
-/** Lowest max density among valid iterations (earliest wins ties); falls back to the last. */
-export function bestIteration(history: IterationOutcome[]): number {
-  const valid = history.filter((h) => h.valid);
-  if (valid.length === 0) return history[history.length - 1]?.iteration ?? 0;
-  return valid.reduce((a, b) => (b.metrics.max_density < a.metrics.max_density - 1e-9 ? b : a)).iteration;
+/** Default for Targets.max_completion_drop when a caller has no targets at hand. */
+export const DEFAULT_MAX_COMPLETION_DROP = 0.05;
+
+/**
+ * Completion guard: less crowding because fewer visitors got in or finished is not an
+ * improvement, so an iteration whose completed fraction is more than `maxDrop` below the
+ * baseline's never counts as better.
+ */
+export function completionOk(h: IterationOutcome, baseline: IterationOutcome, maxDrop = DEFAULT_MAX_COMPLETION_DROP): boolean {
+  return h.metrics.completed_fraction >= baseline.metrics.completed_fraction - maxDrop - 1e-9;
 }
 
+/** Valid (no errors, not truncated) and within the completion guard: may count as better. */
+export function comparable(h: IterationOutcome, baseline: IterationOutcome, maxDrop = DEFAULT_MAX_COMPLETION_DROP): boolean {
+  return h.valid && completionOk(h, baseline, maxDrop);
+}
+
+/**
+ * Lowest crowded seconds per visitor among comparable iterations (earliest wins ties); falls back
+ * to the last iteration when none is comparable.
+ */
+export function bestIteration(history: IterationOutcome[], maxDrop = DEFAULT_MAX_COMPLETION_DROP): number {
+  const base = history[0];
+  const ok = base ? history.filter((h) => comparable(h, base, maxDrop)) : [];
+  if (ok.length === 0) return history[history.length - 1]?.iteration ?? 0;
+  return ok.reduce((a, b) => (b.metrics.crowded_s_per_visitor < a.metrics.crowded_s_per_visitor - 1e-9 ? b : a)).iteration;
+}
+
+const pct = (x: number) => `${round(x * 100, 1)}%`;
+const crowded = (m: Metrics) =>
+  `crowded time ${round(m.crowded_s_per_visitor, 2)} s/visitor (${round(m.crowded_person_s, 0)} person-s at ≥ ${m.crowd_threshold} p/m²)`;
+
+/**
+ * The stop/continue rule, on sustained congestion:
+ * - target_met: valid, within the completion guard, and crowded_s_per_visitor ≤ target.
+ * - no_improvement: completion fell more than max_completion_drop below the baseline, or the
+ *   relative reduction vs the best comparable earlier iteration is below min_improvement.
+ * - max_iterations: iteration ≥ maxIterations. Otherwise continue.
+ * Truncated or invalid iterations are never comparable (they can only continue or hit the cap).
+ */
 export function decide(
   history: IterationOutcome[],
   targets: Targets,
   maxIterations: number,
-): { decision: Decision; reason: string; best: number } {
+): { decision: Decision; reason: string; best: number; completionOk: boolean } {
   const cur = history[history.length - 1];
-  const best = bestIteration(history);
+  const base = history[0];
+  const drop = targets.max_completion_drop;
+  const best = bestIteration(history, drop);
   const m = cur.metrics;
-  if (cur.valid && m.max_density <= targets.max_density) {
+  const okC = completionOk(cur, base, drop);
+  const target = targets.crowded_s_per_visitor;
+  const completionNote = `completion fell to ${pct(m.completed_fraction)} vs baseline ${pct(base.metrics.completed_fraction)} (more than ${round(drop * 100, 1)} pt lower), so the lower crowding does not count as better: fewer visitors got in or finished`;
+  if (cur.valid && okC && m.crowded_s_per_visitor <= target) {
     return {
       decision: "target_met",
-      reason: `max density ${m.max_density} ≤ target ${targets.max_density} p/m² with no validation errors`,
+      reason: `${crowded(m)} ≤ target ${target} s with no validation errors`,
       best,
+      completionOk: okC,
     };
   }
   if (cur.iteration > 0 && cur.valid) {
-    const prevValid = history.slice(0, -1).filter((h) => h.valid);
-    if (prevValid.length > 0) {
-      const bestPrev = Math.min(...prevValid.map((h) => h.metrics.max_density));
-      const rel = (bestPrev - m.max_density) / bestPrev;
+    if (!okC) return { decision: "no_improvement", reason: `${crowded(m)}, but ${completionNote}`, best, completionOk: okC };
+    const prev = history.slice(0, -1).filter((h) => comparable(h, base, drop));
+    if (prev.length > 0) {
+      const bestPrev = Math.min(...prev.map((h) => h.metrics.crowded_s_per_visitor));
+      const rel = bestPrev > 0 ? (bestPrev - m.crowded_s_per_visitor) / bestPrev : 0;
       if (rel < targets.min_improvement) {
         return {
           decision: "no_improvement",
-          reason: `max density ${m.max_density} vs best so far ${bestPrev} (${round(rel * 100, 1)}% < ${round(targets.min_improvement * 100, 1)}% required)`,
+          reason: `${crowded(m)} vs best so far ${round(bestPrev, 2)} s/visitor (${round(rel * 100, 1)}% reduction < ${round(targets.min_improvement * 100, 1)}% required)`,
           best,
+          completionOk: okC,
         };
       }
     }
   }
   if (cur.iteration >= maxIterations) {
-    return { decision: "max_iterations", reason: `reached AGENT_MAX_ITERATIONS=${maxIterations}`, best };
+    return { decision: "max_iterations", reason: `reached AGENT_MAX_ITERATIONS=${maxIterations}`, best, completionOk: okC };
   }
   return {
     decision: "continue",
     reason: cur.valid
-      ? `max density ${m.max_density} > target ${targets.max_density} p/m²`
+      ? `${crowded(m)} > target ${target} s`
       : m.truncated
         ? "simulation was truncated by the engine's wall-time cap; result not comparable"
         : `${m.violations} validation error(s) remain`,
     best,
+    completionOk: okC,
   };
 }

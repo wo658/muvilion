@@ -14,6 +14,9 @@
  * - /simulate: a synthetic peak-density field = entrance inflow + crowding around
  *   booths weighted by popularity and amplified near entrances. The hotspot
  *   therefore sits near the entrance and shrinks when popular booths move away.
+ *   Sustained congestion (SimResult.congestion) is derived from the same field: a cell whose
+ *   peak reaches crowd_threshold is taken to stay crowded for a share of the run that grows
+ *   with how far its peak exceeds the threshold (see mockCongestion).
  *   Same inputs (incl. scenario seed) → identical output.
  *
  * - /trajectories: see ./mock-trajectories.ts (aisle-following walkers consistent with the
@@ -34,6 +37,7 @@ import {
   ValidateResponse,
   type Booth,
   type BoothSpec,
+  type Congestion,
   type LayoutRequestInput,
   type QueueRequestInput,
   type SimulateRequestInput,
@@ -348,29 +352,64 @@ export function mockSimulate(input: SimulateRequestInput): SimResult {
   }
 
   const hotspots = findHotspots(peak, cols, rows, cell, layout.booths);
+  const congestion = mockCongestion(peak, cell, req.crowd_threshold, scenario.duration_s, scenario.agents, hotspots);
   const maxDensity = Math.max(0, ...peak);
   const weighted = boothRects.reduce((s, b) => s + b.p * distanceToNearestEntrance(b.r, venue), 0);
   const wsum = boothRects.reduce((s, b) => s + b.p, 0) || 1;
-  const congestion = peak.reduce((s, x) => s + Math.max(0, x - 1.2) ** 2, 0);
-  const mean = 45 + (weighted / wsum / 1.1) * 2 + congestion * 1.5;
+  const crowding = peak.reduce((s, x) => s + Math.max(0, x - 1.2) ** 2, 0);
+  const mean = 45 + (weighted / wsum / 1.1) * 2 + crowding * 1.5;
   const p90 = mean * 1.35 + Math.max(0, maxDensity - 2) * 12;
   const overload = peak.reduce((s, x) => s + Math.max(0, x - 3), 0);
   const completed = Math.min(1, Math.max(0.5, 1 - overload * 0.02));
 
   return SimResult.parse({
-    run_id: `S-${hashString(JSON.stringify([layout.id, scenario, cell]))}`,
+    run_id: `S-${hashString(JSON.stringify([layout.id, scenario, cell, req.crowd_threshold]))}`,
     scenario,
     layout_id: layout.id,
     completed_fraction: round(completed, 3),
     mean_travel_time_s: round(mean, 1),
     p90_travel_time_s: round(p90, 1),
     max_density: round(maxDensity, 3),
+    congestion,
     hotspots,
     grid: { cell, cols, rows, peak },
     sim_time_s: scenario.duration_s,
     wall_time_s: 0.05,
     truncated: false,
   });
+}
+
+/** Share of the run a cell stays crowded when its peak is far above the threshold. */
+const CROWDED_SHARE_MAX = 0.3;
+/** Share of the crowded cells that are crowded at the same moment (peak crowded area). */
+const CROWDED_OVERLAP = 0.6;
+
+/**
+ * Synthetic sustained-congestion figures with the engine's definitions (engine/app/sim/metrics.py):
+ * a cell is crowded while its density ≥ threshold. Here a cell whose peak p reaches the threshold
+ * t is crowded for duration · CROWDED_SHARE_MAX · min(1, (p − t) / t + 0.15) seconds, holding
+ * (t + p) / 2 · area people meanwhile. Everyone enters in the mock, so per visitor = person-s / agents.
+ */
+function mockCongestion(peak: number[], cell: number, threshold: number, durationS: number, agents: number, hotspots: Hotspot[]): Congestion {
+  const area = cell * cell;
+  let personS = 0;
+  let areaS = 0;
+  let crowdedCells = 0;
+  for (const p of peak) {
+    if (p < threshold) continue;
+    const seconds = durationS * CROWDED_SHARE_MAX * Math.min(1, (p - threshold) / threshold + 0.15);
+    personS += ((threshold + p) / 2) * area * seconds;
+    areaS += area * seconds;
+    crowdedCells++;
+  }
+  return {
+    threshold,
+    crowded_person_s: round(personS, 2),
+    crowded_area_m2s: round(areaS, 2),
+    crowded_s_per_visitor: round(personS / Math.max(1, agents), 3),
+    peak_crowded_area_m2: round(Math.ceil(crowdedCells * CROWDED_OVERLAP) * area, 2),
+    worst_hotspot_mean_density: hotspots.reduce((m, h) => Math.max(m, h.mean_density), 0),
+  };
 }
 
 function findHotspots(peak: number[], cols: number, rows: number, cell: number, booths: Booth[]): Hotspot[] {

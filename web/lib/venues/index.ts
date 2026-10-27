@@ -4,6 +4,7 @@
  */
 import indoor from "@/fixtures/sample_hall.json";
 import outdoor from "@/fixtures/outdoor_plaza.json";
+import type { Targets } from "@/lib/agent/events";
 import { ProjectInput, type Scenario } from "@/lib/engine/contract";
 
 export type VenueOption = {
@@ -16,6 +17,11 @@ export type VenueOption = {
    * real engine; mock recordings use MOCK_RECORDING_ENV instead (lib/agent/recording.ts).
    */
   scenario?: Partial<Scenario>;
+  /**
+   * Target fields this venue overrides (same scope as `scenario`; the venue wins over the
+   * AGENT_TARGET_* env for the fields it sets). Calibrated on the real engine.
+   */
+  targets?: Partial<Targets>;
 };
 
 export const VENUES: VenueOption[] = [
@@ -25,8 +31,10 @@ export const VENUES: VenueOption[] = [
     label: "Outdoor plaza",
     setting: "outdoor",
     project: ProjectInput.parse(outdoor),
-    // browse/200 sits right at the target outdoors; an entry rush shows the gate bottleneck.
-    scenario: { kind: "entry", agents: 400, seed: 0 },
+    // browse/300: the organizer-pinned food court at the gate is what crowds visitors here (an
+    // entry rush instead makes the pinned court look least crowded, the wrong story).
+    scenario: { kind: "browse", agents: 300, seed: 0 },
+    targets: { crowded_s_per_visitor: 10 },
   },
 ];
 

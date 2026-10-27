@@ -1,10 +1,11 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
+import { useChat, type Chat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { diffLayouts } from "@/lib/agent/analysis";
 import type { AgentUIMessage } from "@/lib/agent/events";
+import { latestRunMessage, runUserMessage } from "@/lib/chat/transport";
 import { ACTORS, STEP_ACTORS } from "@/lib/ui/actors";
 import { ruleLabel } from "@/lib/ui/rules";
 import { deriveRunState } from "@/lib/ui/run-state";
@@ -20,9 +21,23 @@ type Status = { live: boolean; engine: string; llm: string; maxIterations: numbe
 
 const iterLabel = (n: number) => (n === 0 ? "Baseline" : `Iter ${n}`);
 
-export function ReviewConsole({ project, scenario }: { project?: ProjectInput; scenario?: Scenario } = {}) {
+export type ReviewConsoleProps = {
+  project?: ProjectInput;
+  scenario?: Scenario;
+  /** Shared chat (the simple view's run), so Details shows the same run; omitted = its own. */
+  chat?: Chat<AgentUIMessage>;
+  /** Controlled venue (with onVenueChange); omitted = the console keeps its own. */
+  venueId?: string;
+  onVenueChange?: (id: string) => void;
+  /** Shows a "Simple view" button that calls this. */
+  onClose?: () => void;
+};
+
+export function ReviewConsole({ chat, venueId: venueProp, onVenueChange, onClose, project, scenario }: ReviewConsoleProps = {}) {
   const [status, setStatus] = useState<Status | null>(null);
-  const [venueId, setVenueId] = useState(DEFAULT_VENUE_ID);
+  const [ownVenueId, setOwnVenueId] = useState(venueProp ?? DEFAULT_VENUE_ID);
+  const venueId = venueProp ?? ownVenueId;
+  const setVenueId = onVenueChange ?? setOwnVenueId;
   const [selected, setSelected] = useState<number | null>(null);
   const [showHeat, setShowHeat] = useState(true);
   const [mode, setMode] = useState<"live" | "replay" | null>(null);
@@ -36,7 +51,7 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
   const wide = useWide();
 
   const transport = useMemo(() => new DefaultChatTransport<AgentUIMessage>({ api: "/api/agent" }), []);
-  const { messages, sendMessage, setMessages, status: chatStatus, error, stop, clearError } = useChat<AgentUIMessage>({ transport });
+  const { messages, sendMessage, setMessages, status: chatStatus, error, stop, clearError } = useChat<AgentUIMessage>(chat ? { chat } : { transport });
 
   useEffect(() => {
     let alive = true;
@@ -50,20 +65,23 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
   }, []);
 
   const busy = chatStatus === "submitted" || chatStatus === "streaming";
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const state = useMemo(() => deriveRunState(lastAssistant), [lastAssistant]);
+  // A shared chat also holds Muse's answers to questions: show its latest run.
+  const runMessage = useMemo(() => latestRunMessage(messages), [messages]);
+  const state = useMemo(() => deriveRunState(runMessage), [runMessage]);
   const option = venueById(venueId) ?? VENUES[0];
 
   const reset = () => {
     clearError();
-    setMessages([]);
+    // The shared chat is the simple view's conversation (one per venue): keep it, add to it.
+    if (!chat) setMessages([]);
     setSelected(null);
     setCompareWith(null);
   };
   const start = (m: "live" | "replay") => {
     reset();
     setMode(m);
-    void sendMessage({ text: m === "live" ? "Start live run" : "Replay recorded run" }, { body: project ? { mode: "live", project, scenario } : runRequestBody(m, option.id) });
+    // The metadata drives /api/chat (shared chat); the body drives /api/agent (own chat).
+    void sendMessage(runUserMessage(project ? "live" : m, option.id), { body: project ? { mode: "live", project, scenario } : runRequestBody(m, option.id) });
   };
   const pickVenue = (id: string) => {
     if (id === venueId || busy) return;
@@ -113,7 +131,7 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
   const kpiIt = compareIt ?? current;
   const m = kpiIt?.sim?.metrics;
   const b = kpiIt && kpiIt.iteration !== 0 ? baselineIt?.sim?.metrics : undefined;
-  const target = state.run?.targets.max_density;
+  const target = state.run?.targets.crowded_s_per_visitor;
   const reportMd = state.report?.markdown ?? state.reportText;
   const copyReport = () => {
     void navigator.clipboard?.writeText(reportMd).then(() => {
@@ -183,6 +201,11 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
           <span className="max-w-[22rem] truncate">{statusLine}</span>
         </span>
         <div className="ml-auto flex items-center gap-2">
+          {onClose && (
+            <Button variant="ghost" onClick={onClose}>
+              ← Simple view
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => setExplainer(true)} className="max-sm:hidden">
             How it works
           </Button>
@@ -220,11 +243,11 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
             </div>
           </div>
           <Kpi
-            label="Max density"
-            value={m ? m.max_density.toFixed(2) : "—"}
-            unit="p/m²"
-            tone={m && target !== undefined ? (m.max_density <= target ? "ok" : "bad") : undefined}
-            foot={b && m ? <Delta a={b.max_density} b={m.max_density} /> : target !== undefined ? `target ≤ ${target}` : undefined}
+            label={`Crowded time per visitor (≥ ${m?.crowd_threshold ?? state.run?.crowdThreshold ?? 2} p/m²)`}
+            value={m ? m.crowded_s_per_visitor.toFixed(1) : "—"}
+            unit="s"
+            tone={m && target !== undefined ? (m.crowded_s_per_visitor <= target ? "ok" : "bad") : undefined}
+            foot={b && m ? <Delta a={b.crowded_s_per_visitor} b={m.crowded_s_per_visitor} digits={1} unit=" s" /> : target !== undefined ? `target ≤ ${target} s` : undefined}
           />
           <Kpi
             label="p90 travel time"
@@ -325,15 +348,15 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
             {compareIt && baselineIt ? (
               <div>
                 <Hall3DCompare
-                  before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · max ${baselineIt.sim!.metrics.max_density.toFixed(2)} p/m²` })}
+                  before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · ${baselineIt.sim!.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor` })}
                   after={viewFor(state.run, venue, specs, compareIt, {
                     showHeatmap: showHeat,
                     moves: diffLayouts(baselineIt.layout!.response.layout, compareIt.layout!.response.layout),
-                    title: `${iterLabel(compareIt.iteration)} · max ${compareIt.sim!.metrics.max_density.toFixed(2)} p/m²`,
+                    title: `${iterLabel(compareIt.iteration)} · ${compareIt.sim!.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor`,
                   })}
                 />
                 <p className="mt-3 text-[11.5px] text-muted">
-                  Same agents, scenario and seed; only the layout differs. Booths outlined in teal were moved by the agent relative to the baseline.
+                  Same agents, scenario and seed; only the layout differs. Booths outlined in blue were moved by the agent relative to the baseline.
                   {state.run?.engine === "mock" && " Mock engine: trajectories are synthetic aisle-following walkers, not a pedestrian model."}
                 </p>
               </div>
@@ -423,7 +446,7 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
           {activeTab === "results" &&
             (simulated.length ? (
               <>
-                <PaneSection title="Iterations" right={target !== undefined && <span className="num text-[11px] text-faint">target ≤ {target} p/m²</span>}>
+                <PaneSection title="Iterations" right={target !== undefined && <span className="num text-[11px] text-faint">target ≤ {target} s crowded (≥ {state.run?.crowdThreshold ?? 2} p/m²)</span>}>
                   <MetricCards
                     iterations={state.iterations}
                     selected={current?.iteration ?? -1}
@@ -434,7 +457,7 @@ export function ReviewConsole({ project, scenario }: { project?: ProjectInput; s
                 </PaneSection>
                 {state.done?.baseline && state.done.final && (
                   <PaneSection title="Before / after">
-                    <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} />
+                    <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} target={target} />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {canCompare && (
                         <Button variant="primary" className="!h-7 text-[11.5px]" onClick={() => openCompare(state.done!.finalIteration)}>
@@ -514,8 +537,8 @@ function Delta({ a, b, lowerIsBetter = true, digits = 2, unit = "" }: { a: numbe
 }
 
 function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunState>["iterations"][number]> }) {
-  const row = (label: React.ReactNode, body: React.ReactNode) => (
-    <div className="grid gap-1 border-t border-hairline py-2.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
+  const row = (label: React.ReactNode, body: React.ReactNode, key?: React.Key) => (
+    <div key={key} className="grid gap-1 border-t border-hairline py-2.5 first:border-t-0 first:pt-0 last:pb-0 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium text-muted">{label}</div>
       <div className="min-w-0 text-[12.5px] leading-relaxed text-ink-soft">{body}</div>
     </div>
@@ -560,7 +583,7 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
             )}
           </>,
         )}
-      {it.fixes.map((f) =>
+      {it.fixes.map((f, k) =>
         row(
           <>
             <ActorTag id="muse" /> Fix
@@ -573,6 +596,7 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
               ))}
             </ul>
           </>,
+          k,
         ),
       )}
       {it.sim &&
@@ -581,7 +605,8 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
             <ActorTag id="jupedsim" /> Simulation
           </>,
           <span className="num">
-            max {it.sim.metrics.max_density.toFixed(2)} p/m² · p90 {it.sim.metrics.p90_travel_time_s.toFixed(0)} s · {it.sim.result.hotspots.length} hotspot(s)
+            {it.sim.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor (≥ {it.sim.metrics.crowd_threshold} p/m²) · {it.sim.metrics.crowded_person_s.toFixed(0)} person-s · peak crowded area {it.sim.metrics.peak_crowded_area_m2.toFixed(0)} m² · p90 {it.sim.metrics.p90_travel_time_s.toFixed(0)} s · {(it.sim.metrics.completed_fraction * 100).toFixed(0)}% completed · {it.sim.result.hotspots.length} hotspot(s)
+            <span className="text-faint"> · max {it.sim.metrics.max_density.toFixed(2)} p/m²</span>
           </span>,
         )}
       {it.comparison &&

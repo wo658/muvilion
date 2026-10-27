@@ -186,7 +186,14 @@ def simulate_with_tracks(req: SimulateRequest) -> tuple[SimResult, Trajectories]
     by_id: dict[int, _Agent] = {}
     pending = list(range(len(agents)))  # already ordered by spawn_time
     spawns = world.entrance_spawns
-    density = DensityAccumulator(req.venue.width, req.venue.height, req.grid_cell, walkable)
+    density = DensityAccumulator(
+        req.venue.width,
+        req.venue.height,
+        req.grid_cell,
+        walkable,
+        crowd_threshold=req.crowd_threshold,
+        sample_dt=SAMPLE_EVERY * DT,
+    )
     tracks = TrackRecorder(req.trajectory_dt)
 
     total_steps = math.ceil(sc.duration_s / DT)
@@ -240,6 +247,8 @@ def simulate_with_tracks(req: SimulateRequest) -> tuple[SimResult, Trajectories]
     times = [a.done_at - a.spawned_at for a in agents if a.done_at is not None]
     mean_t, p90_t = travel_stats(times)
     run_id = run_id_for(req)
+    hotspots = density.hotspots(booth_polys(req.layout))
+    entered = sum(1 for a in agents if a.spawned_at is not None)
     result = SimResult(
         run_id=run_id,
         scenario=sc,
@@ -248,7 +257,8 @@ def simulate_with_tracks(req: SimulateRequest) -> tuple[SimResult, Trajectories]
         mean_travel_time_s=mean_t,
         p90_travel_time_s=p90_t,
         max_density=round(float(density.peak.max(initial=0.0)), 4),
-        hotspots=density.hotspots(booth_polys(req.layout)),
+        congestion=density.congestion(entered, hotspots),
+        hotspots=hotspots,
         grid=density.grid(),
         sim_time_s=round(sim.elapsed_time(), 3),
         wall_time_s=round(time.perf_counter() - wall0, 3),

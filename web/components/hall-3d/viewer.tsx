@@ -10,6 +10,7 @@
  * Canvases render continuously only while playing (frameloop "always"); when paused they render on
  * demand (seek, camera move, data change).
  */
+import { TOKENS } from "@/lib/ui/tokens";
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
@@ -20,9 +21,8 @@ import { trajectoryDuration } from "@/lib/trajectory/playback";
 import { Agents } from "./agents";
 import { createClock, SPEEDS, useClockView, usePlaybackLoop, type Clock } from "./clock";
 import { inwardNormal } from "@/lib/ui/site";
-import { HEAT_GRADIENT } from "@/lib/ui/heat";
-import { TOKENS } from "@/lib/ui/tokens";
-import { Segmented, Swatch } from "../ui";
+import { CROWD_AMBER, CROWD_GRADIENT, CROWD_RED, CROWD_THRESHOLD, HEAT_GRADIENT, HEAT_MAX, THRESHOLD_AT } from "@/lib/ui/heat";
+import { Segmented, Swatch, ThresholdBar } from "../ui";
 import { PALETTE } from "./palette";
 import { HallScene, type HallSceneProps } from "./scene";
 import { useTrajectories, type TrajectorySource, type TrajectoryState } from "./use-trajectories";
@@ -178,7 +178,7 @@ function SceneLights({ venue }: { venue: Venue }) {
   const target = useMemo(() => new THREE.Object3D(), []);
   return (
     <>
-      <hemisphereLight args={["#ffffff", "#d3cdbf", 1.05]} />
+      <hemisphereLight args={["#ffffff", TOKENS.modelShade, 1.05]} />
       <ambientLight intensity={0.2} />
       <primitive object={target} position={c} />
       <directionalLight
@@ -343,11 +343,11 @@ function PlaybackBar({
 export function Legend3D() {
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted">
-      <Swatch label="Pedestrian (grey → amber → red with local crowding)">
-        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: `linear-gradient(90deg, rgb(158 156 148), ${TOKENS.heat0}, ${TOKENS.heat2}, ${TOKENS.heat3})` }} />
+      <Swatch label={`Pedestrian: grey, amber once local density ≥ ${CROWD_THRESHOLD} p/m² (crowded), red by ${CROWD_RED}`}>
+        <ThresholdBar background={CROWD_GRADIENT} at={CROWD_AMBER / (CROWD_RED + 0.5)} />
       </Swatch>
-      <Swatch label="Floor = peak density 0 → 4 p/m²">
-        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: HEAT_GRADIENT }} />
+      <Swatch label={`Floor = peak density 0 → ${HEAT_MAX} p/m², amber from ${CROWD_THRESHOLD}`}>
+        <ThresholdBar background={HEAT_GRADIENT} at={THRESHOLD_AT} />
       </Swatch>
       <Swatch label="Moved by agent (ghost = previous spot)">
         <span className="inline-block h-2.5 w-3.5 rounded-[2px] border-[1.5px] border-accent bg-white" />
@@ -406,6 +406,176 @@ export function Hall3DCompare({ before, after }: { before: ViewSpec; after: View
       </div>
       <PlaybackBar clock={clock} preset={preset} onPreset={pick} extra={<span className="text-faint">Shared clock · linked cameras</span>} />
       <Legend3D />
+    </div>
+  );
+}
+
+// ---------- simple stage (consumer view) ----------
+
+/** A point of interest in hall coordinates (meters) the camera eases toward; null = whole site. */
+export type StageFocus = { x: number; y: number; key: string } | null;
+
+function focusPose(
+  venue: Venue,
+  focus: StageFocus,
+  aspect: number,
+  fovDeg: number,
+  from?: THREE.Vector3,
+  target?: THREE.Vector3,
+): { pos: THREE.Vector3; target: THREE.Vector3 } {
+  const W = venue.width;
+  const H = venue.height;
+  const c = new THREE.Vector3(...hallCenter(W, H));
+  // auto-fit: back off until the whole site fits the narrower field of view of this canvas
+  const vHalf = ((fovDeg / 2) * Math.PI) / 180;
+  const hHalf = Math.atan(Math.tan(vHalf) * aspect);
+  const halfDiag = Math.hypot(W, H) / 2;
+  const fit = (halfDiag * 0.7) / Math.tan(Math.min(vHalf, hHalf));
+  const az = -0.62;
+  const el = 0.62;
+  const baseDir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+  if (!focus) return { pos: c.clone().add(baseDir.clone().multiplyScalar(fit)), target: c.clone() };
+  const t = new THREE.Vector3(...toWorld(focus.x, focus.y, 0));
+  // keep the current viewing direction (so an orbiting camera does not jump), only come closer
+  const dir = from && target ? from.clone().sub(target) : baseDir.clone();
+  dir.y = Math.max(dir.y, dir.length() * 0.5);
+  dir.normalize().multiplyScalar(fit * 0.55);
+  return { pos: t.clone().add(dir), target: t };
+}
+
+function StageCameraRig({ venue, focus, orbit, onInteract }: { venue: Venue; focus: StageFocus; orbit: boolean; onInteract: () => void }) {
+  const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
+  const { camera, invalidate, size } = useThree();
+  const lastVenue = useRef<Venue | null>(null);
+  const tween = useRef<{ p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number } | null>(null);
+  const focusKey = focus?.key ?? "";
+  const aspect = size.width / Math.max(1, size.height);
+  const fov = (camera as THREE.PerspectiveCamera).fov ?? 30;
+
+  useEffect(() => {
+    const ctl = controls.current;
+    if (lastVenue.current !== venue || !ctl) {
+      lastVenue.current = venue;
+      const { pos, target } = focusPose(venue, focus, aspect, fov);
+      camera.position.copy(pos);
+      ctl?.target.copy(target);
+      ctl?.update();
+      camera.lookAt(target);
+      tween.current = null;
+    } else {
+      const { pos, target } = focusPose(venue, focus, aspect, fov, camera.position, ctl.target);
+      tween.current = { p0: camera.position.clone(), t0: ctl.target.clone(), p1: pos, t1: target, start: performance.now() };
+    }
+    invalidate();
+    // focus identity changes every render; its key captures what matters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venue, focusKey, camera, invalidate, Math.round(aspect * 20)]);
+
+  useFrame(() => {
+    const tw = tween.current;
+    const ctl = controls.current;
+    if (!tw || !ctl) return;
+    const k = Math.min(1, (performance.now() - tw.start) / 1100);
+    const e = 1 - (1 - k) ** 3;
+    camera.position.lerpVectors(tw.p0, tw.p1, e);
+    ctl.target.lerpVectors(tw.t0, tw.t1, e);
+    ctl.update();
+    if (k < 1) invalidate();
+    else tween.current = null;
+  });
+
+  return (
+    <OrbitControls
+      ref={controls}
+      makeDefault
+      enableDamping
+      dampingFactor={0.08}
+      autoRotate={orbit}
+      autoRotateSpeed={0.35}
+      maxPolarAngle={Math.PI / 2 - 0.12}
+      minDistance={4}
+      maxDistance={Math.max(venue.width, venue.height) * 2.2}
+      onStart={() => {
+        tween.current = null;
+        onInteract();
+      }}
+    />
+  );
+}
+
+/**
+ * The consumer-view canvas: one model view that fills its box, pedestrians auto-playing at a calm
+ * speed, a slow orbit while nobody touches it, and a camera that eases toward `focus`. No
+ * playback bar or legend; a single small play/pause button.
+ */
+export function Hall3DStage({
+  view,
+  animating = false,
+  focus = null,
+  className = "",
+  overlay,
+}: {
+  view: ViewSpec;
+  animating?: boolean;
+  focus?: StageFocus;
+  className?: string;
+  overlay?: ReactNode;
+}) {
+  const state = useTrajectories(animating ? undefined : view.source);
+  const [clock] = useState(() => createClock({ duration: view.durationS ?? 300, speed: 12, playing: true, loop: true }));
+  usePlaybackLoop(clock);
+  const v = useClockView(clock, 1e9);
+  const duration = state.status === "ready" ? trajectoryDuration(state.data) : (view.durationS ?? 300);
+  useEffect(() => {
+    if (Math.abs(clock.duration - duration) > 1e-9) clock.set({ duration });
+  }, [clock, duration]);
+  useEffect(() => {
+    clock.set({ playing: true });
+    return () => clock.set({ playing: false });
+  }, [clock]);
+  const runId = state.status === "ready" ? state.data.run_id : "";
+  useEffect(() => {
+    if (runId) clock.set({ t: 0 });
+  }, [clock, runId]);
+  const [orbit, setOrbit] = useState(true);
+  const { venue } = view.scene;
+  const S = Math.max(venue.width, venue.height);
+  const initial = useMemo(() => presetPose("overview", venue), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const hasWalkers = state.status === "ready";
+  return (
+    <div className={`overflow-hidden ${className || "relative h-full w-full"}`} style={{ background: PALETTE.background }}>
+      <Canvas
+        shadows="soft"
+        frameloop={orbit || animating || (v.playing && hasWalkers) ? "always" : "demand"}
+        dpr={[1, 2]}
+        camera={{ fov: 30, near: 0.5, far: S * 12, position: initial.pos.toArray() }}
+        gl={{ antialias: true, powerPreference: "high-performance", toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 1.02 }}
+      >
+        <color attach="background" args={[PALETTE.background]} />
+        <fog attach="fog" args={[PALETTE.background, S * 1.9, S * 4.2]} />
+        <SceneLights venue={venue} />
+        <HallScene {...view.scene} showDoorLabels={false} plainLabels />
+        {hasWalkers && <Agents key={state.data.run_id} traj={state.data} clock={clock} width={venue.width} height={venue.height} />}
+        <StageCameraRig venue={venue} focus={focus} orbit={orbit} onInteract={() => setOrbit(false)} />
+        <ClockInvalidator clock={clock} />
+      </Canvas>
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 60%, rgb(30 30 28 / 0.06) 100%)" }} />
+      {overlay}
+      {hasWalkers && (
+        <button
+          type="button"
+          onClick={() => clock.set({ playing: !v.playing })}
+          className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-full border border-hairline bg-surface/95 text-ink-soft shadow-sm transition-colors hover:text-ink"
+          aria-label={v.playing ? "Pause visitors" : "Play visitors"}
+          title={v.playing ? "Pause visitors" : "Play visitors"}
+        >
+          {v.playing ? (
+            <svg width="10" height="11" viewBox="0 0 9 10" aria-hidden><rect width="3" height="10" fill="currentColor" /><rect x="6" width="3" height="10" fill="currentColor" /></svg>
+          ) : (
+            <svg width="10" height="11" viewBox="0 0 9 10" aria-hidden><path d="M1 0 L9 5 L1 10 Z" fill="currentColor" /></svg>
+          )}
+        </button>
+      )}
     </div>
   );
 }
