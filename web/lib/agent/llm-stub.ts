@@ -63,7 +63,9 @@ export function createStubLLM(): AgentLLM {
         // Pinned popular booths crowd the hotspot: only release their pins and let the solver
         // re-place them. No entrance-distance rule in the same step (on the real engine, adding it
         // pushed the released booths into a worse arrangement), so the remaining pins stay feasible.
-        const release = pinnedNearTop.map((b) => b.id);
+        // The pins come from one request (e.g. a sponsor food court), so every popular pinned booth
+        // is released together; releasing only the one at the hotspot leaves the cluster in place.
+        const release = [...new Set([...pinnedNearTop.map((b) => b.id), ...popularPinned])];
         for (const id of release) actions.push({ type: "unpin_booth", booth_id: id });
         rationale = `High-attraction booth${popularNearTop.length > 1 ? "s" : ""} ${ids} ${popularNearTop.length > 1 ? "are" : "is"} pinned where the hotspot forms; releasing the pin${release.length > 1 ? "s" : ""} lets the solver spread their visitor crowds. This releases the requested positions of ${release.join(", ")} (pinned by the input constraints), so it needs the organizer's approval.`;
       } else if (top && popularNearTop.length > 0 && c.popular_door_distance < 12) {
