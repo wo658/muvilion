@@ -107,7 +107,6 @@ export function mockLayout(input: LayoutRequest): LayoutResponse {
     ...rest.filter((s) => !isPopular(s)),
   ];
   const entranceDist = (r: Rect) => distanceToNearestEntrance(r, venue);
-  const placedPopular: Rect[] = [];
   let unplaced = 0;
   for (const spec of order) {
     const eligible = free.filter(
@@ -124,13 +123,17 @@ export function mockLayout(input: LayoutRequest): LayoutResponse {
         (s: Rect) => entranceDist(s) + s.x * 1e-3;
     // Constrained popular booths also spread out from each other (a solver would
     // do this through its objective); unconstrained drafts do not.
-    const others = isPopular(spec) ? placedPopular : [];
+    const others: Rect[] = isPopular(spec)
+      ? specs
+          .filter((o) => o.id !== spec.id && o.popularity >= c.popular_threshold)
+          .map((o) => placed.find((b) => b.id === o.id) ?? prevById.get(o.id))
+          .filter((r): r is Booth => Boolean(r))
+      : [];
     const score = (s: Rect) => base(s) + others.reduce((acc, o) => acc + 10 * Math.exp(-dist(s, o) / 6), 0);
     let best = eligible[0];
     for (const s of eligible) if (score(s) < score(best) - 1e-9) best = s;
     if (prev) displacement += dist(best, prev);
     placed.push({ id: spec.id, x: best.x, y: best.y, w: spec.w, h: spec.h, rotation: 0 });
-    if (isPopular(spec)) placedPopular.push(best);
     free = free.filter((s) => s !== best);
   }
 
@@ -192,31 +195,13 @@ export function mockValidate(input: ValidateRequest): ValidateResponse {
   return ValidateResponse.parse({ ok: v.every((x) => x.severity !== "error"), violations: v });
 }
 
-/** Popularity-distance rule needs booth specs, which /validate does not receive; checked by the agent. */
-export function popularDistanceViolations(
-  venue: Venue,
-  booths: Booth[],
-  specs: BoothSpec[],
-  c: LayoutConstraints,
-): Violation[] {
-  if (c.popular_door_distance <= 0) return [];
-  const pop = new Map(specs.map((s) => [s.id, s.popularity]));
-  return booths
-    .filter((b) => (pop.get(b.id) ?? 0) >= c.popular_threshold)
-    .filter((b) => distanceToNearestEntrance(boothRect(b), venue) < c.popular_door_distance - 1e-6)
-    .map((b) => ({
-      rule_id: "popular-door-distance",
-      severity: "error" as const,
-      message: `Popular booth ${b.id} is closer than ${c.popular_door_distance} m to an entrance`,
-      booth_ids: [b.id],
-      location: center(boothRect(b)),
-      source: "internal:geometry",
-    }));
-}
-
 // ---------- simulate ----------
 
 const HOTSPOT_THRESHOLD = 2.0; // p/m^2
+// Booth crowd = popularity^3 * GAIN, amplified up to (1 + AMP) next to an entrance, decaying over DECAY m.
+const GAIN = 1.6;
+const AMP = 3;
+const DECAY = 6;
 
 export function mockSimulate(input: SimulateRequest): SimResult {
   const req = SimulateRequest.parse(input);
@@ -232,7 +217,7 @@ export function mockSimulate(input: SimulateRequest): SimResult {
   const solid = [...boothRects.map((b) => b.r), ...venue.obstacles.map((o) => polygonBBox(o.polygon))];
   const boothGain = boothRects.map(({ r, p }) => {
     const dE = distanceToNearestEntrance(r, venue);
-    return p ** 3 * 2.0 * (1 + 1.6 * Math.exp(-dE / 7));
+    return p ** 3 * GAIN * (1 + AMP * Math.exp(-dE / DECAY));
   });
 
   const peak: number[] = new Array(cols * rows).fill(0);
