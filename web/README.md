@@ -27,7 +27,7 @@ a recorded run (`fixtures/replay/sample-run.json`).
 | `pnpm lint`, `pnpm typecheck` | ESLint, `tsc --noEmit` |
 | `pnpm gen:engine-types` | regenerate lib/engine/openapi.{json,gen.ts} from engine/ (needs uv); run after changing engine/app/schemas.py |
 | `pnpm test` | vitest (contract, revision translator, scenario guard, loop e2e, stream/replay) |
-| `pnpm record:replay` | Re-records `fixtures/replay/sample-run.json` by running the real loop against the mock engine with the stub LLM (deterministic; a test asserts the committed file still matches). |
+| `pnpm record:replay` | Re-records `fixtures/replay/sample-run.json` by running the real loop against the mock engine with the stub LLM (deterministic; a test asserts the committed file still matches), and writes each iteration's trajectories to `public/replay/traj/<run_id>.json` (mock engine; `TRAJ_ENGINE_URL=http://localhost:8000` records them from the real engine). |
 | `pnpm smoke:tools` | With `MODEL_API_KEY` set, checks the model calls two tools in sequence through the AI SDK; skips cleanly without a key. |
 | `pnpm sync:fixtures` | Copies `../fixtures/sample_hall.json` into `fixtures/` (a test checks they match). |
 
@@ -36,12 +36,15 @@ a recorded run (`fixtures/replay/sample-run.json`).
 ```
 app/page.tsx                 review console (server component → <ReviewConsole/>)
 app/api/agent/route.ts       GET status · POST live/replay UI message stream
+app/api/trajectories/route.ts POST SimulateRequest → engine /trajectories (LIVE_AGENT=on, caps, LRU)
+components/hall-3d/          3D replay (React Three Fiber): scene, instanced agents, shared clock, before/after
 components/                  hall-view (SVG), panels (timeline, metric cards, comparison, report), review-console
 lib/engine/contract.ts       zod mirror of engine/app/schemas.py (runtime validation)
 lib/engine/openapi.gen.ts    types generated from the engine's OpenAPI spec (pnpm gen:engine-types)
 lib/engine/contract-drift.ts compile-time check that contract.ts matches openapi.gen.ts
 lib/engine/client.ts         typed HTTP client (ENGINE_URL, zod-validated responses, timeouts)
-lib/engine/mock.ts           deterministic mock engine (ENGINE_MOCK=1)
+lib/engine/mock.ts           deterministic mock engine (ENGINE_MOCK=1); mock-trajectories.ts for /trajectories
+lib/trajectory/              hall→world mapping (coords.ts), playback math, SimulateRequest rebuild
 lib/agent/loop.ts            the code-controlled loop
 lib/agent/revision.ts        revision vocabulary (zod) + revision → LayoutRequest translator
 lib/agent/scenario.ts        identical-conditions guard
@@ -107,6 +110,24 @@ Baseten-hosted `meta-models/muse-spark-open-1026`. Structured outputs use forced
 (`toolChoice: { type: 'tool', toolName }`), so only OpenAI-style function calling is required.
 Unless `AGENT_LLM_FALLBACK=off`, a failing model call falls back to the stub for that step and
 the UI shows a note.
+
+## 3D pedestrian replay
+
+The hall card has a **2D / 3D** toggle; **Before / after 3D** (hall card) or **▶ Replay before / after in
+3D** (Before / after card) opens baseline and a revised iteration side by side with one shared clock
+and linked cameras. Controls: play/pause, scrub (simulated seconds), 1×/5×/20×, loop, camera presets
+(overview, top-down, entrance). Agents are one `InstancedMesh`, linearly interpolated between frames,
+hidden outside their track, colored by local speed (amber = dwelling, blue = walking).
+
+Data: the UI rebuilds the iteration's exact `SimulateRequest` from the stream (`data-run` venue/booths,
+`data-layout`, `data-sim` result scenario + `params` {grid_cell, max_wall_time_s, trajectory_dt}) so
+`/trajectories` returns the same `run_id` (the engine caches it). Replay runs fetch
+`/replay/traj/<run_id>.json`; live runs `POST /api/trajectories?expect=<run_id>`. Trajectories never go
+into the agent stream or LLM input. Coordinates: hall (x, y) → three.js world (x, h, −y)
+(`lib/trajectory/coords.ts`).
+
+Route env: `TRAJECTORY_MAX_AGENTS` (default 1000), `TRAJECTORY_MAX_CONCURRENT` (2),
+`ENGINE_TRAJECTORIES_TIMEOUT_MS` (120000; effective max(this, max_wall_time_s + 60 s)).
 
 ## Engine contract assumptions
 

@@ -15,9 +15,13 @@
  *   therefore sits near the entrance and shrinks when popular booths move away.
  *   Same inputs (incl. scenario seed) → identical output.
  *
+ * - /trajectories: see ./mock-trajectories.ts (aisle-following walkers consistent with the
+ *   layout and this density field).
+ *
  * All outputs are parsed through the contract schemas, like the HTTP client.
  */
 import type { Engine } from "./client";
+import { mockTrajectories } from "./mock-trajectories";
 import {
   LayoutRequest,
   LayoutResponse,
@@ -331,6 +335,7 @@ export function createMockEngine(): Engine {
     layout: async (req) => mockLayout(req),
     validate: async (req) => mockValidate(req),
     simulate: async (req) => mockSimulate(req),
+    trajectories: async (req) => mockTrajectories(req),
     queue: async (req) => mockQueue(req),
   };
 }
