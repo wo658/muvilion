@@ -1,0 +1,239 @@
+/**
+ * Engine data contract (TypeScript side).
+ *
+ * MIRRORS engine/app/schemas.py (Pydantic, the source of truth) by hand.
+ * TODO: replace with types generated from the engine's OpenAPI spec once the
+ * engine is running (e.g. openapi-typescript + a zod generator).
+ *
+ * Conventions (same as the engine):
+ * - Units: meters, seconds, persons per square meter.
+ * - Coordinates: origin at the hall's bottom-left corner, x to the right, y UP.
+ *   (SVG is y-down, so the renderer must flip y.)
+ * - Booth position (x, y) is the booth's bottom-left corner after rotation.
+ *
+ * Fields with a Pydantic default use `.default(...)`, so `z.input<>` matches
+ * what may be sent and `z.infer<>` (output) has every field filled in.
+ */
+import { z } from "zod";
+
+// ---------- geometry ----------
+
+export const Point = z.object({ x: z.number(), y: z.number() });
+export type Point = z.infer<typeof Point>;
+
+export const Rect = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+});
+export type Rect = z.infer<typeof Rect>;
+
+// ---------- venue ----------
+
+export const ObstacleKind = z.enum(["column", "restroom", "stage", "registration", "other"]);
+export const Obstacle = z.object({
+  id: z.string(),
+  kind: ObstacleKind,
+  polygon: z.array(Point).min(3),
+});
+export type Obstacle = z.infer<typeof Obstacle>;
+
+export const DoorKind = z.enum(["entrance", "exit", "emergency"]);
+export type DoorKind = z.infer<typeof DoorKind>;
+export const Door = z.object({
+  id: z.string(),
+  kind: DoorKind,
+  /** Door opening as a segment on the hall boundary. */
+  a: Point,
+  b: Point,
+});
+export type Door = z.infer<typeof Door>;
+
+export const Venue = z.object({
+  id: z.string(),
+  name: z.string(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  obstacles: z.array(Obstacle).default([]),
+  doors: z.array(Door).min(1),
+  /** Items the floor-plan reader could not confirm; never filled by guessing. */
+  unknowns: z.array(z.string()).default([]),
+});
+export type Venue = z.infer<typeof Venue>;
+
+// ---------- booths & layout ----------
+
+export const BoothSpec = z.object({
+  id: z.string(),
+  label: z.string(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  /** Relative attraction 0..1; drives dwell time and visit probability. */
+  popularity: z.number().min(0).max(1).default(0.5),
+});
+export type BoothSpec = z.infer<typeof BoothSpec>;
+
+export const Booth = z.object({
+  id: z.string(),
+  x: z.number(),
+  y: z.number(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  rotation: z.union([z.literal(0), z.literal(90)]).default(0),
+});
+export type Booth = z.infer<typeof Booth>;
+
+export const Layout = z.object({
+  id: z.string(),
+  venue_id: z.string(),
+  booths: z.array(Booth),
+});
+export type Layout = z.infer<typeof Layout>;
+
+export const LayoutConstraints = z.object({
+  min_aisle_width: z.number().positive().default(3.0),
+  /** Keep this distance clear in front of every door. */
+  door_clearance: z.number().min(0).default(5.0),
+  wall_margin: z.number().min(0).default(1.0),
+  /** Booths pinned to a position (agent fixes booths it does not want moved). */
+  fixed: z.record(z.string(), Point).default({}),
+  /** Areas no booth may overlap (agent widens an aisle by adding one). */
+  keep_out: z.array(Rect).default([]),
+  /** Popularity >= this must stay at least `popular_door_distance` from entrances. */
+  popular_threshold: z.number().min(0).max(1).default(0.8),
+  popular_door_distance: z.number().min(0).default(0.0),
+});
+export type LayoutConstraints = z.infer<typeof LayoutConstraints>;
+
+/** Pydantic `LayoutConstraints()` defaults. */
+export function defaultConstraints(): LayoutConstraints {
+  return LayoutConstraints.parse({});
+}
+
+// ---------- engine requests / responses ----------
+
+export const LayoutRequest = z.object({
+  venue: Venue,
+  booths: z.array(BoothSpec),
+  constraints: LayoutConstraints.default(() => LayoutConstraints.parse({})),
+  /** Start from this layout and move as little as possible (used on revisions). */
+  previous: Layout.nullable().default(null),
+  seed: z.number().int().default(0),
+  time_limit_s: z.number().positive().max(60).default(10.0),
+});
+export type LayoutRequest = z.infer<typeof LayoutRequest>;
+
+export const LayoutStatus = z.enum(["optimal", "feasible", "infeasible"]);
+export const LayoutResponse = z.object({
+  layout: Layout,
+  status: LayoutStatus,
+  objective: z.number().nullable().default(null),
+  solve_time_s: z.number(),
+});
+export type LayoutResponse = z.infer<typeof LayoutResponse>;
+
+export const Violation = z.object({
+  rule_id: z.string(),
+  severity: z.enum(["error", "warning"]),
+  message: z.string(),
+  booth_ids: z.array(z.string()).default([]),
+  location: Point.nullable().default(null),
+  /** Rule provenance, e.g. "internal:geometry" or a code reference with edition. */
+  source: z.string().default("internal:geometry"),
+});
+export type Violation = z.infer<typeof Violation>;
+
+export const ValidateRequest = z.object({
+  venue: Venue,
+  layout: Layout,
+  constraints: LayoutConstraints.default(() => LayoutConstraints.parse({})),
+});
+export type ValidateRequest = z.infer<typeof ValidateRequest>;
+
+export const ValidateResponse = z.object({
+  ok: z.boolean(),
+  violations: z.array(Violation),
+});
+export type ValidateResponse = z.infer<typeof ValidateResponse>;
+
+export const Scenario = z.object({
+  kind: z.enum(["entry", "browse", "exit"]),
+  agents: z.number().int().positive().max(3000).default(200),
+  duration_s: z.number().positive().max(3600).default(300.0),
+  seed: z.number().int().default(0),
+});
+export type Scenario = z.infer<typeof Scenario>;
+
+export const SimulateRequest = z.object({
+  venue: Venue,
+  layout: Layout,
+  booths: z.array(BoothSpec),
+  scenario: Scenario,
+  grid_cell: z.number().positive().default(2.0),
+});
+export type SimulateRequest = z.infer<typeof SimulateRequest>;
+
+export const DensityGrid = z.object({
+  cell: z.number(),
+  cols: z.number().int(),
+  rows: z.number().int(),
+  /** Row-major, rows from y=0 upward; peak density per cell over the run (p/m^2). */
+  peak: z.array(z.number()),
+});
+export type DensityGrid = z.infer<typeof DensityGrid>;
+
+export const Hotspot = z.object({
+  zone: Rect,
+  peak_density: z.number(),
+  mean_density: z.number(),
+  /** Booths whose footprint is within one cell of the hotspot. */
+  nearby_booth_ids: z.array(z.string()).default([]),
+});
+export type Hotspot = z.infer<typeof Hotspot>;
+
+export const SimResult = z.object({
+  run_id: z.string(),
+  scenario: Scenario,
+  layout_id: z.string(),
+  completed_fraction: z.number(),
+  mean_travel_time_s: z.number(),
+  p90_travel_time_s: z.number(),
+  max_density: z.number(),
+  hotspots: z.array(Hotspot),
+  grid: DensityGrid,
+  sim_time_s: z.number(),
+  wall_time_s: z.number(),
+});
+export type SimResult = z.infer<typeof SimResult>;
+
+export const QueueRequest = z.object({
+  arrivals_per_min: z.number().positive(),
+  service_time_s: z.number().positive(),
+  servers: z.number().int().min(1),
+  duration_min: z.number().positive().default(60),
+  seed: z.number().int().default(0),
+});
+export type QueueRequest = z.infer<typeof QueueRequest>;
+
+export const QueueResult = z.object({
+  mean_wait_s: z.number(),
+  p90_wait_s: z.number(),
+  max_queue_len: z.number().int(),
+  utilization: z.number(),
+});
+export type QueueResult = z.infer<typeof QueueResult>;
+
+/** Shape of GET /health is not in schemas.py; accept any object, `status` if present. */
+export const HealthResponse = z.looseObject({ status: z.string().optional() });
+export type HealthResponse = z.infer<typeof HealthResponse>;
+
+// ---------- project input (fixture shape) ----------
+
+/** What the UI/agent starts from: a venue plus the booths to place. */
+export const ProjectInput = z.object({
+  venue: Venue,
+  booths: z.array(BoothSpec),
+  constraints: LayoutConstraints.optional(),
+});
+export type ProjectInput = z.infer<typeof ProjectInput>;
