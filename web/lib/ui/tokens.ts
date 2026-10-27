@@ -6,8 +6,8 @@
  * - The SVG plan uses `var(--…)`; the 3D scene and canvas textures import `TOKENS` directly.
  *
  * Muse tone (after Meta's Muse developer pages): cool neutral greys, blue-grey ink, one accent
- * (Meta blue) for interactive elements and "the agent changed this", and a white → pale-blue wash
- * for Muse's own surfaces. The white study model stays; saturated color is reserved for crowding.
+ * (Meta blue) for interactive elements and "the agent changed this"; Muse's avatar carries a blue
+ * gradient. The white study model stays; saturated color is reserved for crowding.
  */
 export const TOKENS = {
   // surfaces & ink
@@ -25,10 +25,7 @@ export const TOKENS = {
   accentHover: "#0457CB",
   accentSoft: "#E6EFFC",
   accentInk: "#FFFFFF",
-  // Muse's surfaces (panel wash, avatar)
-  museFrom: "#FFFFFF",
-  museTo: "#C6D4E6",
-  museTint: "#EEF3F9",
+  // Muse's avatar gradient (accent → glow)
   museGlow: "#4F8EF0",
   // status (desaturated so they never compete with crowding)
   ok: "#2F7A5B",
