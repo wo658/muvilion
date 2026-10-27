@@ -50,7 +50,7 @@ Mock recordings pin `MOCK_RECORDING_ENV` (entry, 200, target 3 crowded s/visitor
 | `pnpm dev` / `pnpm build` / `pnpm start` | Next.js |
 | `pnpm lint`, `pnpm typecheck` | ESLint, `tsc --noEmit` |
 | `pnpm gen:engine-types` | regenerate lib/engine/openapi.{json,gen.ts} from engine/ (needs uv); run after changing engine/app/schemas.py |
-| `pnpm test` | vitest (contract, revision translator, scenario guard, loop e2e, stream/replay) |
+| `pnpm test` | vitest (contract, revision translator, scenario guard, loop e2e, stream/replay, narration, Ask Muse) |
 | `pnpm record:replay` | Re-records `fixtures/replay/<venue-id>.json` for every venue by running the real loop with the stub LLM, and writes each iteration's trajectories to `public/replay/traj/<run_id>.json`. Mock engine by default (deterministic); record from the real engine with `RECORD_ENGINE_URL=http://localhost:8000 pnpm record:replay` (engine must be running; re-record after engine or scenario changes). |
 | `pnpm smoke:tools` | With `MODEL_API_KEY` set, checks the model calls two tools in sequence through the AI SDK; skips cleanly without a key. |
 | `pnpm sync:fixtures` | Copies `../fixtures/sample_hall.json` and `../fixtures/outdoor_plaza.json` into `fixtures/` (a test checks they match). |
@@ -60,6 +60,7 @@ Mock recordings pin `MOCK_RECORDING_ENV` (entry, 200, target 3 crowded s/visitor
 ```
 app/page.tsx                 review console (server component → <ReviewConsole/>)
 app/api/agent/route.ts       GET status · POST live/replay UI message stream
+app/api/ask/route.ts         POST AskRequest → plain-text Ask Muse answer (stub unless LIVE_AGENT=on + key)
 app/api/trajectories/route.ts POST SimulateRequest → engine /trajectories (LIVE_AGENT=on, caps, LRU)
 components/hall-3d/          3D replay (React Three Fiber): scene, instanced agents, shared clock, before/after
 components/                  review-console, stage (2D/3D + placement animation), hall-view (SVG plan),
@@ -82,6 +83,10 @@ lib/agent/analysis.ts        metrics, LLM-facing summaries, agent-side checks, s
 lib/agent/report.ts          report assembly (code tables + LLM prose)
 lib/agent/llm*.ts, model.ts  AgentLLM interface, stub, AI SDK implementation, provider config
 lib/agent/stream.ts          AgentEvent → UI message stream encoder (shared by live + replay)
+lib/agent/narrate.ts         Muse's plain-language say events: facts → slots + draft, numbers guard, narrator
+lib/ask/contract.ts          RunDigest / AskRequest (zod)
+lib/ask/digest.ts            buildRunDigest(events): streamed events → RunDigest (pure, client-safe)
+lib/ask/answer.ts            Ask Muse: system prompt, deterministic answers, numbers guard, rate limit
 ```
 
 ## Agent design
@@ -142,7 +147,7 @@ reported as "final"; iteration 0 is the baseline.
 `createUIMessageStreamResponse`). Each loop event becomes a typed data part
 (`data-run`, `data-step` (reconciled by id: running → done), `data-brief`, `data-layout`, `data-validation`,
 `data-sim`, `data-analysis`, `data-revision`, `data-comparison`, `data-report`, `data-done`,
-`data-error`); the report text also streams as a normal text part. Types: `lib/agent/events.ts`
+`data-error`, `data-say`); the report text also streams as a normal text part. Types: `lib/agent/events.ts`
 (`AgentUIMessage`). The UI consumes it with `useChat<AgentUIMessage>` + `DefaultChatTransport`.
 
 ```
@@ -162,6 +167,64 @@ Baseten-hosted `meta-models/muse-spark-open-1026`. Structured outputs use forced
 (`toolChoice: { type: 'tool', toolName }`), so only OpenAI-style function calling is required.
 Unless `AGENT_LLM_FALLBACK=off`, a failing model call falls back to the stub for that step and
 the UI shows a note.
+
+## Muse's voice (narration)
+
+Muse "interprets everything" for a non-expert user: at each moment of the run the loop emits a
+`say` event (`SayInfo`: `moment`, `text`, `tone`, `iteration?`, `booth_ids?`, `needs_approval?`, `by`)
+right after the event it describes, so the UI can sync the canvas to it:
+
+| moment | lands after | example (outdoor plaza, real engine) |
+|---|---|---|
+| `intro` | `run` | "Hi, I'm Muse. I'll lay out 18 market stalls, 6 food trucks and a ticket kiosk at Riverside Park Plaza, then send 300 virtual visitors through it …" |
+| `brief` | `brief` | "Here's my plan: I'll keep walkways at least 3.5 m wide, leave 6 m of open space inside every gate and put the ticket kiosk right beside the main gate." |
+| `placed` | baseline's final `validation` | "All 25 booths fit, with walkways at least 3.5 m wide." |
+| `simulated` | baseline's `comparison` | "With 300 visitors, the area around Food Truck 3 and Food Truck 6 gets packed: the average visitor spends 18 s squeezed in crowds." |
+| `revising` | each applied `revision` | "Next, I'll let 4 of the food trucks move away from the spots the organizer asked for, because … The organizer asked for those spots, so this needs your approval." (`needs_approval`) |
+| `revised` | each later `comparison` | "That helped: crowding dropped from 18 s to 13 s per visitor (27% less)." |
+| `result` | just before `done` | "Crowding dropped 64% (18 s → 6.5 s per visitor). This layout is ready for your review. Before you use it, please approve …" |
+| `caution` | after `result` (or a truncated sim) | one per `venue.unknowns` item, plus truncated/failed runs, remaining rule breaks, mock-engine results |
+
+**Numbers guard.** Code supplies the numbers, the model only chooses wording. For each message code
+builds the facts as formatted *slots* (`{crowded}` = "18 s", `{drop}` = "64%", booth and gate names)
+from run inputs and engine results, plus a deterministic *draft* template. `AgentLLM.narrate` returns
+one template per message using the same `{placeholders}` (model: forced `write_messages` tool with a
+friendly, non-technical American-English system prompt; stub: the drafts). Code fills the slots and
+rejects the text if a placeholder is unknown, if any digit sequence is not a digit sequence of the
+slot values, if it spells a number out ("half", "twice", "forty" …), or if it uses a jargon term
+(`JARGON` in `lib/agent/narrate.ts`: hotspot, p/m², solver, constraint, iteration, baseline, agent …).
+A rejected message falls back to the filled draft with `by: "stub"`. Tone, iteration, booth_ids and
+needs_approval are always set by code (`needs_approval` = the change releases or moves a booth whose
+position the organizer requested in `ProjectInput.constraints.fixed`).
+
+Narration has its own budget (`AGENT_MAX_NARRATION_CALLS`, default 12 calls per run, separate from
+`AGENT_MAX_LLM_CALLS`) and timeout (`AGENT_NARRATION_TIMEOUT_MS`, 15 s); a failed, slow or capped
+call uses the drafts and never stops the run. With `AGENT_LLM=stub` every message is the draft, so
+replays read naturally without a key.
+
+## Ask Muse
+
+`POST /api/ask` with `AskRequest {question, digest, history}` returns the answer as a plain text
+stream (`x-ask-by: stub | <provider>:<model>`). The client builds the digest itself with
+`buildRunDigest(events)` (`lib/ask/digest.ts`, pure): per-iteration crowding, plain change
+descriptions (with booth ids), booths near the worst crowding, approvals (organizer requests the
+changes gave up) and `venue.unknowns`; it works on finished, running and replayed runs alike.
+
+- With `LIVE_AGENT=on`, a model key and `AGENT_LLM` not `stub`, the Meta model answers via
+  `streamText` (system prompt: plain language, digest only, say plainly what isn't known and point to
+  the unknowns, never invent numbers, 2–5 sentences, may suggest what to try next). The full answer
+  is checked before it is streamed out: every number must be in the digest (any common rounding), a
+  percent change between two of its crowding values, a count of its lists, or a number the user
+  wrote; otherwise, and on any error, the deterministic answer is sent.
+- Otherwise the deterministic answer: summary, why was X moved, is it safe, what needs approval,
+  what if more visitors, what if (other), what's still unknown, and a default.
+- Caps: `ASK_MAX_OUTPUT_TOKENS` (400), `ASK_RATE_LIMIT_PER_MIN` (20, per server instance),
+  `ASK_TIMEOUT_MS` (20000), 64 KB request body. `400 bad_request` on invalid input, `429 rate_limited`.
+
+```
+curl -N -X POST http://localhost:3000/api/ask -H 'content-type: application/json' \
+  -d '{"question":"What needs my approval?","digest":{…},"history":[]}'
+```
 
 ## Placement animation
 
