@@ -5,7 +5,7 @@ from __future__ import annotations
 from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
-from app.schemas import Booth, Door, Obstacle, Rect, Venue
+from app.schemas import Booth, Door, Obstacle, Rect, Venue, Zone
 
 
 def footprint_size(booth: Booth) -> tuple[float, float]:
@@ -28,6 +28,11 @@ def inner_hall(venue: Venue, margin: float) -> Polygon:
 
 def obstacle_polygon(obstacle: Obstacle) -> Polygon:
     poly = Polygon([(p.x, p.y) for p in obstacle.polygon])
+    return poly if poly.is_valid else poly.buffer(0)
+
+
+def zone_polygon(zone: Zone) -> Polygon:
+    poly = Polygon([(p.x, p.y) for p in zone.polygon])
     return poly if poly.is_valid else poly.buffer(0)
 
 
