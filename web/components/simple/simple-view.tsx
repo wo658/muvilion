@@ -227,7 +227,7 @@ export function SimpleView() {
               <rect x={9} y={9} width={4} height={4} rx={0.8} />
             </svg>
           </span>
-          <span className="text-[16px] font-semibold tracking-tight text-ink">Layout Engineer</span>
+          <span className="text-[16px] font-semibold tracking-tight text-ink">Pavilion</span>
         </div>
         <VenuePicker value={venueId} onChange={pickVenue} disabled={busy} />
         <div className="ml-auto flex items-center gap-2">
