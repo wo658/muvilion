@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { diffLayouts } from "@/lib/agent/analysis";
 import type { AgentUIMessage } from "@/lib/agent/events";
 import { ACTORS, STEP_ACTORS } from "@/lib/ui/actors";
@@ -13,7 +13,7 @@ import { Hall3DCompare } from "./hall-3d";
 import { HowItWorks } from "./how-it-works";
 import { BriefPanel, Comparison, Conditions, MetricCards, Pipeline, Report, Roles } from "./panels";
 import { placementKey, Stage, viewFor } from "./stage";
-import { ActorTag, Badge, Button, Card, Segmented } from "./ui";
+import { ActorTag, Badge, Button, Kpi, PaneSection, Segmented, Tabs } from "./ui";
 
 type Status = { live: boolean; engine: string; llm: string; maxIterations: number };
 
@@ -30,7 +30,9 @@ export function ReviewConsole() {
   const [placedKey, setPlacedKey] = useState<string | null>(null);
   /** Iteration compared against the baseline in the before/after replay (null = closed). */
   const [compareWith, setCompareWith] = useState<number | null>(null);
-  const compareRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<InspectorTab>("iteration");
+  const [copied, setCopied] = useState(false);
+  const wide = useWide();
 
   const transport = useMemo(() => new DefaultChatTransport<AgentUIMessage>({ api: "/api/agent" }), []);
   const { messages, sendMessage, setMessages, status: chatStatus, error, stop, clearError } = useChat<AgentUIMessage>({ transport });
@@ -86,9 +88,6 @@ export function ReviewConsole() {
     const pick = n ?? (current && current.iteration !== 0 && current.sim ? current.iteration : (finalIt?.iteration ?? simulated[simulated.length - 1]?.iteration));
     if (pick !== undefined && pick !== 0) setCompareWith(pick);
   };
-  useEffect(() => {
-    if (compareWith !== null) compareRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [compareWith]);
   const onPlacementEnd = useCallback((k: string) => setPlacedKey(k), []);
 
   const running = [...new Map(state.steps.map((s) => [s.id, s])).values()].filter((s) => s.status === "running").pop();
@@ -103,157 +102,241 @@ export function ReviewConsole() {
         : "Ready";
   const waiting = busy && !state.iterations.some((i) => i.layout);
   const outdoor = venue.setting === "outdoor";
+  const selectIteration = (i: number) => {
+    setCompareWith(null);
+    setSelected(i);
+    if (animKey) setPlacedKey(animKey);
+  };
+
+  // KPI strip: the iteration on screen (the "after" side while comparing), against the baseline
+  const kpiIt = compareIt ?? current;
+  const m = kpiIt?.sim?.metrics;
+  const b = kpiIt && kpiIt.iteration !== 0 ? baselineIt?.sim?.metrics : undefined;
+  const target = state.run?.targets.max_density;
+  const reportMd = state.report?.markdown ?? state.reportText;
+  const copyReport = () => {
+    void navigator.clipboard?.writeText(reportMd).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    });
+  };
+
+  const runRail = (
+    <>
+      <PaneSection title="Run" right={state.run && <Badge tone={state.run.mode === "live" ? "accent" : "neutral"}>{state.run.mode === "replay" ? "Recorded" : "Live"}</Badge>}>
+        {state.run ? (
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-[12px]">
+            <dt className="text-muted">Engine</dt>
+            <dd className="num truncate text-right text-ink-soft">{state.run.engine}</dd>
+            <dt className="text-muted">LLM</dt>
+            <dd className="num truncate text-right text-ink-soft">{state.run.llm}</dd>
+            <dt className="text-muted">Booths</dt>
+            <dd className="num text-right text-ink-soft">{specs.length}</dd>
+          </dl>
+        ) : (
+          <p className="text-[12px] leading-relaxed text-muted">
+            No run yet.{status && !status.live && " Live runs are off on this server; the recorded run streams the same loop for this venue."}
+          </p>
+        )}
+      </PaneSection>
+      <PaneSection title="Steps" right={busy ? <span className="text-[11px] font-medium text-accent">streaming…</span> : undefined}>
+        <Pipeline steps={state.steps} />
+      </PaneSection>
+      {state.run && (
+        <PaneSection title="Identical conditions">
+          <Conditions run={state.run} />
+        </PaneSection>
+      )}
+    </>
+  );
+
+  const tabs: { id: InspectorTab; label: string; count?: number; dot?: boolean }[] = [
+    { id: "iteration", label: "Iteration" },
+    { id: "results", label: "Results", count: simulated.length || undefined },
+    { id: "agents", label: "Agents", dot: busy },
+    ...(wide ? [] : [{ id: "steps" as const, label: "Steps" }]),
+  ];
+  const activeTab = !wide || tab !== "steps" ? tab : "iteration";
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="z-30 border-b lg:sticky lg:top-0 border-hairline bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1560px] flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3 lg:px-6">
-          <div className="min-w-0 flex-1">
-            <div className="eyebrow">Event layout · review console</div>
-            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-              <h1 className="min-w-0 truncate text-[17px] font-semibold tracking-tight text-ink">{venue.name}</h1>
-              <Badge>{outdoor ? "Outdoor" : "Indoor"}</Badge>
-              <span className="inline-flex min-w-0 items-center gap-1.5 text-[12px] text-muted" role="status" aria-live="polite">
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${busy ? "animate-pulse bg-accent" : state.done ? "bg-ok" : "bg-faint"}`} />
-                <span className="truncate">{statusLine}</span>
-              </span>
-            </div>
-            {state.run && (
-              <div className="num mt-0.5 text-[11px] text-faint">
-                {state.run.mode === "replay" ? "recorded run" : "live run"} · engine {state.run.engine} · LLM {state.run.llm} · {specs.length} booths
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Segmented
-              size="md"
-              label="Venue"
-              value={venueId}
-              onChange={pickVenue}
-              options={VENUES.map((v) => ({ id: v.id, label: v.label, disabled: busy && v.id !== venueId, title: v.project.venue.name }))}
-            />
-            <Button variant="ghost" onClick={() => setExplainer(true)}>
-              How it works
+    <div className="flex min-h-dvh flex-col lg:h-dvh lg:min-h-0">
+      {/* app bar */}
+      <header className="z-30 flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline bg-surface px-3 py-2 lg:px-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Logo />
+          <span className="text-[13.5px] font-semibold tracking-tight text-ink max-sm:hidden">Layout Engineer</span>
+          <span className="text-hairline-strong max-sm:hidden">/</span>
+          <Segmented
+            label="Venue"
+            value={venueId}
+            onChange={pickVenue}
+            options={VENUES.map((v) => ({ id: v.id, label: v.label, disabled: busy && v.id !== venueId, title: v.project.venue.name }))}
+          />
+        </div>
+        <span
+          className="inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full border border-hairline bg-bg px-2.5 text-[11.5px] text-muted max-md:hidden"
+          role="status"
+          aria-live="polite"
+        >
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${busy ? "animate-pulse bg-accent" : state.done ? "bg-ok" : "bg-faint"}`} />
+          <span className="max-w-[22rem] truncate">{statusLine}</span>
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="ghost" onClick={() => setExplainer(true)} className="max-sm:hidden">
+            How it works
+          </Button>
+          <Button onClick={() => start("replay")} disabled={busy}>
+            Watch recorded run
+          </Button>
+          {busy ? (
+            <Button variant="danger" onClick={() => void stop()}>
+              Stop
             </Button>
-            <Button onClick={() => start("replay")} disabled={busy}>
-              Watch recorded run
-            </Button>
+          ) : (
             <Button
               variant="primary"
               onClick={() => start("live")}
-              disabled={busy || !status?.live}
+              disabled={!status?.live}
               title={status && !status.live ? "Live runs are disabled on this server (LIVE_AGENT is not on)" : undefined}
             >
               Run live
             </Button>
-            {busy && (
-              <Button variant="danger" onClick={() => void stop()}>
-                Stop
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1560px] flex-col gap-4 px-4 py-4 lg:px-6 lg:py-5">
-        {status && !status.live && (
-          <p className="rounded-[6px] border border-hairline bg-surface px-3 py-2 text-[12px] text-muted">
-            Live runs are switched off on this server. “Watch recorded run” streams a recorded run of the same loop for the selected venue.
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="rounded-[6px] border border-bad/30 bg-surface px-3 py-2 text-[12.5px] text-bad">
-            {mode === "live" ? "Live run failed: " : ""}
-            {error.message}
-            {mode === "live" && (
-              <button type="button" className="ml-2 underline" onClick={() => start("replay")}>
-                Watch the recorded run instead
-              </button>
-            )}
-          </p>
-        )}
-        {state.errors.map((e, i) => (
-          <p key={i} className={`rounded-[6px] border bg-surface px-3 py-2 text-[12px] ${e.recoverable ? "border-hairline text-muted" : "border-bad/30 text-bad"}`}>
-            {e.recoverable ? "Note: " : "Error: "}
-            {e.message}
-          </p>
-        ))}
-
-        {compareIt && baselineIt && (
-          <div ref={compareRef} className="scroll-mt-24">
-            <Card
-              title={`Before / after · baseline vs ${iterLabel(compareIt.iteration)}`}
-              right={
-                <div className="flex flex-wrap items-center gap-2">
-                  <Segmented
-                    label="Compare with"
-                    value={compareIt.iteration}
-                    onChange={setCompareWith}
-                    options={simulated.filter((i) => i.iteration !== 0).map((i) => ({ id: i.iteration, label: `${iterLabel(i.iteration)}${state.done?.finalIteration === i.iteration ? " · final" : ""}` }))}
-                  />
-                  <Button variant="ghost" className="!h-7 !px-2" onClick={() => setCompareWith(null)} aria-label="Close before/after replay">
-                    Close
-                  </Button>
-                </div>
-              }
-            >
-              <Hall3DCompare
-                before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · max ${baselineIt.sim!.metrics.max_density.toFixed(2)} p/m²` })}
-                after={viewFor(state.run, venue, specs, compareIt, {
-                  showHeatmap: showHeat,
-                  moves: diffLayouts(baselineIt.layout!.response.layout, compareIt.layout!.response.layout),
-                  title: `${iterLabel(compareIt.iteration)} · max ${compareIt.sim!.metrics.max_density.toFixed(2)} p/m²`,
-                })}
-              />
-              <p className="mt-3 text-[11.5px] text-muted">
-                Same agents, scenario and seed; only the layout differs. Booths outlined in teal were moved by the agent relative to the baseline.
-                {state.run?.engine === "mock" && " Mock engine: trajectories are synthetic aisle-following walkers, not a pedestrian model."}
-              </p>
-            </Card>
+      {/* KPI strip */}
+      <div className={`shrink-0 border-b border-hairline bg-surface ${state.run ? "" : "max-lg:hidden"}`}>
+        <div className="grid grid-cols-3 px-4 lg:grid-cols-[minmax(9rem,auto)_repeat(4,minmax(0,1fr))] lg:divide-x lg:divide-hairline lg:px-0">
+          <div className="min-w-0 py-2 pr-3 lg:px-4 lg:py-2.5">
+            <div className="text-[11px] font-medium text-muted">Showing</div>
+            <div className="mt-0.5 text-[15px] font-semibold leading-5 text-ink">
+              {kpiIt ? (kpiIt.iteration === 0 ? "Baseline" : `Iteration ${kpiIt.iteration}`) : "—"}
+              {kpiIt && state.done?.finalIteration === kpiIt.iteration && kpiIt.iteration !== 0 && <span className="ml-1.5 text-[11px] font-medium text-accent">final</span>}
+            </div>
+            <div className="mt-1 h-4 truncate text-[11px] text-faint">
+              {state.done ? `stop: ${state.done.stopReason.replace(/_/g, " ")}` : state.run ? `up to ${state.run.maxIterations} revisions` : "no run yet"}
+            </div>
           </div>
-        )}
+          <Kpi
+            label="Max density"
+            value={m ? m.max_density.toFixed(2) : "—"}
+            unit="p/m²"
+            tone={m && target !== undefined ? (m.max_density <= target ? "ok" : "bad") : undefined}
+            foot={b && m ? <Delta a={b.max_density} b={m.max_density} /> : target !== undefined ? `target ≤ ${target}` : undefined}
+          />
+          <Kpi
+            label="p90 travel time"
+            value={m ? m.p90_travel_time_s.toFixed(0) : "—"}
+            unit="s"
+            foot={b && m ? <Delta a={b.p90_travel_time_s} b={m.p90_travel_time_s} digits={0} unit=" s" /> : undefined}
+          />
+          <Kpi
+            label="Completed"
+            value={m ? (m.completed_fraction * 100).toFixed(0) : "—"}
+            unit="%"
+            foot={b && m ? <Delta a={b.completed_fraction * 100} b={m.completed_fraction * 100} digits={1} unit=" pt" lowerIsBetter={false} /> : undefined}
+          />
+          <Kpi
+            label="Validation errors"
+            value={m ? m.violations : "—"}
+            tone={m ? (m.violations === 0 ? "ok" : "bad") : undefined}
+            foot={kpiIt?.sim ? `${kpiIt.sim.result.hotspots.length} hotspot(s)` : undefined}
+          />
+        </div>
+      </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] xl:grid-cols-[minmax(0,1fr)_400px]">
-          {/* main stage */}
-          <div className="flex min-w-0 flex-col gap-4">
-            <Card
-              title={current ? (current.iteration === 0 ? "Site · baseline layout" : `Site · iteration ${current.iteration}`) : "Site · empty"}
-              right={
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {state.iterations.some((i) => i.layout) && (
-                    <Segmented
-                      label="Iteration"
-                      value={current?.iteration ?? 0}
-                      onChange={(i) => {
-                        setSelected(i);
-                        if (animKey) setPlacedKey(animKey);
-                      }}
-                      options={state.iterations
-                        .filter((i) => i.layout)
-                        .map((i) => ({ id: i.iteration, label: `${iterLabel(i.iteration)}${state.done?.finalIteration === i.iteration && state.iterations.length > 1 ? " ·  final" : ""}` }))}
-                    />
-                  )}
+      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[288px_minmax(0,1fr)_380px]">
+        {/* left rail: run timeline (xl and up; below that it is the Steps tab) */}
+        <aside aria-label="Run timeline" className="hidden min-h-0 overflow-y-auto border-r border-hairline bg-surface xl:block">
+          {runRail}
+        </aside>
+
+        {/* center: canvas and report */}
+        <main className="min-w-0 lg:min-h-0 lg:overflow-y-auto">
+          <div className="sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-2 backdrop-blur">
+            <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-1">
+              <h1 className="min-w-0 truncate text-[14px] font-semibold tracking-tight text-ink">{venue.name}</h1>
+              <Badge>{outdoor ? "Outdoor" : "Indoor"}</Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {compareIt ? (
+                <Segmented
+                  label="Baseline compared with"
+                  value={compareIt.iteration}
+                  onChange={setCompareWith}
+                  options={simulated
+                    .filter((i) => i.iteration !== 0)
+                    .map((i) => ({ id: i.iteration, label: `vs ${iterLabel(i.iteration)}${state.done?.finalIteration === i.iteration ? " · final" : ""}` }))}
+                />
+              ) : (
+                state.iterations.some((i) => i.layout) && (
                   <Segmented
-                    label="View"
-                    value={hallView}
-                    onChange={setHallView}
-                    options={[
-                      { id: "2d", label: "Plan" },
-                      { id: "3d", label: "Model" },
-                    ]}
+                    label="Iteration"
+                    value={current?.iteration ?? 0}
+                    onChange={selectIteration}
+                    options={state.iterations
+                      .filter((i) => i.layout)
+                      .map((i) => ({ id: i.iteration, label: `${iterLabel(i.iteration)}${state.done?.finalIteration === i.iteration && state.iterations.length > 1 ? " · final" : ""}` }))}
                   />
-                  <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
-                    <input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} />
-                    Crowding
-                  </label>
-                  {canCompare && (
-                    <Button className="!h-7 !px-2.5 text-[11.5px]" onClick={() => openCompare()}>
-                      Before / after 3D
-                    </Button>
-                  )}
-                </div>
-              }
-            >
+                )
+              )}
+              <Segmented
+                label="View"
+                value={compareIt ? "compare" : hallView}
+                onChange={(v) => {
+                  if (v === "compare") return openCompare();
+                  setCompareWith(null);
+                  setHallView(v);
+                }}
+                options={[
+                  { id: "2d", label: "Plan" },
+                  { id: "3d", label: "Model" },
+                  { id: "compare", label: "Before / after", disabled: !canCompare, title: canCompare ? "Baseline and a revision side by side in 3D" : "Available once a revision has been simulated" },
+                ]}
+              />
+              <label className="flex h-6 items-center gap-1.5 text-[11.5px] text-muted">
+                <input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} />
+                Crowding
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 p-4">
+            {error && (
+              <p role="alert" className="rounded-[6px] border border-bad/30 bg-surface px-3 py-2 text-[12.5px] text-bad">
+                {mode === "live" ? "Live run failed: " : ""}
+                {error.message}
+                {mode === "live" && (
+                  <button type="button" className="ml-2 underline" onClick={() => start("replay")}>
+                    Watch the recorded run instead
+                  </button>
+                )}
+              </p>
+            )}
+            {state.errors.map((e, i) => (
+              <p key={i} className={`rounded-[6px] border bg-surface px-3 py-2 text-[12px] ${e.recoverable ? "border-hairline text-muted" : "border-bad/30 text-bad"}`}>
+                {e.recoverable ? "Note: " : "Error: "}
+                {e.message}
+              </p>
+            ))}
+
+            {compareIt && baselineIt ? (
+              <div>
+                <Hall3DCompare
+                  before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · max ${baselineIt.sim!.metrics.max_density.toFixed(2)} p/m²` })}
+                  after={viewFor(state.run, venue, specs, compareIt, {
+                    showHeatmap: showHeat,
+                    moves: diffLayouts(baselineIt.layout!.response.layout, compareIt.layout!.response.layout),
+                    title: `${iterLabel(compareIt.iteration)} · max ${compareIt.sim!.metrics.max_density.toFixed(2)} p/m²`,
+                  })}
+                />
+                <p className="mt-3 text-[11.5px] text-muted">
+                  Same agents, scenario and seed; only the layout differs. Booths outlined in teal were moved by the agent relative to the baseline.
+                  {state.run?.engine === "mock" && " Mock engine: trajectories are synthetic aisle-following walkers, not a pedestrian model."}
+                </p>
+              </div>
+            ) : (
               <Stage
                 run={state.run}
                 venue={venue}
@@ -264,93 +347,168 @@ export function ReviewConsole() {
                 showHeat={showHeat}
                 waiting={waiting}
                 onPlacementEnd={onPlacementEnd}
-              />
-            </Card>
-
-            {state.brief && (
-              <Card
-                title={
-                  <span className="inline-flex items-center gap-2">
-                    Design brief <ActorTag id="muse" /> <span className="text-faint">→</span> <ActorTag id="code" />
-                  </span>
+                empty={
+                  <div className="w-full max-w-sm rounded-[10px] border border-hairline bg-surface p-5 text-center shadow-[0_16px_40px_-16px_rgb(30_30_28/0.3)]">
+                    <div className="eyebrow">Empty site</div>
+                    <h2 className="mt-1 text-[15px] font-semibold tracking-tight text-ink">
+                      Place {specs.length} booths on {venue.name}
+                    </h2>
+                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+                      The agent writes a design brief, solves the layout, simulates the crowd and revises until peak density is under target.
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <Button variant="primary" onClick={() => start(status?.live ? "live" : "replay")} disabled={busy}>
+                        {status?.live ? "Run live" : "Watch recorded run"}
+                      </Button>
+                      <Button variant="ghost" onClick={() => setExplainer(true)}>
+                        How it works
+                      </Button>
+                    </div>
+                    {status && !status.live && <p className="mt-3 text-[11px] text-faint">Live runs are off on this server; the recording streams the same loop.</p>}
+                  </div>
                 }
-              >
-                <BriefPanel brief={state.brief} />
-              </Card>
+              />
             )}
 
-            {current && (
-              <Card title={`What the agent saw and did · ${current.iteration === 0 ? "baseline" : `iteration ${current.iteration}`}`}>
-                <IterationNotes it={current} />
-              </Card>
-            )}
-          </div>
-
-          {/* right column */}
-          <div className="flex min-w-0 flex-col gap-4">
-            <Card title="Pipeline · who does what" right={busy ? <span className="text-[11px] font-medium text-accent">streaming…</span> : undefined}>
-              <Roles steps={state.steps} run={state.run} />
-            </Card>
-            {state.iterations.some((i) => i.sim) && (
-              <Card title="Iterations" right={state.run && <span className="num text-[11px] text-faint">target ≤ {state.run.targets.max_density} p/m²</span>}>
-                <MetricCards
-                  iterations={state.iterations}
-                  selected={current?.iteration ?? -1}
-                  onSelect={(i) => {
-                    setSelected(i);
-                    if (animKey) setPlacedKey(animKey);
-                  }}
-                  target={state.run?.targets.max_density}
-                  finalIteration={state.done?.finalIteration}
-                />
-              </Card>
-            )}
-            {state.done?.baseline && state.done.final && (
-              <Card title="Before / after" right={<span className="text-[11px] text-faint">stop: {state.done.stopReason.replace(/_/g, " ")}</span>}>
-                <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} />
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {canCompare && (
-                    <Button variant="primary" className="!h-7 text-[11.5px]" onClick={() => openCompare(state.done!.finalIteration)}>
-                      Replay before / after in 3D
-                    </Button>
-                  )}
-                  {finalIt && finalIt.iteration !== current?.iteration && (
-                    <Button variant="ghost" className="!h-7 text-[11.5px]" onClick={() => setSelected(finalIt.iteration)}>
-                      Show final layout
-                    </Button>
-                  )}
+            {reportMd && (
+              <section className="mt-2 rounded-[8px] border border-hairline bg-surface">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline px-5 py-2.5">
+                  <h2 className="inline-flex items-center gap-2 text-[13px] font-semibold text-ink">
+                    Reviewer report <ActorTag id="muse" /> <span className="text-[11px] font-normal text-faint">prose ·</span> <ActorTag id="code" />{" "}
+                    <span className="text-[11px] font-normal text-faint">tables</span>
+                  </h2>
+                  <Button variant="ghost" className="!h-7 !px-2 text-[11.5px]" onClick={copyReport} disabled={!state.report}>
+                    {copied ? "Copied" : "Copy markdown"}
+                  </Button>
                 </div>
-              </Card>
-            )}
-            <Card title="Run steps">
-              <div className="max-h-[34rem] overflow-y-auto pr-1">
-                <Pipeline steps={state.steps} />
-              </div>
-            </Card>
-            {state.run && (
-              <Card title="Identical conditions">
-                <Conditions run={state.run} />
-              </Card>
+                <div className="px-5 py-4">
+                  <div className="mx-auto max-w-[820px]">
+                    <Report markdown={reportMd} />
+                  </div>
+                </div>
+              </section>
             )}
           </div>
-        </div>
+        </main>
 
-        {(state.report || state.reportText) && (
-          <Card
-            title={
-              <span className="inline-flex items-center gap-2">
-                Report for reviewer <ActorTag id="muse" /> <span className="text-faint">prose ·</span> <ActorTag id="code" /> <span className="text-faint">tables</span>
-              </span>
-            }
-          >
-            <div className="mx-auto max-w-[880px]">
-              <Report markdown={state.report?.markdown ?? state.reportText} />
-            </div>
-          </Card>
-        )}
+        {/* right: inspector */}
+        <aside aria-label="Inspector" className="min-w-0 border-t border-hairline bg-surface lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-t-0">
+          <div className="sticky top-0 z-10 bg-surface">
+            <Tabs label="Inspector" tabs={tabs} value={activeTab} onChange={setTab} />
+          </div>
+          {activeTab === "iteration" &&
+            (current || state.brief ? (
+              <>
+                {current && (
+                  <PaneSection title={`What the agent saw and did · ${current.iteration === 0 ? "baseline" : `iteration ${current.iteration}`}`}>
+                    <IterationNotes it={current} />
+                  </PaneSection>
+                )}
+                {state.brief && (
+                  <PaneSection
+                    title={
+                      <span className="inline-flex items-center gap-2">
+                        Design brief <ActorTag id="muse" /> <span className="text-faint">→</span> <ActorTag id="code" />
+                      </span>
+                    }
+                  >
+                    <BriefPanel brief={state.brief} />
+                  </PaneSection>
+                )}
+              </>
+            ) : (
+              <EmptyPane>Start a run to see, for each iteration, what the solver placed, what the checks found, what the simulation measured and what the agent changed.</EmptyPane>
+            ))}
+          {activeTab === "results" &&
+            (simulated.length ? (
+              <>
+                <PaneSection title="Iterations" right={target !== undefined && <span className="num text-[11px] text-faint">target ≤ {target} p/m²</span>}>
+                  <MetricCards
+                    iterations={state.iterations}
+                    selected={current?.iteration ?? -1}
+                    onSelect={selectIteration}
+                    target={target}
+                    finalIteration={state.done?.finalIteration}
+                  />
+                </PaneSection>
+                {state.done?.baseline && state.done.final && (
+                  <PaneSection title="Before / after">
+                    <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} />
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {canCompare && (
+                        <Button variant="primary" className="!h-7 text-[11.5px]" onClick={() => openCompare(state.done!.finalIteration)}>
+                          Replay before / after in 3D
+                        </Button>
+                      )}
+                      {finalIt && (finalIt.iteration !== current?.iteration || compareIt) && (
+                        <Button variant="ghost" className="!h-7 text-[11.5px]" onClick={() => selectIteration(finalIt.iteration)}>
+                          Show final layout
+                        </Button>
+                      )}
+                    </div>
+                  </PaneSection>
+                )}
+              </>
+            ) : (
+              <EmptyPane>Metrics appear here once the baseline has been simulated: peak density, p90 travel time, completion and validation errors per iteration.</EmptyPane>
+            ))}
+          {activeTab === "agents" && (
+            <PaneSection title="Who does what">
+              <Roles steps={state.steps} run={state.run} />
+            </PaneSection>
+          )}
+          {activeTab === "steps" && runRail}
+        </aside>
       </div>
       <HowItWorks open={explainer} onClose={() => setExplainer(false)} />
     </div>
+  );
+}
+
+type InspectorTab = "iteration" | "results" | "agents" | "steps";
+
+const WIDE = "(min-width: 1280px)";
+/** True at the `xl` breakpoint, where the run timeline gets its own rail. */
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const q = window.matchMedia(WIDE);
+      q.addEventListener("change", cb);
+      return () => q.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(WIDE).matches,
+    () => true,
+  );
+}
+
+function Logo() {
+  return (
+    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[6px] bg-accent text-white" aria-hidden>
+      <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.3}>
+        <rect x={2} y={2} width={12} height={12} rx={1.5} />
+        <rect x={4.5} y={4.5} width={3} height={3} fill="currentColor" stroke="none" />
+        <rect x={8.5} y={4.5} width={3} height={3} fill="currentColor" stroke="none" opacity={0.55} />
+        <rect x={4.5} y={8.5} width={3} height={3} fill="currentColor" stroke="none" opacity={0.55} />
+        <rect x={8.5} y={8.5} width={3} height={3} fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+  );
+}
+
+function EmptyPane({ children }: { children: React.ReactNode }) {
+  return <p className="px-4 py-6 text-[12.5px] leading-relaxed text-muted">{children}</p>;
+}
+
+/** Change from baseline `a` to `b`, colored by whether it is an improvement. */
+function Delta({ a, b, lowerIsBetter = true, digits = 2, unit = "" }: { a: number; b: number; lowerIsBetter?: boolean; digits?: number; unit?: string }) {
+  const d = b - a;
+  const zero = Math.abs(d) < 10 ** -digits / 2;
+  const good = lowerIsBetter ? d < 0 : d > 0;
+  return (
+    <span className="num">
+      <span className={zero ? "text-faint" : good ? "text-ok" : "text-bad"}>{zero ? "±0" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(digits)}${unit}`}</span>
+      <span className="font-sans text-faint"> vs baseline</span>
+    </span>
   );
 }
 

@@ -65,7 +65,7 @@ export function HallView({
   return (
     <svg
       viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad + 1.2}`}
-      className="h-auto w-full select-none"
+      className="h-auto max-h-[calc(100dvh-15rem)] w-full select-none"
       role="img"
       aria-label={`Site plan of ${venue.name}`}
       style={{ fontFamily: "var(--font-inter), system-ui, sans-serif" }}

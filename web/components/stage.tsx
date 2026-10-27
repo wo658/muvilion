@@ -4,7 +4,7 @@
  * Main stage: the site in 2D (plan) or 3D (model) for the selected iteration, and the
  * "empty site → placed layout" animation driven by the solver's improving solutions.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { BoothMove, RunInfo } from "@/lib/agent/events";
 import type { BoothSpec, LayoutConstraints, Venue } from "@/lib/engine/contract";
 import { simulateRequestFor } from "@/lib/trajectory/request";
@@ -94,6 +94,7 @@ export function Stage({
   showHeat,
   waiting,
   onPlacementEnd,
+  empty,
 }: {
   run?: RunInfo;
   venue: Venue;
@@ -106,6 +107,8 @@ export function Stage({
   waiting: boolean;
   /** Called with the animation key once the placement animation has played or been skipped. */
   onPlacementEnd?: (key: string) => void;
+  /** Call to action drawn over the empty site before any run has started. */
+  empty?: ReactNode;
 }) {
   const layoutInfo = current?.layout;
   const steps = layoutInfo?.response.steps ?? [];
@@ -128,7 +131,7 @@ export function Stage({
             view={viewFor(run, venue, specs, current, { showHeatmap: heat, booths, moves: frame ? [] : undefined })}
           />
         ) : (
-          <div className="overflow-hidden rounded-[6px] border border-hairline bg-[var(--bg)] p-2 sm:p-3">
+          <div className="overflow-hidden rounded-[8px] border border-hairline bg-surface p-2 shadow-[0_1px_2px_rgb(30_30_28/0.04)] sm:p-4">
             <HallView
               venue={venue}
               specs={specs}
@@ -161,10 +164,10 @@ export function Stage({
               Empty site · Muse is reading the site and writing the brief…
             </span>
           )}
-          {!frame && !run && (
-            <span className="rounded-[4px] border border-hairline bg-surface/95 px-2 py-1 text-[11px] text-muted">Empty site · start a run to place the booths</span>
-          )}
         </div>
+        {!frame && !run && !waiting && empty && (
+          <div className="mt-3 flex items-center justify-center sm:absolute sm:inset-0 sm:mt-0 sm:bg-[color-mix(in_srgb,var(--bg)_55%,transparent)] sm:p-4">{empty}</div>
+        )}
         {frame && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 h-[3px] overflow-hidden rounded-full bg-hairline/70">
             <div className="h-full bg-accent" style={{ width: `${frame.progress * 100}%` }} />
