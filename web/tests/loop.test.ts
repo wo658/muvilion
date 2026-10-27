@@ -16,6 +16,10 @@ function recordingEngine() {
   return { engine, sims };
 }
 
+// The mock engine's crowding model is tuned for the entry scenario; pin it so these tests
+// don't follow the demo defaults in lib/agent/config.ts.
+const MOCK_ENV = { AGENT_SCENARIO_KIND: "entry", AGENT_TARGET_MAX_DENSITY: "2.0" };
+
 async function run(env: Record<string, string> = {}, engine?: Engine) {
   const events: AgentEvent[] = [];
   const rec = recordingEngine();
@@ -23,7 +27,7 @@ async function run(env: Record<string, string> = {}, engine?: Engine) {
     project: project(),
     engine: engine ?? rec.engine,
     llm: createStubLLM(),
-    config: loadAgentConfig(env),
+    config: loadAgentConfig({ ...MOCK_ENV, ...env }),
     runId: "test",
     emit: (e) => events.push(e),
     now: () => new Date(0),
@@ -111,7 +115,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
     // A keep-out covering most of the hall makes the first layout infeasible.
     p.constraints = { ...defaultConstraints(), keep_out: [{ x: 0, y: 0, w: 40, h: 15 }] };
     const events: AgentEvent[] = [];
-    await runAgentLoop({ project: p, engine: createMockEngine(), llm: createStubLLM(), config: loadAgentConfig({}), runId: "fix", emit: (e) => events.push(e) });
+    await runAgentLoop({ project: p, engine: createMockEngine(), llm: createStubLLM(), config: loadAgentConfig(MOCK_ENV), runId: "fix", emit: (e) => events.push(e) });
     const fixes = events.filter((e) => e.type === "revision" && e.data.purpose === "fix_validation");
     expect(fixes.length).toBeGreaterThan(0);
     const v = events.filter((e) => e.type === "validation");
@@ -125,7 +129,7 @@ describe("agent loop (mock engine + stub LLM)", () => {
       project: project(),
       engine: createMockEngine(),
       llm: withCallCap(createStubLLM(), 1),
-      config: loadAgentConfig({}),
+      config: loadAgentConfig(MOCK_ENV),
       runId: "cap",
       emit: (e) => events.push(e),
     });

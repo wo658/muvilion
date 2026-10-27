@@ -7,7 +7,7 @@ import { Trajectories, type Layout } from "@/lib/engine/contract";
 import { mockSimulate } from "@/lib/engine/mock";
 import { replayTrajectoryUrl, simulateRequestFor } from "@/lib/trajectory/request";
 
-const events = (recording as { events: AgentEvent[] }).events;
+const { events, engine } = recording as { events: AgentEvent[]; engine: "mock" | "http" };
 
 describe("replay trajectory fixtures", () => {
   it("exist for every simulated iteration of the recording and match its run ids", () => {
@@ -24,8 +24,8 @@ describe("replay trajectory fixtures", () => {
       expect(t.run_id).toBe(e.data.result.run_id);
       expect(t.layout_id).toBe(e.data.result.layout_id);
       expect(t.dt).toBe(e.data.params.trajectory_dt);
-      // the request the UI rebuilds yields the same run id from the mock engine
-      expect(mockSimulate(simulateRequestFor(run!, layouts.get(e.data.iteration)!, e.data)).run_id).toBe(t.run_id);
+      // the request the UI rebuilds yields the same run id (checkable offline only for a mock recording)
+      if (engine === "mock") expect(mockSimulate(simulateRequestFor(run!, layouts.get(e.data.iteration)!, e.data)).run_id).toBe(t.run_id);
       n++;
     }
     expect(n).toBe(3);

@@ -6,7 +6,13 @@ import { recordSampleRun } from "@/lib/agent/recording";
 import { asReplay, createEventEncoder } from "@/lib/agent/stream";
 
 describe("replay fixture", () => {
-  it("is genuine loop output (re-recording reproduces it exactly)", async () => {
+  it("re-recording against the mock engine is deterministic", async () => {
+    const [a, b] = [await recordSampleRun(), await recordSampleRun()];
+    expect(JSON.parse(JSON.stringify(a))).toEqual(JSON.parse(JSON.stringify(b)));
+  });
+
+  // A fixture recorded from the real engine can only be re-checked with the engine running.
+  it.runIf((recording as { engine: string }).engine === "mock")("is genuine loop output (re-recording reproduces it exactly)", async () => {
     const fresh = await recordSampleRun();
     expect(JSON.parse(JSON.stringify(fresh))).toEqual(recording);
   });

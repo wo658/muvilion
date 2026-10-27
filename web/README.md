@@ -27,7 +27,7 @@ a recorded run (`fixtures/replay/sample-run.json`).
 | `pnpm lint`, `pnpm typecheck` | ESLint, `tsc --noEmit` |
 | `pnpm gen:engine-types` | regenerate lib/engine/openapi.{json,gen.ts} from engine/ (needs uv); run after changing engine/app/schemas.py |
 | `pnpm test` | vitest (contract, revision translator, scenario guard, loop e2e, stream/replay) |
-| `pnpm record:replay` | Re-records `fixtures/replay/sample-run.json` by running the real loop against the mock engine with the stub LLM (deterministic; a test asserts the committed file still matches), and writes each iteration's trajectories to `public/replay/traj/<run_id>.json` (mock engine; `TRAJ_ENGINE_URL=http://localhost:8000` records them from the real engine). |
+| `pnpm record:replay` | Re-records `fixtures/replay/sample-run.json` by running the real loop with the stub LLM, and writes each iteration's trajectories to `public/replay/traj/<run_id>.json`. Mock engine by default (deterministic); the committed demo fixture is recorded from the real engine with `RECORD_ENGINE_URL=http://localhost:8000 pnpm record:replay` (engine must be running; re-record after engine or scenario changes). |
 | `pnpm smoke:tools` | With `MODEL_API_KEY` set, checks the model calls two tools in sequence through the AI SDK; skips cleanly without a key. |
 | `pnpm sync:fixtures` | Copies `../fixtures/sample_hall.json` into `fixtures/` (a test checks they match). |
 
