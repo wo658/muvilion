@@ -62,10 +62,12 @@ def main() -> None:
         }
         req = {"venue": venue, "layout": layout, "booths": specs, "scenario": scenario}
         r = client.post("/simulate", json=req).json()
+        tr = client.post("/trajectories", json=req).json()  # cache hit: no second run
         print(
             f"simulate {kind:<6} done={r['completed_fraction']:.2f}  "
             f"travel mean/p90={r['mean_travel_time_s']:.0f}/{r['p90_travel_time_s']:.0f}s  "
-            f"max_density={r['max_density']:.2f} p/m²  wall={r['wall_time_s']:.1f}s"
+            f"max_density={r['max_density']:.2f} p/m²  wall={r['wall_time_s']:.1f}s  "
+            f"tracks={len(tr['agents'])}x{tr['frames']}f"
         )
         for h in r["hotspots"][:3]:
             z = h["zone"]
