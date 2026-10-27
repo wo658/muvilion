@@ -5,7 +5,7 @@
  */
 import type { Scenario, Venue } from "@/lib/engine/contract";
 import { round } from "@/lib/geometry";
-import type { AnalysisInfo, Decision, Metrics, RevisionInfo, Targets } from "./events";
+import type { AnalysisInfo, BriefInfo, Decision, Metrics, RevisionInfo, Targets } from "./events";
 
 export const DISCLAIMER =
   "This is a planning draft produced by an AI agent from simulation output. It is not a permit, fire-code or crowd-safety certification; a qualified reviewer must confirm it against the venue's actual conditions and applicable regulations.";
@@ -67,6 +67,7 @@ export type ReportParts = {
   finalIteration: number;
   revisions: RevisionInfo[];
   analyses: AnalysisInfo[];
+  brief?: BriefInfo | null;
   remainingWarnings: string[];
 };
 
@@ -89,6 +90,15 @@ export function reportBody(p: ReportParts): string {
   );
   lines.push(metricsTable(baseline, final), "");
   lines.push(`Stop reason: **${p.stopReason.replace(/_/g, " ")}** — ${p.stopDetail}.`, "");
+
+  if (p.brief) {
+    lines.push("## Design brief (initial constraints)", "");
+    lines.push(`${p.brief.rationale}`, "");
+    if (p.brief.applied.length === 0) lines.push("- Default constraints kept.");
+    for (const a of p.brief.applied) lines.push(`- ${a.effect}`);
+    for (const x of p.brief.rejected) lines.push(`- _rejected:_ ${x.reason}`);
+    lines.push("", "Booth coordinates were then computed by the layout solver under these constraints.", "");
+  }
 
   lines.push("## What changed and why", "");
   // Improvements after iteration N shape iteration N+1; validation fixes act within iteration N.

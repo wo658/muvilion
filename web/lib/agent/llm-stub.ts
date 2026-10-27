@@ -3,6 +3,7 @@
  * the replay fixture, and as a fallback when the live model misbehaves.
  * It only ever emits the same structured outputs a real model would.
  */
+import { normalizeBrief, ruleBasedBrief } from "./brief";
 import type { AgentLLM, AnalysisOutput } from "./llm";
 import { normalizeRevision, type RevisionToolInput } from "./revision";
 
@@ -15,6 +16,10 @@ function chunks(text: string): string[] {
 export function createStubLLM(): AgentLLM {
   return {
     name: "stub",
+
+    async designBrief({ site }) {
+      return normalizeBrief(ruleBasedBrief(site));
+    },
 
     async analyze({ summary }) {
       const hs = summary.hotspots;
@@ -116,7 +121,8 @@ export function createStubLLM(): AgentLLM {
     async reportNarrative(input, onDelta) {
       const moved = input.revisions.filter((r) => r.purpose === "improve");
       const text = [
-        `The agent started from an entrance-first draft layout of ${input.venueName} and simulated it under one fixed scenario. ` +
+        (input.brief ? `Design brief: ${input.brief.rationale} ` : "") +
+          `The solver placed the booths of ${input.venueName} under those constraints and the layout was simulated under one fixed scenario. ` +
           `${input.analyses[0]?.summary ?? "No hotspot analysis was needed."}`,
         "",
         moved.length > 0
