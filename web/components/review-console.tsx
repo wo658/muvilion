@@ -5,6 +5,7 @@ import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { diffLayouts } from "@/lib/agent/analysis";
 import type { AgentUIMessage } from "@/lib/agent/events";
+import { latestRunMessage, runUserMessage } from "@/lib/chat/transport";
 import { ACTORS, STEP_ACTORS } from "@/lib/ui/actors";
 import { ruleLabel } from "@/lib/ui/rules";
 import { deriveRunState } from "@/lib/ui/run-state";
@@ -61,20 +62,23 @@ export function ReviewConsole({ chat, venueId: venueProp, onVenueChange, onClose
   }, []);
 
   const busy = chatStatus === "submitted" || chatStatus === "streaming";
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const state = useMemo(() => deriveRunState(lastAssistant), [lastAssistant]);
+  // A shared chat also holds Muse's answers to questions: show its latest run.
+  const runMessage = useMemo(() => latestRunMessage(messages), [messages]);
+  const state = useMemo(() => deriveRunState(runMessage), [runMessage]);
   const option = venueById(venueId) ?? VENUES[0];
 
   const reset = () => {
     clearError();
-    setMessages([]);
+    // The shared chat is the simple view's conversation (one per venue): keep it, add to it.
+    if (!chat) setMessages([]);
     setSelected(null);
     setCompareWith(null);
   };
   const start = (m: "live" | "replay") => {
     reset();
     setMode(m);
-    void sendMessage({ text: m === "live" ? "Start live run" : "Replay recorded run" }, { body: runRequestBody(m, option.id) });
+    // The metadata drives /api/chat (shared chat); the body drives /api/agent (own chat).
+    void sendMessage(runUserMessage(m, option.id), { body: runRequestBody(m, option.id) });
   };
   const pickVenue = (id: string) => {
     if (id === venueId || busy) return;

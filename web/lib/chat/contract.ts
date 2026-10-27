@@ -7,6 +7,7 @@
  *   { id, intent: "ask", venue, question, digest, history }    → an answer about one run
  */
 import { z } from "zod";
+import type { AskRequest } from "@/lib/ask/contract";
 
 export const ChatRequestBase = z.object({
   /** The chat id (one conversation per venue in the simple view). */
@@ -35,3 +36,6 @@ export const ChatAskRequest = ChatRequestBase.extend({
 
 export const ChatRequest = z.discriminatedUnion("intent", [ChatRunRequest, ChatAskRequest]);
 export type ChatRequest = z.infer<typeof ChatRequest>;
+
+/** The body the client builds (ask fields typed as AskRequest). */
+export type ChatBody = ChatRunRequest | ({ id?: string; intent: "ask"; venue: string } & AskRequest);
