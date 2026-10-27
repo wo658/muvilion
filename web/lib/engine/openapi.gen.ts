@@ -160,6 +160,24 @@ export interface components {
              */
             kind: "booth" | "tent" | "food_truck" | "kiosk";
         };
+        /**
+         * Congestion
+         * @description Sustained congestion: how much crowding there was and for how long, not just its peak.
+         */
+        Congestion: {
+            /** Threshold */
+            threshold: number;
+            /** Crowded Person S */
+            crowded_person_s: number;
+            /** Crowded Area M2S */
+            crowded_area_m2s: number;
+            /** Crowded S Per Visitor */
+            crowded_s_per_visitor: number;
+            /** Peak Crowded Area M2 */
+            peak_crowded_area_m2: number;
+            /** Worst Hotspot Mean Density */
+            worst_hotspot_mean_density: number;
+        };
         /** DensityGrid */
         DensityGrid: {
             /** Cell */
@@ -407,6 +425,7 @@ export interface components {
             p90_travel_time_s: number;
             /** Max Density */
             max_density: number;
+            congestion: components["schemas"]["Congestion"];
             /** Hotspots */
             hotspots: components["schemas"]["Hotspot"][];
             grid: components["schemas"]["DensityGrid"];
@@ -442,6 +461,11 @@ export interface components {
              * @default 0.5
              */
             trajectory_dt: number;
+            /**
+             * Crowd Threshold
+             * @default 2
+             */
+            crowd_threshold: number;
         };
         /** Trajectories */
         Trajectories: {
