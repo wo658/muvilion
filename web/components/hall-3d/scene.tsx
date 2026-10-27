@@ -18,6 +18,7 @@ import { boothRect, center, doorMid, polygonBBox } from "@/lib/geometry";
 import { toWorld } from "@/lib/trajectory/coords";
 import { heatRgba, HEAT_MAX } from "@/lib/ui/heat";
 import type { AnimatedBooth } from "@/lib/ui/placement";
+import { shortLabel } from "@/lib/ui/plain";
 import { inwardNormal, wallSegments } from "@/lib/ui/site";
 import { Label } from "./label";
 import { PALETTE as P } from "./palette";
@@ -37,9 +38,15 @@ export type HallSceneProps = {
   fixed?: Record<string, Point>;
   showHeatmap?: boolean;
   showLabels?: boolean;
+  /** Booths to call out (outline + label), e.g. the ones a Muse message is about. */
+  highlight?: string[];
+  /** Door name tags (ids like "D-main"); off in the simple view. */
+  showDoorLabels?: boolean;
+  /** Short booth names without "· moved" / "· pinned" (simple view). */
+  plainLabels?: boolean;
 };
 
-export function HallScene({ venue, specs, booths, grid, hotspots = [], moves = [], fixed = {}, showHeatmap = true, showLabels = true }: HallSceneProps) {
+export function HallScene({ venue, specs, booths, grid, hotspots = [], moves = [], fixed = {}, showHeatmap = true, showLabels = true, highlight, showDoorLabels = true, plainLabels = false }: HallSceneProps) {
   const W = venue.width;
   const H = venue.height;
   const S = Math.max(W, H);
@@ -62,12 +69,12 @@ export function HallScene({ venue, specs, booths, grid, hotspots = [], moves = [
       {showHeatmap && grid && <HeatDecal grid={grid} width={W} height={H} />}
       {outdoor ? <Fence venue={venue} /> : <Walls venue={venue} />}
       {venue.doors.map((d) => (
-        <DoorMarker key={d.id} door={d} venue={venue} showLabel={showLabels} />
+        <DoorMarker key={d.id} door={d} venue={venue} showLabel={showLabels && showDoorLabels} />
       ))}
       {venue.obstacles.map((o) => (
         <ObstacleModel key={o.id} obstacle={o} />
       ))}
-      {booths && <Booths booths={booths} specs={specs} moves={moves} fixed={fixed} showLabels={showLabels} />}
+      {booths && <Booths booths={booths} specs={specs} moves={moves} fixed={fixed} showLabels={showLabels} highlight={highlight} plain={plainLabels} />}
       {hotspots.map((h, i) => (
         <HotspotRing key={i} index={i} hotspot={h} showLabel={showLabels} />
       ))}
@@ -352,17 +359,22 @@ function Booths({
   moves,
   fixed,
   showLabels,
+  highlight,
+  plain = false,
 }: {
   booths: AnimatedBooth[];
   specs: BoothSpec[];
   moves: BoothMove[];
   fixed: Record<string, Point>;
   showLabels: boolean;
+  highlight?: string[];
+  plain?: boolean;
 }) {
   const geo = useBoothGeometries();
   const [hover, setHover] = useState<string | null>(null);
   const spec = new Map(specs.map((s) => [s.id, s]));
   const moved = new Map(moves.map((m) => [m.booth_id, m]));
+  const hi = new Set(highlight ?? []);
   return (
     <group>
       {booths.map((b) => {
@@ -370,6 +382,7 @@ function Booths({
         const c = center(r);
         const s = spec.get(b.id);
         const mv = moved.get(b.id);
+        const lit = hi.has(b.id);
         const from = mv ? center(boothRect({ ...b, ...mv.from })) : null;
         const kind: BoothKind = s?.kind ?? "booth";
         const lift = (1 - b.alpha) * 3.5;
@@ -378,7 +391,7 @@ function Booths({
           <group key={b.id}>
             <group position={toWorld(c.x, c.y, lift)} onPointerOver={over} onPointerOut={() => setHover((h) => (h === b.id ? null : h))}>
               <BoothModel kind={kind} w={r.w} d={r.h} alpha={b.alpha} geo={geo} />
-              {mv && b.alpha >= 1 && <BoxOutline w={r.w - 0.1} d={r.h - 0.1} h={kind === "tent" ? 2.35 : kind === "food_truck" ? 2.45 : BOOTH_HEIGHT} />}
+              {(mv || lit) && b.alpha >= 1 && <BoxOutline w={r.w - 0.1} d={r.h - 0.1} h={kind === "tent" ? 2.35 : kind === "food_truck" ? 2.45 : BOOTH_HEIGHT} />}
             </group>
             {from && b.alpha >= 1 && (
               <>
@@ -389,15 +402,15 @@ function Booths({
                 <Line points={[toWorld(from.x, from.y, 0.08), toWorld(c.x, c.y, 0.08)]} color={P.accent} lineWidth={2} dashed dashSize={0.5} gapSize={0.3} />
               </>
             )}
-            {showLabels && b.alpha >= 1 && (hover === b.id || mv) && (
+            {showLabels && b.alpha >= 1 && (hover === b.id || (mv && !plain) || lit) && (
               <Label
-                text={`${s?.label ?? b.id}${mv ? " · moved" : ""}${fixed[b.id] ? " · pinned" : ""}`}
+                text={plain ? shortLabel(s?.label ?? b.id) : `${s?.label ?? b.id}${mv ? " · moved" : ""}${fixed[b.id] ? " · pinned" : ""}`}
                 position={toWorld(c.x, c.y, BOOTH_HEIGHT + 1.3)}
-                color={mv ? P.accent : P.labelFg}
+                color={mv || lit ? P.accent : P.labelFg}
                 background={P.labelBg}
-                border={mv ? P.accent : P.grid}
-                height={0.8}
-                bold={Boolean(mv)}
+                border={mv || lit ? P.accent : P.grid}
+                height={lit ? 1 : 0.8}
+                bold={Boolean(mv || lit)}
               />
             )}
           </group>

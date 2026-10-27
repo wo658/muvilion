@@ -11,4 +11,8 @@ const Placeholder = () => (
 
 export const Hall3DPanel = dynamic(() => import("./viewer").then((m) => m.Hall3DPanel), { ssr: false, loading: Placeholder });
 export const Hall3DCompare = dynamic(() => import("./viewer").then((m) => m.Hall3DCompare), { ssr: false, loading: Placeholder });
-export type { ViewSpec } from "./viewer";
+export const Hall3DStage = dynamic(() => import("./viewer").then((m) => m.Hall3DStage), {
+  ssr: false,
+  loading: () => <div className="h-full w-full animate-pulse bg-sunken/60" aria-label="Loading the 3D model" />,
+});
+export type { StageFocus, ViewSpec } from "./viewer";
