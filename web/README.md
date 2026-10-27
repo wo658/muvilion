@@ -16,8 +16,31 @@ Run the full loop without Python or an API key:
 ENGINE_MOCK=1 AGENT_LLM=stub LIVE_AGENT=on pnpm dev
 ```
 
-With `LIVE_AGENT` unset/off the console still works: **Watch sample run** streams
-a recorded run (`fixtures/replay/sample-run.json`).
+With `LIVE_AGENT` unset/off the console still works: **Watch recorded run** streams
+the recorded run of the venue picked in the header (`fixtures/replay/<venue-id>.json`).
+
+## Who does what
+
+Muse decides intent; the open-source engines compute; our code keeps the comparison honest.
+The LLM never produces a number: coordinates come from OR-Tools, checks from Shapely, metrics
+from JuPedSim, and every table in the report from code. (Same table in `lib/ui/actors.ts`,
+which drives the pipeline panel and the **How it works** explainer.)
+
+| Component | Role |
+|---|---|
+| **Muse** (Meta Model API) | Reads the site and writes the design brief; interprets simulation results; decides revisions; writes the report prose. |
+| **OR-Tools CP-SAT** | Computes booth coordinates satisfying the constraints (no overlap, aisle widths, door clearance, keep-outs) and minimises displacement on revisions. |
+| **Shapely** | Geometry checks: overlap, outside the site, obstacle/zone conflicts, aisle width, reachability of every booth and door, fire-lane continuity. |
+| **JuPedSim** | Pedestrian simulation: agents walk, queue and dwell; outputs density, travel time, completion and trajectories. |
+| **SimPy** | Queue model for ticket/registration desks (`POST /queue`). Available, not called by the loop yet — shown as idle. |
+| **Code** (ours) | Locks the scenario so before/after are compared under identical conditions; translates intent into constraints; aggregates metrics; renders the views. |
+
+## Venues
+
+The header's **Indoor hall / Outdoor plaza** control picks a sample venue (`lib/venues`): live runs
+POST that venue's project, replays stream its recording. A venue may override scenario fields for
+live runs and real-engine recordings (the outdoor plaza uses an entry rush of 400 visitors, seed 0);
+mock recordings pin `MOCK_RECORDING_ENV` (entry, 200, target 2.0 p/m², tuned for the mock).
 
 ## Scripts
 
@@ -27,9 +50,9 @@ a recorded run (`fixtures/replay/sample-run.json`).
 | `pnpm lint`, `pnpm typecheck` | ESLint, `tsc --noEmit` |
 | `pnpm gen:engine-types` | regenerate lib/engine/openapi.{json,gen.ts} from engine/ (needs uv); run after changing engine/app/schemas.py |
 | `pnpm test` | vitest (contract, revision translator, scenario guard, loop e2e, stream/replay) |
-| `pnpm record:replay` | Re-records `fixtures/replay/sample-run.json` by running the real loop with the stub LLM, and writes each iteration's trajectories to `public/replay/traj/<run_id>.json`. Mock engine by default (deterministic); the committed demo fixture is recorded from the real engine with `RECORD_ENGINE_URL=http://localhost:8000 pnpm record:replay` (engine must be running; re-record after engine or scenario changes). |
+| `pnpm record:replay` | Re-records `fixtures/replay/<venue-id>.json` for every venue by running the real loop with the stub LLM, and writes each iteration's trajectories to `public/replay/traj/<run_id>.json`. Mock engine by default (deterministic); record from the real engine with `RECORD_ENGINE_URL=http://localhost:8000 pnpm record:replay` (engine must be running; re-record after engine or scenario changes). |
 | `pnpm smoke:tools` | With `MODEL_API_KEY` set, checks the model calls two tools in sequence through the AI SDK; skips cleanly without a key. |
-| `pnpm sync:fixtures` | Copies `../fixtures/sample_hall.json` into `fixtures/` (a test checks they match). |
+| `pnpm sync:fixtures` | Copies `../fixtures/sample_hall.json` and `../fixtures/outdoor_plaza.json` into `fixtures/` (a test checks they match). |
 
 ## Layout
 
@@ -38,7 +61,13 @@ app/page.tsx                 review console (server component → <ReviewConsole
 app/api/agent/route.ts       GET status · POST live/replay UI message stream
 app/api/trajectories/route.ts POST SimulateRequest → engine /trajectories (LIVE_AGENT=on, caps, LRU)
 components/hall-3d/          3D replay (React Three Fiber): scene, instanced agents, shared clock, before/after
-components/                  hall-view (SVG), panels (timeline, metric cards, comparison, report), review-console
+components/                  review-console, stage (2D/3D + placement animation), hall-view (SVG plan),
+                             panels (roles, pipeline steps, brief, metrics, comparison, report), how-it-works, ui
+lib/ui/tokens.ts             design tokens (the one place colors are defined; written to CSS variables by app/layout.tsx)
+lib/ui/actors.ts             who-does-what table (pipeline panel, explainer)
+lib/ui/placement.ts          empty site → placed layout animation over LayoutResponse.steps
+lib/venues/                  sample venues (indoor hall, outdoor plaza), per-venue scenario overrides
+lib/agent/brief.ts           design brief: site summary for the LLM, brief vocabulary (zod), brief → first LayoutRequest
 lib/engine/contract.ts       zod mirror of engine/app/schemas.py (runtime validation)
 lib/engine/openapi.gen.ts    types generated from the engine's OpenAPI spec (pnpm gen:engine-types)
 lib/engine/contract-drift.ts compile-time check that contract.ts matches openapi.gen.ts
@@ -58,6 +87,17 @@ lib/agent/stream.ts          AgentEvent → UI message stream encoder (shared by
 
 The control flow is fixed in code; the LLM only does judgment.
 
+0. **brief** (once, on the empty site) — the LLM reads a code-built site summary (setting, doors,
+   zones, obstacles, unknowns, booth list, expected attendance) and returns a design brief through the
+   forced `submit_design_brief` tool: a rationale plus initial constraint choices (`min_aisle_width`,
+   `door_clearance`, `popular_threshold`/`popular_door_distance`, `keep_clear_at_doors` (open area in
+   front of a gate — the rectangle is computed in code from the door geometry), `keep_out` rects,
+   `place_near_door` (a spot beside the door, outside its walking line, clear of obstacles, zones,
+   clearances and keep-outs — computed in code and pinned in `fixed`)). Each item is zod-validated;
+   set_* and keep-outs go through the revision translator (`applyRevision` with no layout, so
+   `previous` stays null). The stub's rule-based brief: outdoor → wider aisles and gate clearance,
+   kiosks beside the main gate; indoor → defaults, popular booths away from the entrance only at
+   high attendance. Emitted as `data-brief`.
 1. **generate** — `POST /layout` with the current constraints (`previous` set on revisions).
 2. **validate** — `POST /validate` plus agent-side checks the engine cannot do without booth
    specs (`popular_door_distance`, missing booths, infeasible solve). On errors the LLM proposes
@@ -88,7 +128,7 @@ The best valid iteration (lowest max density) is reported as "final"; iteration 
 
 `POST /api/agent` returns an AI SDK UI message stream (`createUIMessageStream` +
 `createUIMessageStreamResponse`). Each loop event becomes a typed data part
-(`data-run`, `data-step` (reconciled by id: running → done), `data-layout`, `data-validation`,
+(`data-run`, `data-step` (reconciled by id: running → done), `data-brief`, `data-layout`, `data-validation`,
 `data-sim`, `data-analysis`, `data-revision`, `data-comparison`, `data-report`, `data-done`,
 `data-error`); the report text also streams as a normal text part. Types: `lib/agent/events.ts`
 (`AgentUIMessage`). The UI consumes it with `useChat<AgentUIMessage>` + `DefaultChatTransport`.
@@ -111,13 +151,30 @@ Baseten-hosted `meta-models/muse-spark-open-1026`. Structured outputs use forced
 Unless `AGENT_LLM_FALLBACK=off`, a failing model call falls back to the stub for that step and
 the UI shows a note.
 
+## Placement animation
+
+`LayoutResponse.steps` (the solver's improving solutions, last = final) drive an "empty site →
+placed layout" opening in both views (`lib/ui/placement.ts`): the empty site with the brief's
+keep-outs, booths dropping in at the first feasible solution, then gliding through every later
+solution (eased, by step index — not `t_s`) into the final layout, ~4 s, skippable and replayable.
+The console holds the stage on the baseline until it has played; replays pause the stream for the
+same time after the first layout so it plays before the simulation results arrive.
+
+## Visual language
+
+"Architectural model": warm off-white ground, white matte booth models with soft shadows, hairline
+plan drawing, Inter + IBM Plex Mono figures, one deep-teal accent for interaction and "the agent
+changed this". Saturated color is reserved for crowding (transparent → amber → orange → red,
+`lib/ui/heat.ts`), used by the plan's soft density gradient, the 3D floor decal and pedestrians,
+which turn from grey to amber/red with their instantaneous local density. Tokens: `lib/ui/tokens.ts`.
+
 ## 3D pedestrian replay
 
-The hall card has a **2D / 3D** toggle; **Before / after 3D** (hall card) or **▶ Replay before / after in
+The site card has a **Plan / Model** toggle; **Before / after 3D** (hall card) or **▶ Replay before / after in
 3D** (Before / after card) opens baseline and a revised iteration side by side with one shared clock
 and linked cameras. Controls: play/pause, scrub (simulated seconds), 1×/5×/20×, loop, camera presets
 (overview, top-down, entrance). Agents are one `InstancedMesh`, linearly interpolated between frames,
-hidden outside their track, colored by local speed (amber = dwelling, blue = walking).
+hidden outside their track, colored by local density (binned per frame into 1.5 m cells).
 
 Data: the UI rebuilds the iteration's exact `SimulateRequest` from the stream (`data-run` venue/booths,
 `data-layout`, `data-sim` result scenario + `params` {grid_cell, max_wall_time_s, trajectory_dt}) so
