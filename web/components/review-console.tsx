@@ -112,7 +112,7 @@ export function ReviewConsole() {
   const kpiIt = compareIt ?? current;
   const m = kpiIt?.sim?.metrics;
   const b = kpiIt && kpiIt.iteration !== 0 ? baselineIt?.sim?.metrics : undefined;
-  const target = state.run?.targets.max_density;
+  const target = state.run?.targets.crowded_s_per_visitor;
   const reportMd = state.report?.markdown ?? state.reportText;
   const copyReport = () => {
     void navigator.clipboard?.writeText(reportMd).then(() => {
@@ -219,11 +219,11 @@ export function ReviewConsole() {
             </div>
           </div>
           <Kpi
-            label="Max density"
-            value={m ? m.max_density.toFixed(2) : "—"}
-            unit="p/m²"
-            tone={m && target !== undefined ? (m.max_density <= target ? "ok" : "bad") : undefined}
-            foot={b && m ? <Delta a={b.max_density} b={m.max_density} /> : target !== undefined ? `target ≤ ${target}` : undefined}
+            label={`Crowded time per visitor (≥ ${m?.crowd_threshold ?? state.run?.crowdThreshold ?? 2} p/m²)`}
+            value={m ? m.crowded_s_per_visitor.toFixed(1) : "—"}
+            unit="s"
+            tone={m && target !== undefined ? (m.crowded_s_per_visitor <= target ? "ok" : "bad") : undefined}
+            foot={b && m ? <Delta a={b.crowded_s_per_visitor} b={m.crowded_s_per_visitor} digits={1} unit=" s" /> : target !== undefined ? `target ≤ ${target} s` : undefined}
           />
           <Kpi
             label="p90 travel time"
@@ -324,11 +324,11 @@ export function ReviewConsole() {
             {compareIt && baselineIt ? (
               <div>
                 <Hall3DCompare
-                  before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · max ${baselineIt.sim!.metrics.max_density.toFixed(2)} p/m²` })}
+                  before={viewFor(state.run, venue, specs, baselineIt, { showHeatmap: showHeat, moves: [], title: `Baseline · ${baselineIt.sim!.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor` })}
                   after={viewFor(state.run, venue, specs, compareIt, {
                     showHeatmap: showHeat,
                     moves: diffLayouts(baselineIt.layout!.response.layout, compareIt.layout!.response.layout),
-                    title: `${iterLabel(compareIt.iteration)} · max ${compareIt.sim!.metrics.max_density.toFixed(2)} p/m²`,
+                    title: `${iterLabel(compareIt.iteration)} · ${compareIt.sim!.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor`,
                   })}
                 />
                 <p className="mt-3 text-[11.5px] text-muted">
@@ -422,7 +422,7 @@ export function ReviewConsole() {
           {activeTab === "results" &&
             (simulated.length ? (
               <>
-                <PaneSection title="Iterations" right={target !== undefined && <span className="num text-[11px] text-faint">target ≤ {target} p/m²</span>}>
+                <PaneSection title="Iterations" right={target !== undefined && <span className="num text-[11px] text-faint">target ≤ {target} s crowded (≥ {state.run?.crowdThreshold ?? 2} p/m²)</span>}>
                   <MetricCards
                     iterations={state.iterations}
                     selected={current?.iteration ?? -1}
@@ -433,7 +433,7 @@ export function ReviewConsole() {
                 </PaneSection>
                 {state.done?.baseline && state.done.final && (
                   <PaneSection title="Before / after">
-                    <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} />
+                    <Comparison baseline={state.done.baseline} final={state.done.final} finalIteration={state.done.finalIteration} target={target} />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {canCompare && (
                         <Button variant="primary" className="!h-7 text-[11.5px]" onClick={() => openCompare(state.done!.finalIteration)}>
@@ -580,7 +580,8 @@ function IterationNotes({ it }: { it: NonNullable<ReturnType<typeof deriveRunSta
             <ActorTag id="jupedsim" /> Simulation
           </>,
           <span className="num">
-            max {it.sim.metrics.max_density.toFixed(2)} p/m² · p90 {it.sim.metrics.p90_travel_time_s.toFixed(0)} s · {it.sim.result.hotspots.length} hotspot(s)
+            {it.sim.metrics.crowded_s_per_visitor.toFixed(1)} s crowded per visitor (≥ {it.sim.metrics.crowd_threshold} p/m²) · {it.sim.metrics.crowded_person_s.toFixed(0)} person-s · peak crowded area {it.sim.metrics.peak_crowded_area_m2.toFixed(0)} m² · p90 {it.sim.metrics.p90_travel_time_s.toFixed(0)} s · {(it.sim.metrics.completed_fraction * 100).toFixed(0)}% completed · {it.sim.result.hotspots.length} hotspot(s)
+            <span className="text-faint"> · max {it.sim.metrics.max_density.toFixed(2)} p/m²</span>
           </span>,
         )}
       {it.comparison &&

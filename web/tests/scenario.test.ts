@@ -17,6 +17,8 @@ describe("ScenarioGuard (identical conditions)", () => {
     expect(a.scenario).toEqual(scenario);
     expect(b.scenario).toEqual(a.scenario);
     expect(b.grid_cell).toBe(2);
+    expect(b.crowd_threshold).toBe(2);
+    expect(new ScenarioGuard(scenario, 2, p.venue, p.booths, 60, 1.5).request(layout).crowd_threshold).toBe(1.5);
     expect(Object.isFrozen(g.scenario)).toBe(true);
   });
 
@@ -40,6 +42,7 @@ describe("ScenarioGuard (identical conditions)", () => {
       { ...ok, scenario: { ...ok.scenario, kind: "exit" as const } },
       { ...ok, grid_cell: 1 },
       { ...ok, max_wall_time_s: 600 },
+      { ...ok, crowd_threshold: 1.5 },
       { ...ok, venue: { ...ok.venue, width: 41 } },
       { ...ok, booths: ok.booths.map((b) => (b.id === "B03" ? { ...b, popularity: 0.1 } : b)) },
     ];
@@ -52,5 +55,6 @@ describe("ScenarioGuard (identical conditions)", () => {
     const res = mockSimulate(g.request(layout));
     expect(() => g.assertResult(res)).not.toThrow();
     expect(() => g.assertResult({ ...res, scenario: { ...res.scenario, seed: 7 } })).toThrow(ScenarioMismatchError);
+    expect(() => g.assertResult({ ...res, congestion: { ...res.congestion, threshold: 1.5 } })).toThrow(/crowd threshold/);
   });
 });

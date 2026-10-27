@@ -213,6 +213,8 @@ export const SimulateRequest = z.object({
   max_wall_time_s: z.number().positive().max(600).default(60.0),
   /** Sampling interval for recorded agent positions (served by POST /trajectories). */
   trajectory_dt: z.number().positive().max(5).default(0.5),
+  /** A grid cell counts as crowded while its density is at or above this (p/m^2). */
+  crowd_threshold: z.number().positive().default(2.0),
 });
 export type SimulateRequest = z.infer<typeof SimulateRequest>;
 /** What may be sent (Pydantic-defaulted fields optional). */
@@ -236,6 +238,22 @@ export const Hotspot = z.object({
 });
 export type Hotspot = z.infer<typeof Hotspot>;
 
+/** Sustained congestion: how much crowding there was and for how long, not just its peak. */
+export const Congestion = z.object({
+  threshold: z.number(),
+  /** Sum over sampled frames of (people standing in crowded cells) x frame interval. */
+  crowded_person_s: z.number(),
+  /** Sum over sampled frames of (area of crowded cells) x frame interval. */
+  crowded_area_m2s: z.number(),
+  /** crowded_person_s / agents that entered: time the average visitor spent crowded. */
+  crowded_s_per_visitor: z.number(),
+  /** Largest crowded area at any single sampled frame. */
+  peak_crowded_area_m2: z.number(),
+  /** Highest Hotspot.mean_density (density averaged over the run), 0 when there are no hotspots. */
+  worst_hotspot_mean_density: z.number(),
+});
+export type Congestion = z.infer<typeof Congestion>;
+
 export const SimResult = z.object({
   run_id: z.string(),
   scenario: Scenario,
@@ -244,6 +262,7 @@ export const SimResult = z.object({
   mean_travel_time_s: z.number(),
   p90_travel_time_s: z.number(),
   max_density: z.number(),
+  congestion: Congestion,
   hotspots: z.array(Hotspot),
   grid: DensityGrid,
   sim_time_s: z.number(),

@@ -138,7 +138,8 @@ function unit(from: Point, to: Point): Point {
  * - `previous` is set to the revised layout so the solver moves as little as possible;
  * - `seed` and `time_limit_s` are carried over unchanged;
  * - `move_booth` shifts that booth's anchor in `previous` (the solver keeps it as
- *   close as feasible to the new anchor) instead of pinning an unchecked coordinate.
+ *   close as feasible to the new anchor) instead of pinning an unchecked coordinate;
+ * - `unpin_booth` also removes the booth from `previous`, so it is placed freely.
  */
 export function applyRevision(ctx: RevisionContext, revision: Revision): TranslatedRevision {
   const base = LayoutRequest.parse(ctx.request);
@@ -206,7 +207,12 @@ export function applyRevision(ctx: RevisionContext, revision: Revision): Transla
           break;
         }
         delete c.fixed[action.booth_id];
-        applied.push({ action, effect: `${action.booth_id} unpinned` });
+        // A pinned position was requested, not chosen by the solver: drop its displacement anchor
+        // too, so the solver re-places the booth instead of keeping it where the pin held it.
+        const i = prevBooths.findIndex((b) => b.id === action.booth_id);
+        if (i >= 0) prevBooths.splice(i, 1);
+        byId.delete(action.booth_id);
+        applied.push({ action, effect: `${action.booth_id} unpinned and free to move` });
         break;
       }
       case "widen_aisle_at_hotspot": {

@@ -7,7 +7,8 @@
  *     generate (/layout) → validate (/validate + agent checks)
  *       └ on errors: LLM proposes constraint fixes → regenerate (≤ maxFixAttempts)
  *     simulate (/simulate, scenario locked by ScenarioGuard)
- *     compare vs previous + baseline → stop (target met / no improvement / max iterations)?
+ *     compare vs previous + baseline on crowded s/visitor → stop (target met / no improvement /
+ *       max iterations)? (completion guard: fewer visitors finishing never counts as better)
  *     analyze (LLM on summarized metrics) → revise (LLM tool call → zod → LayoutRequest with `previous`)
  *   report (code tables + LLM prose)
  */
@@ -86,7 +87,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
   const now = opts.now ?? (() => new Date());
   const venue = project.venue;
   const specs = project.booths;
-  const guard = new ScenarioGuard(config.scenario, config.gridCell, venue, specs, config.simMaxWallTimeS);
+  const guard = new ScenarioGuard(config.scenario, config.gridCell, venue, specs, config.simMaxWallTimeS, config.crowdThreshold);
   const initialConstraints = project.constraints ?? defaultConstraints();
 
   emit({
@@ -100,6 +101,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
       initialConstraints,
       scenario: { ...guard.scenario },
       gridCell: guard.gridCell,
+      crowdThreshold: guard.crowdThreshold,
       scenarioFingerprint: guard.fingerprint,
       targets: config.targets,
       maxIterations: config.maxIterations,
@@ -276,7 +278,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
           return res;
         },
         (r) =>
-          `max ${r.max_density} p/m², p90 ${r.p90_travel_time_s}s, ${r.hotspots.length} hotspot(s)` +
+          `crowded ${r.congestion.crowded_s_per_visitor} s/visitor (≥ ${r.congestion.threshold} p/m²), p90 ${r.p90_travel_time_s}s, ${r.hotspots.length} hotspot(s), max ${r.max_density} p/m²` +
           (r.truncated ? " — TRUNCATED at max_wall_time_s (not comparable)" : ""),
       );
       const metrics = metricsOf(sim, validation.violations);
@@ -284,6 +286,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
         grid_cell: simReq!.grid_cell,
         max_wall_time_s: simReq!.max_wall_time_s,
         trajectory_dt: simReq!.trajectory_dt,
+        crowd_threshold: simReq!.crowd_threshold,
       };
       emit({ type: "sim", data: { iteration: it, result: sim, metrics, params } });
       summary = summarizeIteration({
@@ -318,6 +321,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
           iteration: it,
           metrics,
           valid: outcome.valid,
+          completionOk: d.completionOk,
           previous: records.length > 1 ? records[records.length - 2].outcome.metrics : null,
           baseline: records[0].outcome.metrics,
           bestIteration: d.best,
@@ -384,7 +388,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
   // ---- report ----
   let report = "";
   const baselineIteration = 0;
-  const finalIteration = records.length ? bestIteration(records.map((r) => r.outcome)) : 0;
+  const finalIteration = records.length ? bestIteration(records.map((r) => r.outcome), config.targets.max_completion_drop) : 0;
   const baseline = records[0]?.outcome.metrics ?? null;
   const finalRec = records.find((r) => r.iteration === finalIteration);
   if (records.length > 0 && baseline && finalRec) {
@@ -393,6 +397,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
         venue,
         scenario: guard.scenario,
         gridCell: guard.gridCell,
+        crowdThreshold: guard.crowdThreshold,
         fingerprint: guard.fingerprint,
         targets: config.targets,
         engineKind: engine.kind,
@@ -420,6 +425,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
             finalIteration,
             baseline,
             final: finalRec.outcome.metrics,
+            targets: config.targets,
             revisions: revisions.map(({ iteration, purpose, rationale, applied }) => ({ iteration, purpose, rationale, applied })),
             analyses: analyses.map(({ iteration, summary }) => ({ iteration, summary })),
             unknowns: venue.unknowns,

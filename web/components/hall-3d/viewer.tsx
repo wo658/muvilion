@@ -20,9 +20,8 @@ import { trajectoryDuration } from "@/lib/trajectory/playback";
 import { Agents } from "./agents";
 import { createClock, SPEEDS, useClockView, usePlaybackLoop, type Clock } from "./clock";
 import { inwardNormal } from "@/lib/ui/site";
-import { HEAT_GRADIENT } from "@/lib/ui/heat";
-import { TOKENS } from "@/lib/ui/tokens";
-import { Segmented, Swatch } from "../ui";
+import { CROWD_AMBER, CROWD_GRADIENT, CROWD_RED, CROWD_THRESHOLD, HEAT_GRADIENT, HEAT_MAX, THRESHOLD_AT } from "@/lib/ui/heat";
+import { Segmented, Swatch, ThresholdBar } from "../ui";
 import { PALETTE } from "./palette";
 import { HallScene, type HallSceneProps } from "./scene";
 import { useTrajectories, type TrajectorySource, type TrajectoryState } from "./use-trajectories";
@@ -343,11 +342,11 @@ function PlaybackBar({
 export function Legend3D() {
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted">
-      <Swatch label="Pedestrian (grey → amber → red with local crowding)">
-        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: `linear-gradient(90deg, rgb(158 156 148), ${TOKENS.heat0}, ${TOKENS.heat2}, ${TOKENS.heat3})` }} />
+      <Swatch label={`Pedestrian: grey, amber once local density ≥ ${CROWD_THRESHOLD} p/m² (crowded), red by ${CROWD_RED}`}>
+        <ThresholdBar background={CROWD_GRADIENT} at={CROWD_AMBER / (CROWD_RED + 0.5)} />
       </Swatch>
-      <Swatch label="Floor = peak density 0 → 4 p/m²">
-        <span className="inline-block h-2.5 w-10 rounded-full" style={{ background: HEAT_GRADIENT }} />
+      <Swatch label={`Floor = peak density 0 → ${HEAT_MAX} p/m², amber from ${CROWD_THRESHOLD}`}>
+        <ThresholdBar background={HEAT_GRADIENT} at={THRESHOLD_AT} />
       </Swatch>
       <Swatch label="Moved by agent (ghost = previous spot)">
         <span className="inline-block h-2.5 w-3.5 rounded-[2px] border-[1.5px] border-accent bg-white" />
