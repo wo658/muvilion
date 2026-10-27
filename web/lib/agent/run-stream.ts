@@ -13,11 +13,11 @@
 import { createUIMessageStream } from "ai";
 import indoorRecording from "@/fixtures/replay/sample-hall.json";
 import outdoorRecording from "@/fixtures/replay/riverside-plaza.json";
-import { ProjectInput } from "@/lib/engine/contract";
+import { ProjectInput, Scenario } from "@/lib/engine/contract";
 import type { Env } from "@/lib/env";
 import { DEFAULT_VENUE_ID, venueById } from "@/lib/venues";
 import { acquireLiveRun } from "./caps";
-import { applyVenueOverrides, liveAgentEnabled } from "./config";
+import { applyScenarioOverride, applyVenueOverrides, liveAgentEnabled } from "./config";
 import type { AgentEvent, AgentUIMessage, MuseMetadata } from "./events";
 import { createAgentLLM, createRunDeps, runAgentLoop } from "./index";
 import { asReplay, createEventEncoder, replayDelayMs } from "./stream";
@@ -32,6 +32,7 @@ export type RunStreamInput = {
   speed?: number;
   venue?: string;
   project?: unknown;
+  scenario?: unknown;
 };
 
 export type StreamError = { ok: false; status: number; error: string; message: string };
@@ -97,13 +98,16 @@ export function startRunStream(
   const parsed = ProjectInput.safeParse(input.project ?? venue.project);
   if (!parsed.success) return { ok: false, status: 400, error: "bad_project", message: parsed.error.message };
 
+  const scenario = input.scenario === undefined ? undefined : Scenario.safeParse(input.scenario);
+  if (scenario && !scenario.success) return { ok: false, status: 400, error: "bad_scenario", message: scenario.error.message };
+
   const cap = acquireLiveRun(env);
   if (!cap.ok) return { ok: false, status: 429, error: "cap_reached", message: cap.reason };
 
   const deps = createRunDeps(env);
   const { engine } = deps;
   // The venue's scenario and target overrides apply when the project is that venue's.
-  const config = applyVenueOverrides(deps.config, venueById(parsed.data.venue.id));
+  const config = applyScenarioOverride(applyVenueOverrides(deps.config, venueById(parsed.data.venue.id)), scenario?.success ? scenario.data : undefined);
   const timeoutS = Number(env.AGENT_RUN_TIMEOUT_S ?? 280);
   const signal = AbortSignal.any([reqSignal, AbortSignal.timeout(timeoutS * 1000)]);
 
