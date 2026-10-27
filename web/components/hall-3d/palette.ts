@@ -17,7 +17,7 @@ export const PALETTE = {
   hotspot: TOKENS.heat3,
   ink: TOKENS.ink,
   muted: TOKENS.muted,
-  labelBg: "rgba(251,250,247,0.94)",
+  labelBg: "rgba(255,255,255,0.94)",
   labelFg: TOKENS.ink,
   zone: {
     lawn: TOKENS.lawn,
