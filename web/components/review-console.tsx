@@ -9,6 +9,7 @@ import { ACTORS, STEP_ACTORS } from "@/lib/ui/actors";
 import { ruleLabel } from "@/lib/ui/rules";
 import { deriveRunState } from "@/lib/ui/run-state";
 import { DEFAULT_VENUE_ID, runRequestBody, venueById, VENUES } from "@/lib/venues";
+import type { ProjectInput, Scenario } from "@/lib/engine/contract";
 import { Hall3DCompare } from "./hall-3d";
 import { HowItWorks } from "./how-it-works";
 import { BriefPanel, Comparison, Conditions, MetricCards, Pipeline, Report, Roles } from "./panels";
@@ -19,7 +20,7 @@ type Status = { live: boolean; engine: string; llm: string; maxIterations: numbe
 
 const iterLabel = (n: number) => (n === 0 ? "Baseline" : `Iter ${n}`);
 
-export function ReviewConsole() {
+export function ReviewConsole({ project, scenario }: { project?: ProjectInput; scenario?: Scenario } = {}) {
   const [status, setStatus] = useState<Status | null>(null);
   const [venueId, setVenueId] = useState(DEFAULT_VENUE_ID);
   const [selected, setSelected] = useState<number | null>(null);
@@ -62,7 +63,7 @@ export function ReviewConsole() {
   const start = (m: "live" | "replay") => {
     reset();
     setMode(m);
-    void sendMessage({ text: m === "live" ? "Start live run" : "Replay recorded run" }, { body: runRequestBody(m, option.id) });
+    void sendMessage({ text: m === "live" ? "Start live run" : "Replay recorded run" }, { body: project ? { mode: "live", project, scenario } : runRequestBody(m, option.id) });
   };
   const pickVenue = (id: string) => {
     if (id === venueId || busy) return;
@@ -71,8 +72,8 @@ export function ReviewConsole() {
     setVenueId(id);
   };
 
-  const venue = state.run?.venue ?? option.project.venue;
-  const specs = state.run?.booths ?? option.project.booths;
+  const venue = state.run?.venue ?? project?.venue ?? option.project.venue;
+  const specs = state.run?.booths ?? project?.booths ?? option.project.booths;
   const baselineIt = state.iterations.find((i) => i.iteration === 0);
   // While the baseline placement animation plays, keep the stage on the baseline.
   const animKey = placementKey(state.run, baselineIt);
@@ -135,7 +136,7 @@ export function ReviewConsole() {
           </dl>
         ) : (
           <p className="text-[12px] leading-relaxed text-muted">
-            No run yet.{status && !status.live && " Live runs are off on this server; the recorded run streams the same loop for this venue."}
+            No run yet.{status && !status.live && (project ? " 새 프로젝트 분석은 현재 서버에서 비활성화되어 있습니다." : " Live runs are off on this server; the recorded run streams the same loop for this venue.")}
           </p>
         )}
       </PaneSection>
@@ -166,12 +167,12 @@ export function ReviewConsole() {
           <Logo />
           <span className="text-[13.5px] font-semibold tracking-tight text-ink max-sm:hidden">Layout Engineer</span>
           <span className="text-hairline-strong max-sm:hidden">/</span>
-          <Segmented
+          {project ? <span className="max-w-60 truncate text-sm font-medium">{project.venue.name}</span> : <Segmented
             label="Venue"
             value={venueId}
             onChange={pickVenue}
             options={VENUES.map((v) => ({ id: v.id, label: v.label, disabled: busy && v.id !== venueId, title: v.project.venue.name }))}
-          />
+          />}
         </div>
         <span
           className="inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full border border-hairline bg-bg px-2.5 text-[11.5px] text-muted max-md:hidden"
@@ -185,9 +186,9 @@ export function ReviewConsole() {
           <Button variant="ghost" onClick={() => setExplainer(true)} className="max-sm:hidden">
             How it works
           </Button>
-          <Button onClick={() => start("replay")} disabled={busy}>
+          {!project && <Button onClick={() => start("replay")} disabled={busy}>
             Watch recorded run
-          </Button>
+          </Button>}
           {busy ? (
             <Button variant="danger" onClick={() => void stop()}>
               Stop
@@ -307,7 +308,7 @@ export function ReviewConsole() {
               <p role="alert" className="rounded-[6px] border border-bad/30 bg-surface px-3 py-2 text-[12.5px] text-bad">
                 {mode === "live" ? "Live run failed: " : ""}
                 {error.message}
-                {mode === "live" && (
+                {mode === "live" && !project && (
                   <button type="button" className="ml-2 underline" onClick={() => start("replay")}>
                     Watch the recorded run instead
                   </button>
@@ -357,14 +358,14 @@ export function ReviewConsole() {
                       The agent writes a design brief, solves the layout, simulates the crowd and revises until peak density is under target.
                     </p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      <Button variant="primary" onClick={() => start(status?.live ? "live" : "replay")} disabled={busy}>
-                        {status?.live ? "Run live" : "Watch recorded run"}
+                      <Button variant="primary" onClick={() => start(project || status?.live ? "live" : "replay")} disabled={busy || Boolean(project && !status?.live)}>
+                        {project || status?.live ? "Run live" : "Watch recorded run"}
                       </Button>
                       <Button variant="ghost" onClick={() => setExplainer(true)}>
                         How it works
                       </Button>
                     </div>
-                    {status && !status.live && <p className="mt-3 text-[11px] text-faint">Live runs are off on this server; the recording streams the same loop.</p>}
+                    {status && !status.live && <p className="mt-3 text-[11px] text-faint">{project ? "새 프로젝트 분석은 현재 서버에서 비활성화되어 있습니다." : "Live runs are off on this server; the recording streams the same loop."}</p>}
                   </div>
                 }
               />

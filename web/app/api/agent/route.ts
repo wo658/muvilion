@@ -17,7 +17,7 @@ import { applyScenarioOverride, liveAgentEnabled, loadAgentConfig } from "@/lib/
 import type { AgentEvent, AgentUIMessage } from "@/lib/agent/events";
 import { asReplay, createEventEncoder, replayDelayMs } from "@/lib/agent/stream";
 import { getModel } from "@/lib/agent/model";
-import { ProjectInput } from "@/lib/engine/contract";
+import { ProjectInput, Scenario } from "@/lib/engine/contract";
 import { DEFAULT_VENUE_ID, venueById } from "@/lib/venues";
 
 const RECORDINGS: Record<string, { events: AgentEvent[] }> = {
@@ -50,7 +50,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const url = new URL(req.url);
-  const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; venue?: string; project?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { mode?: string; speed?: number; venue?: string; project?: unknown; scenario?: unknown };
   const live = liveAgentEnabled();
   const mode = url.searchParams.get("mode") ?? body.mode ?? (live ? "live" : "replay");
   const speed = Number(url.searchParams.get("speed") ?? body.speed ?? 1);
@@ -97,13 +97,18 @@ export async function POST(req: Request) {
     return Response.json({ error: "bad_project", message: parsed.error.message }, { status: 400 });
   }
 
+  const scenario = body.scenario === undefined ? undefined : Scenario.safeParse(body.scenario);
+  if (scenario && !scenario.success) {
+    return Response.json({ error: "bad_scenario", message: scenario.error.message }, { status: 400 });
+  }
+
   const cap = acquireLiveRun();
   if (!cap.ok) return Response.json({ error: "cap_reached", message: cap.reason }, { status: 429 });
 
   const deps = createRunDeps();
   const { engine } = deps;
   // The venue's scenario override applies when the project is that venue's.
-  const config = applyScenarioOverride(deps.config, venueById(parsed.data.venue.id)?.scenario);
+  const config = applyScenarioOverride(deps.config, scenario?.success ? scenario.data : venueById(parsed.data.venue.id)?.scenario);
   const timeoutS = Number(process.env.AGENT_RUN_TIMEOUT_S ?? 280);
   const signal = AbortSignal.any([req.signal, AbortSignal.timeout(timeoutS * 1000)]);
 
