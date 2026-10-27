@@ -1,4 +1,4 @@
-# web — Autonomous Event Layout Engineer (frontend + agent server)
+# Pavilion — frontend + agent server
 
 Next.js 16 (App Router) app that hosts the review console, the agent loop and the
 streaming agent API. All geometry / simulation work is done by the Python engine
