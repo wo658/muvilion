@@ -11,6 +11,11 @@
  *       max iterations)? (completion guard: fewer visitors finishing never counts as better)
  *     analyze (LLM on summarized metrics) → revise (LLM tool call → zod → LayoutRequest with `previous`)
  *   report (code tables + LLM prose)
+ *
+ * After the events of each moment Muse says what happened in plain language (`say` events,
+ * lib/agent/narrate.ts): intro after `run`, brief after `brief`, placed after the baseline's final
+ * `validation`, simulated / revised after each `comparison`, revising after each applied
+ * `revision`, then result and cautions right before `done`.
  */
 import type { Engine } from "@/lib/engine/client";
 import {
@@ -50,6 +55,25 @@ import type { AgentLLM, AnalysisOutput, RevisionResult } from "./llm";
 import { reportBody, reportHeader } from "./report";
 import { applyBrief, summarizeSite } from "./brief";
 import { applyRevision } from "./revision";
+import {
+  briefLine,
+  createNarrator,
+  failedCaution,
+  introLine,
+  mockEngineCaution,
+  overriddenRequests,
+  placedLine,
+  remainingProblemsCaution,
+  resultLine,
+  revisedLine,
+  revisingLine,
+  simulatedLine,
+  truncatedCaution,
+  unknownCaution,
+  type NarrationFacts,
+  type NarrationLine,
+  type SayMeta,
+} from "./narrate";
 import { ScenarioGuard } from "./scenario";
 
 export type RunOptions = {
@@ -109,6 +133,21 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
       llm: llm.name,
     },
   });
+
+  const say = createNarrator(llm, emit, { timeoutMs: config.narrationTimeoutMs });
+  const facts: NarrationFacts = {
+    venue,
+    specs,
+    organizerFixed: initialConstraints.fixed,
+    visitors: guard.scenario.agents,
+    durationS: guard.scenario.duration_s,
+    targets: config.targets,
+  };
+  const warn = (line: NarrationLine, iteration?: number): { line: NarrationLine; meta: SayMeta } => ({
+    line,
+    meta: { tone: "warn", ...(iteration !== undefined ? { iteration } : {}) },
+  });
+  await say([{ line: introLine(facts), meta: { tone: "neutral" } }]);
 
   async function step<T>(
     iteration: number,
@@ -187,6 +226,7 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
       by: llm.name,
     };
     emit({ type: "brief", data: brief });
+    await say([briefLine(facts, brief)]);
     request = b.t.request;
 
     for (let it = 0; ; it++) {
@@ -233,6 +273,16 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
         );
         const counts = countViolations(validation.violations);
         emit({ type: "validation", data: { iteration: it, attempt, result: validation, ...counts } });
+        if (it === 0 && (counts.errors === 0 || attempt >= config.maxFixAttempts)) {
+          await say([
+            placedLine(facts, {
+              placed: layoutRes.layout.booths.length,
+              total: specs.length,
+              errors: counts.errors,
+              aisle: req.constraints.min_aisle_width,
+            }),
+          ]);
+        }
         summary = summarizeIteration({
           iteration: it,
           venue,
@@ -260,6 +310,8 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
         const info = revisionInfo(it, "fix_validation", fixed.r, fixed.t);
         revisions.push(info);
         emit({ type: "revision", data: info });
+        const fixSay = revisingLine(facts, info, []);
+        if (fixSay) await say([fixSay]);
         // The rejected attempt becomes the displacement anchor, so the fix changes as little as possible.
         request = fixed.t.request;
       }
@@ -329,6 +381,22 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
           reason: d.reason,
         },
       });
+      const simSays =
+        it === 0
+          ? [simulatedLine(facts, { iteration: it, metrics, hotspots: sim.hotspots })]
+          : [
+              revisedLine(facts, {
+                iteration: it,
+                previous: records[records.length - 2].outcome.metrics,
+                current: metrics,
+                valid: outcome.valid,
+                completionOk: d.completionOk,
+                movedBoothIds: diffLayouts(prevLayout, lr.layout).map((m) => m.booth_id),
+                targetMet: d.decision === "target_met",
+              }),
+            ];
+      if (sim.truncated) simSays.push(warn(truncatedCaution(), it));
+      await say(simSays);
       if (d.decision !== "continue") {
         stop = { decision: d.decision, reason: d.reason };
         break;
@@ -368,6 +436,8 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
       const info = revisionInfo(it, "improve", rev.r, rev.t);
       revisions.push(info);
       emit({ type: "revision", data: info });
+      const revSay = revisingLine(facts, info, sim.hotspots);
+      if (revSay) await say([revSay]);
       if (rev.t.applied.length === 0) {
         stop = { decision: "no_improvement", reason: "the reviser proposed no applicable change" };
         emit({
@@ -443,6 +513,27 @@ export async function runAgentLoop(opts: RunOptions): Promise<RunResult> {
       emit({ type: "error", data: { message: `report failed: ${message}`, step: "report", recoverable: false } });
     }
   }
+
+  // ---- Muse's bottom line + cautions, right before `done` ----
+  const shaping = revisions.filter((r) => (r.purpose === "improve" ? r.iteration < finalIteration : r.iteration <= finalIteration));
+  const approvalBoothIds = [...new Set(shaping.flatMap((r) => overriddenRequests(r.applied, initialConstraints.fixed)))];
+  const failed = stop.decision === "error";
+  const closing = [
+    resultLine(facts, {
+      failed,
+      baseline,
+      final: finalRec?.outcome.metrics ?? null,
+      baselineIteration,
+      finalIteration,
+      approvalBoothIds,
+    }),
+  ];
+  if (failed) closing.push(warn(failedCaution(), finalIteration));
+  const remaining = finalRec?.outcome.metrics.violations ?? 0;
+  if (remaining > 0) closing.push(warn(remainingProblemsCaution(remaining), finalIteration));
+  for (const u of venue.unknowns) closing.push(warn(unknownCaution(u)));
+  if (engine.kind === "mock" && records.length > 0) closing.push(warn(mockEngineCaution()));
+  await say(closing);
 
   const done: DoneInfo = {
     status: stop.decision === "error" ? "error" : "completed",

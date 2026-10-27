@@ -32,10 +32,10 @@ export function createAgentLLM(
         `No API key for provider "${m.provider}" (set MODEL_API_KEY / BASETEN_API_KEY, or AGENT_LLM=stub).`,
       );
     }
-    const primary = createModelLLM(m.model, `${m.provider}:${m.modelId}`);
+    const primary = createModelLLM(m.model, `${m.provider}:${m.modelId}`, { narrationTimeoutMs: config.narrationTimeoutMs });
     llm = env.AGENT_LLM_FALLBACK === "off" ? primary : withFallback(primary, createStubLLM(), onFallback);
   }
-  return withCallCap(llm, config.maxLlmCalls);
+  return withCallCap(llm, config.maxLlmCalls, config.maxNarrationCalls);
 }
 
 export function createRunDeps(env: Env = process.env) {
