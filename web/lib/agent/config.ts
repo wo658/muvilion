@@ -29,11 +29,11 @@ export function loadAgentConfig(env: Env = process.env): AgentConfig {
     maxFixAttempts: Math.max(0, Math.floor(num(env.AGENT_MAX_FIX_ATTEMPTS, 2))),
     maxLlmCalls: Math.max(1, Math.floor(num(env.AGENT_MAX_LLM_CALLS, 20))),
     targets: {
-      max_density: num(env.AGENT_TARGET_MAX_DENSITY, 2.0),
+      max_density: num(env.AGENT_TARGET_MAX_DENSITY, 3.0),
       min_improvement: num(env.AGENT_MIN_IMPROVEMENT, 0.02),
     },
     scenario: Scenario.parse({
-      kind: env.AGENT_SCENARIO_KIND ?? "entry",
+      kind: env.AGENT_SCENARIO_KIND ?? "browse",
       agents: Math.floor(num(env.AGENT_SCENARIO_AGENTS, 200)),
       duration_s: num(env.AGENT_SCENARIO_DURATION_S, 300),
       seed: Math.floor(num(env.AGENT_SCENARIO_SEED, 42)),
