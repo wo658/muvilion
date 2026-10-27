@@ -8,7 +8,7 @@ export async function readPlan(file: Blob, name: string, page = 1): Promise<NonN
   if (file.type === "application/pdf") {
     const pdfjs = await import("pdfjs-dist");
     pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-    const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+    const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), cMapUrl: "/pdf-assets/cmaps/", cMapPacked: true, standardFontDataUrl: "/pdf-assets/standard_fonts/", wasmUrl: "/pdf-assets/wasm/" });
     try {
       const document = await task.promise;
       pages = document.numPages;

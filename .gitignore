@@ -16,6 +16,7 @@
 node_modules/
 .next/
 /web/public/pdf.worker.min.mjs
+/web/public/pdf-assets/
 out/
 *.tsbuildinfo
 next-env.d.ts
