@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trajectories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trajectories */
+        post: operations["trajectories_trajectories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/validate": {
         parameters: {
             query?: never;
@@ -93,6 +110,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentTrack */
+        AgentTrack: {
+            /** Id */
+            id: number;
+            /** T0 */
+            t0: number;
+            /** Xy */
+            xy: number[];
+        };
         /** Booth */
         Booth: {
             /** Id */
@@ -388,6 +414,24 @@ export interface components {
              * @default 60
              */
             max_wall_time_s: number;
+            /**
+             * Trajectory Dt
+             * @default 0.5
+             */
+            trajectory_dt: number;
+        };
+        /** Trajectories */
+        Trajectories: {
+            /** Run Id */
+            run_id: string;
+            /** Layout Id */
+            layout_id: string;
+            /** Dt */
+            dt: number;
+            /** Frames */
+            frames: number;
+            /** Agents */
+            agents: components["schemas"]["AgentTrack"][];
         };
         /** ValidateRequest */
         ValidateRequest: {
@@ -589,6 +633,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trajectories_trajectories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Trajectories"];
                 };
             };
             /** @description Validation Error */

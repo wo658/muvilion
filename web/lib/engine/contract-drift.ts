@@ -47,6 +47,8 @@ export type ContractDrift = [
   Assert<Same<Out<typeof C.DensityGrid>, Engine["DensityGrid"]>>,
   Assert<Same<Out<typeof C.Hotspot>, Engine["Hotspot"]>>,
   Assert<Same<Out<typeof C.SimResult>, Engine["SimResult"]>>,
+  Assert<Same<Out<typeof C.AgentTrack>, Engine["AgentTrack"]>>,
+  Assert<Same<Out<typeof C.Trajectories>, Engine["Trajectories"]>>,
   Assert<Same<Out<typeof C.QueueRequest>, Engine["QueueRequest"]>>,
   Assert<Same<Out<typeof C.QueueResult>, Engine["QueueResult"]>>,
 ];

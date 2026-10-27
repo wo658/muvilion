@@ -151,6 +151,47 @@
         }
       }
     },
+    "/trajectories": {
+      "post": {
+        "tags": [
+          "simulate"
+        ],
+        "summary": "Trajectories",
+        "operationId": "trajectories_trajectories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trajectories"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/validate": {
       "post": {
         "tags": [
@@ -195,6 +236,32 @@
   },
   "components": {
     "schemas": {
+      "AgentTrack": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "t0": {
+            "type": "integer",
+            "title": "T0"
+          },
+          "xy": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Xy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "t0",
+          "xy"
+        ],
+        "title": "AgentTrack"
+      },
       "Booth": {
         "properties": {
           "id": {
@@ -835,6 +902,13 @@
             "exclusiveMinimum": 0.0,
             "title": "Max Wall Time S",
             "default": 60.0
+          },
+          "trajectory_dt": {
+            "type": "number",
+            "maximum": 5.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Trajectory Dt",
+            "default": 0.5
           }
         },
         "type": "object",
@@ -845,6 +919,42 @@
           "scenario"
         ],
         "title": "SimulateRequest"
+      },
+      "Trajectories": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "layout_id": {
+            "type": "string",
+            "title": "Layout Id"
+          },
+          "dt": {
+            "type": "number",
+            "title": "Dt"
+          },
+          "frames": {
+            "type": "integer",
+            "title": "Frames"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentTrack"
+            },
+            "type": "array",
+            "title": "Agents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "layout_id",
+          "dt",
+          "frames",
+          "agents"
+        ],
+        "title": "Trajectories"
       },
       "ValidateRequest": {
         "properties": {

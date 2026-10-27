@@ -156,6 +156,8 @@ class SimulateRequest(BaseModel):
     # Safety cap on real compute time; a run that hits it returns partial metrics with
     # truncated=true (and is then no longer guaranteed to be reproducible).
     max_wall_time_s: float = Field(default=60.0, gt=0, le=600)
+    # Sampling interval for recorded agent positions (served by POST /trajectories).
+    trajectory_dt: float = Field(default=0.5, gt=0, le=5)
 
 
 class DensityGrid(BaseModel):
@@ -188,6 +190,23 @@ class SimResult(BaseModel):
     wall_time_s: float
     # True when the run stopped early because max_wall_time_s was reached.
     truncated: bool = False
+
+
+class AgentTrack(BaseModel):
+    id: int
+    # Frame index of the first sample; the agent exists for len(xy) // 2 frames from there.
+    t0: int
+    # Flat [x0, y0, x1, y1, ...] in meters, rounded to centimeters.
+    xy: list[float]
+
+
+class Trajectories(BaseModel):
+    # Same run_id as the SimResult of the same SimulateRequest.
+    run_id: str
+    layout_id: str
+    dt: float
+    frames: int
+    agents: list[AgentTrack]
 
 
 class QueueRequest(BaseModel):

@@ -186,6 +186,8 @@ export const SimulateRequest = z.object({
   grid_cell: z.number().positive().default(2.0),
   /** Safety cap on real compute time; hitting it returns partial metrics with truncated=true. */
   max_wall_time_s: z.number().positive().max(600).default(60.0),
+  /** Sampling interval for recorded agent positions (served by POST /trajectories). */
+  trajectory_dt: z.number().positive().max(5).default(0.5),
 });
 export type SimulateRequest = z.infer<typeof SimulateRequest>;
 /** What may be sent (Pydantic-defaulted fields optional). */
@@ -225,6 +227,25 @@ export const SimResult = z.object({
   truncated: z.boolean().default(false),
 });
 export type SimResult = z.infer<typeof SimResult>;
+
+export const AgentTrack = z.object({
+  id: z.number().int(),
+  /** Frame index of the first sample; the agent exists for xy.length / 2 frames from there. */
+  t0: z.number().int(),
+  /** Flat [x0, y0, x1, y1, ...] in meters, rounded to centimeters. */
+  xy: z.array(z.number()),
+});
+export type AgentTrack = z.infer<typeof AgentTrack>;
+
+/** POST /trajectories (body: SimulateRequest). Same run_id as the matching SimResult. */
+export const Trajectories = z.object({
+  run_id: z.string(),
+  layout_id: z.string(),
+  dt: z.number(),
+  frames: z.number().int(),
+  agents: z.array(AgentTrack),
+});
+export type Trajectories = z.infer<typeof Trajectories>;
 
 export const QueueRequest = z.object({
   arrivals_per_min: z.number().positive(),
