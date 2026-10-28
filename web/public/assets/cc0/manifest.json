@@ -1,0 +1,499 @@
+{
+  "downloadedOn": "2026-10-28",
+  "resolution": "1K",
+  "license": "CC0-1.0",
+  "assets": [
+    {
+      "id": "Plaster001",
+      "kind": "material",
+      "provider": "ambientCG",
+      "source": "https://ambientcg.com/view?id=Plaster001",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "archiveSha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "files": [
+        {
+          "path": "materials/Plaster001/Plaster001_1K-JPG_Color.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+          "bytes": 828790,
+          "sha256": "d3fe43282859ab7293ad41f2fa3c29f02df077e5bc326cf90a65cc588a4ac5a4"
+        },
+        {
+          "path": "materials/Plaster001/Plaster001_1K-JPG_NormalGL.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+          "bytes": 2091491,
+          "sha256": "ea293c335a0b9243f0a825573b81304b8f99e60b2c067e493d0792adf96dfc72"
+        },
+        {
+          "path": "materials/Plaster001/Plaster001_1K-JPG_Roughness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+          "bytes": 367391,
+          "sha256": "6028dbe3cb2ea250eacf3fb87d2c4e5ae8c2a7ff10ecad7883c27d721f2f8e88"
+        }
+      ]
+    },
+    {
+      "id": "Concrete034",
+      "kind": "material",
+      "provider": "ambientCG",
+      "source": "https://ambientcg.com/view?id=Concrete034",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "archiveSha256": "5839d284d94ffb8d2a56df742ec522b13dd311c52dbd42b8fd33f0409ceedb81",
+      "files": [
+        {
+          "path": "materials/Concrete034/Concrete034_1K-JPG_Color.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Concrete034_1K-JPG.zip",
+          "bytes": 269501,
+          "sha256": "8ceb9186d990b31fce785e06fdc6974c160f1d27c43f6160266f164deba713aa"
+        },
+        {
+          "path": "materials/Concrete034/Concrete034_1K-JPG_NormalGL.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Concrete034_1K-JPG.zip",
+          "bytes": 821681,
+          "sha256": "e509eb9dfa978e780fbebfd2acacc2ce158b5b7ced722ddc0759039dd51e18ca"
+        },
+        {
+          "path": "materials/Concrete034/Concrete034_1K-JPG_Roughness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Concrete034_1K-JPG.zip",
+          "bytes": 217708,
+          "sha256": "a4a9e39857a19afd23a778e5abf44fcdf6bd7f93918f1cf6878b41933e553511"
+        }
+      ]
+    },
+    {
+      "id": "Wood051",
+      "kind": "material",
+      "provider": "ambientCG",
+      "source": "https://ambientcg.com/view?id=Wood051",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "archiveSha256": "debf3d60f69a09c30613dc95a94da49c8116160ab8a29f77ac8e32cc33f1a1c3",
+      "files": [
+        {
+          "path": "materials/Wood051/Wood051_1K-JPG_Color.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Wood051_1K-JPG.zip",
+          "bytes": 871537,
+          "sha256": "f3c6c5456457e8d05c1fee4d2f186f41d0aea2b8a06859b69ce2934e11aa8798"
+        },
+        {
+          "path": "materials/Wood051/Wood051_1K-JPG_NormalGL.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Wood051_1K-JPG.zip",
+          "bytes": 1583401,
+          "sha256": "9078dc50c43b55831ae322460fc96b62df68c7a148400bd7755ab2788fec1708"
+        },
+        {
+          "path": "materials/Wood051/Wood051_1K-JPG_Roughness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Wood051_1K-JPG.zip",
+          "bytes": 680793,
+          "sha256": "b5736b940d721b49922cb14eebd52fd34f134b7ef99331ecf28565ce40358098"
+        }
+      ]
+    },
+    {
+      "id": "Metal036",
+      "kind": "material",
+      "provider": "ambientCG",
+      "source": "https://ambientcg.com/view?id=Metal036",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "archiveSha256": "298a644a2968fd3701e3cf38eb9dd8231d9184320dfe9d631db833c303cd867e",
+      "files": [
+        {
+          "path": "materials/Metal036/Metal036_1K-JPG_Color.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Metal036_1K-JPG.zip",
+          "bytes": 648174,
+          "sha256": "f7418afb4b46dd87b87486f55cd36d64a514c2024c4bc97f0250a75e17541192"
+        },
+        {
+          "path": "materials/Metal036/Metal036_1K-JPG_Metalness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Metal036_1K-JPG.zip",
+          "bytes": 4257,
+          "sha256": "843102638fa0a5bf897888868877efab8ccdc4cb84a48e57bdb52bfb30f5e714"
+        },
+        {
+          "path": "materials/Metal036/Metal036_1K-JPG_NormalGL.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Metal036_1K-JPG.zip",
+          "bytes": 341390,
+          "sha256": "857199621f23be5d5122fb1d5b4f8cb25f6baf75c34076e298c5952a27832755"
+        },
+        {
+          "path": "materials/Metal036/Metal036_1K-JPG_Roughness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Metal036_1K-JPG.zip",
+          "bytes": 444821,
+          "sha256": "707a040de55a985384a92a133240541e5553fc8878d92e720595815f991e1dfc"
+        }
+      ]
+    },
+    {
+      "id": "Fabric026",
+      "kind": "material",
+      "provider": "ambientCG",
+      "source": "https://ambientcg.com/view?id=Fabric026",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "archiveSha256": "b47a2965c035772400524000926be3afe2dd9afc2fff052346e1c264476afd1b",
+      "files": [
+        {
+          "path": "materials/Fabric026/Fabric026_1K-JPG_Color.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Fabric026_1K-JPG.zip",
+          "bytes": 1406949,
+          "sha256": "5c9f3d473cb4752dab042e5161728b6bd71cb74c2f5ad2c21bba6f5b5e0712d4"
+        },
+        {
+          "path": "materials/Fabric026/Fabric026_1K-JPG_NormalGL.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Fabric026_1K-JPG.zip",
+          "bytes": 1908907,
+          "sha256": "d445a33dbee003c3c6ae606bc9c4d1216f389735a861163ef06165946beae84f"
+        },
+        {
+          "path": "materials/Fabric026/Fabric026_1K-JPG_Roughness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Fabric026_1K-JPG.zip",
+          "bytes": 599047,
+          "sha256": "80c188d9c811bb316cfb27ea068d8f6cd82946d377645383e40f13858db31ee2"
+        }
+      ]
+    },
+    {
+      "id": "Tiles074",
+      "kind": "material",
+      "provider": "ambientCG",
+      "source": "https://ambientcg.com/view?id=Tiles074",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "archiveSha256": "28a40cb36d3c265f17c798c52aa3ea7cdcb8c949b80c49692b0a855e9637c677",
+      "files": [
+        {
+          "path": "materials/Tiles074/Tiles074_1K-JPG_Color.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Tiles074_1K-JPG.zip",
+          "bytes": 1152913,
+          "sha256": "cd7011b8c21e0ef4b8ee979ea2ff1a89c5b07b19f570a6dfc5ad26b3bca24857"
+        },
+        {
+          "path": "materials/Tiles074/Tiles074_1K-JPG_NormalGL.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Tiles074_1K-JPG.zip",
+          "bytes": 227039,
+          "sha256": "4d0de18fa8802fefc8d7335c5af264d6b932bf34f2be96d38e99f9573b018399"
+        },
+        {
+          "path": "materials/Tiles074/Tiles074_1K-JPG_Roughness.jpg",
+          "sourceUrl": "https://ambientcg.com/get?file=Tiles074_1K-JPG.zip",
+          "bytes": 463120,
+          "sha256": "8995bd151ebd2a5cc767eb2ca848b9c446b9d47510a0685e5fe7e2226e52e22a"
+        }
+      ]
+    },
+    {
+      "id": "modern_arm_chair_01",
+      "kind": "model",
+      "provider": "Poly Haven",
+      "source": "https://polyhaven.com/a/modern_arm_chair_01",
+      "licenseUrl": "https://polyhaven.com/license",
+      "files": [
+        {
+          "path": "models/modern_arm_chair_01/modern_arm_chair_01_1k.gltf",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_arm_chair_01/modern_arm_chair_01_1k.gltf",
+          "bytes": 5121,
+          "sha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_arm_chair_01/modern_arm_chair_01_pillow_nor_gl_1k.jpg",
+          "bytes": 302377,
+          "sha256": "2717b9d22e1d3533e3c7436a0230b00b1d25bf396246679825c8db08edaba0a8"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_arm_chair_01/modern_arm_chair_01_legs_nor_gl_1k.jpg",
+          "bytes": 560864,
+          "sha256": "af328e8530884907cf0d38a675338bb4e2b03c56ed2d21eb5abf505bb67c11de"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_arm_chair_01/modern_arm_chair_01_pillow_arm_1k.jpg",
+          "bytes": 321223,
+          "sha256": "fec333290ddfd70e78428251874d30d5410d6d0a956dd84922b0d3f3596e4b7a"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_arm_chair_01/modern_arm_chair_01_legs_diff_1k.jpg",
+          "bytes": 460937,
+          "sha256": "6291421a8db6cd9bbbc8c141aa087465d698427249f813d24c6e5ccdbf0bf536"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_arm_chair_01/modern_arm_chair_01_legs_arm_1k.jpg",
+          "bytes": 577931,
+          "sha256": "c76b65200a52cf649a865baf7f879dc34277b923edaac7ec8164eaf7c51c935d"
+        },
+        {
+          "path": "models/modern_arm_chair_01/modern_arm_chair_01.bin",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_arm_chair_01/modern_arm_chair_01.bin",
+          "bytes": 240728,
+          "sha256": "8755f2f498c0bb165660379d1b045465751c16bbeaf553c8dd76bb14c16d1ff6"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_arm_chair_01/modern_arm_chair_01_pillow_diff_1k.jpg",
+          "bytes": 228851,
+          "sha256": "f1935436b460ad5c03ac7ff9d1e1b4aaedcdc9a503d79c257beb8cdac2e9e1f7"
+        }
+      ],
+      "entrypoint": "models/modern_arm_chair_01/modern_arm_chair_01_1k.gltf"
+    },
+    {
+      "id": "modern_coffee_table_01",
+      "kind": "model",
+      "provider": "Poly Haven",
+      "source": "https://polyhaven.com/a/modern_coffee_table_01",
+      "licenseUrl": "https://polyhaven.com/license",
+      "files": [
+        {
+          "path": "models/modern_coffee_table_01/modern_coffee_table_01_1k.gltf",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_coffee_table_01/modern_coffee_table_01_1k.gltf",
+          "bytes": 2771,
+          "sha256": "a35d811da4c174d0c888f23353dda21501763dbf5505c66f57fef4b3f613e50c"
+        },
+        {
+          "path": "models/modern_coffee_table_01/modern_coffee_table_01.bin",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_coffee_table_01/modern_coffee_table_01.bin",
+          "bytes": 154864,
+          "sha256": "b8fe0d49041b879a5d5962685a39e3daf009679f7b6a88ced1347e6dc6c0851e"
+        },
+        {
+          "path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_rough_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_coffee_table_01/modern_coffee_table_01_rough_1k.jpg",
+          "bytes": 403959,
+          "sha256": "8013b48b0ebb845907f840afcae9cbc915a5205ac82ed99cbba31771febacb0f"
+        },
+        {
+          "path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_coffee_table_01/modern_coffee_table_01_diff_1k.jpg",
+          "bytes": 410569,
+          "sha256": "069b89dd3ef03ddcbb7b2e6a124b1903aa7848394509121aa19f87bd0ef0218c"
+        },
+        {
+          "path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_coffee_table_01/modern_coffee_table_01_nor_gl_1k.jpg",
+          "bytes": 359134,
+          "sha256": "43e0d317d0f8418b130c0058c645225ee83b808b1dc0e5e7236bead3bdd77139"
+        }
+      ],
+      "entrypoint": "models/modern_coffee_table_01/modern_coffee_table_01_1k.gltf"
+    },
+    {
+      "id": "modular_street_seating",
+      "kind": "model",
+      "provider": "Poly Haven",
+      "source": "https://polyhaven.com/a/modular_street_seating",
+      "licenseUrl": "https://polyhaven.com/license",
+      "files": [
+        {
+          "path": "models/modular_street_seating/modular_street_seating_1k.gltf",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modular_street_seating/modular_street_seating_1k.gltf",
+          "bytes": 29629,
+          "sha256": "ae0c5b89927446dd3c3dc8fc021c5a6042448b785f340affaa132307d8a7b18d"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_supports_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_supports_diff_1k.jpg",
+          "bytes": 721380,
+          "sha256": "3d2dc8a4ac499b540445be6277a1fa7c84fb7cdbf0fbe04d9738d806393393e4"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_armrests_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_armrests_nor_gl_1k.jpg",
+          "bytes": 324073,
+          "sha256": "1625c7492bfdc6fb97a49a09e5f958bfc62d46b7fc97bdcda97ba83fc13f18c4"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_timber_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_timber_arm_1k.jpg",
+          "bytes": 762344,
+          "sha256": "07b108f3c6ee8afe56c9c23592d48f80344992bd0512080a1cc2bf37e7c7cb84"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_supports_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_supports_nor_gl_1k.jpg",
+          "bytes": 477177,
+          "sha256": "5396d42fc24e0bf0e038767dc0548c4562b359930a9f8ade61897d18192ec929"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_timber_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_timber_diff_1k.jpg",
+          "bytes": 596026,
+          "sha256": "2dce35474445e91743ec1e5a1ffbc405cdd3b7ec94be945d93d684e23e127be3"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_connectors_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_connectors_nor_gl_1k.jpg",
+          "bytes": 398150,
+          "sha256": "1debc33dce0a35acee944281a712b90ce3ba0a1914e0d30201dc45e4639ecd28"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_armrests_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_armrests_diff_1k.jpg",
+          "bytes": 612860,
+          "sha256": "1df79fcf237bcca5dcbd6af8e283e775125e723d2782dee3184550564905990f"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_supports_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_supports_arm_1k.jpg",
+          "bytes": 734095,
+          "sha256": "8dbdaf063699c6d81319a9f0ac2fa5997236981fa703103fdadb008570df8de2"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_connectors_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_connectors_diff_1k.jpg",
+          "bytes": 212785,
+          "sha256": "0b869d0b8d85d89e79fdb74794a45532b64b32221272c3777089730ca9097003"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_armrests_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_armrests_arm_1k.jpg",
+          "bytes": 622643,
+          "sha256": "0016585de0b1d3accd9b204f912e76e03385901410e02e5c8dd3186333ff882f"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_timber_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_timber_nor_gl_1k.jpg",
+          "bytes": 557669,
+          "sha256": "b7d0fff50ca56f12a3ebc3056c0c8104be84efce118a38094608d8e15af27d9a"
+        },
+        {
+          "path": "models/modular_street_seating/textures/modular_street_seating_connectors_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_street_seating/modular_street_seating_connectors_arm_1k.jpg",
+          "bytes": 591917,
+          "sha256": "30af91ae8f610ce5ffc15289005b1e6eaf7e904048ad7cd129dcd6e68163512c"
+        },
+        {
+          "path": "models/modular_street_seating/modular_street_seating.bin",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/modular_street_seating/modular_street_seating.bin",
+          "bytes": 977224,
+          "sha256": "968558aa808b6cf74783b375d32a346a4de2ce9c118c0f17fba24c6999f03547"
+        }
+      ],
+      "entrypoint": "models/modular_street_seating/modular_street_seating_1k.gltf"
+    },
+    {
+      "id": "modern_ceiling_lamp_01",
+      "kind": "model",
+      "provider": "Poly Haven",
+      "source": "https://polyhaven.com/a/modern_ceiling_lamp_01",
+      "licenseUrl": "https://polyhaven.com/license",
+      "files": [
+        {
+          "path": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf",
+          "bytes": 6177,
+          "sha256": "f88b5d0a81fa813457a77474e7e4e812f97ad5fac2109ba03ddb183274be3f8c"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_arm_1k.jpg",
+          "bytes": 124022,
+          "sha256": "f4c6a8e7c86b1deaaf0f74099539ff635063b63f594b0fadfc3ec8fac805df4e"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_diff_1k.jpg",
+          "bytes": 79705,
+          "sha256": "c08bfbf7576a86a4a09d386ae9f0a92965fc652bf82f3a8dba1c796b1aa9e535"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01.bin",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_ceiling_lamp_01/modern_ceiling_lamp_01.bin",
+          "bytes": 146828,
+          "sha256": "ae5140a64e12e639554158901a5e92340bb37c706096ff255804e3220fb96367"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_nor_gl_1k.jpg",
+          "bytes": 79333,
+          "sha256": "dd75bd21a901581325f5c363bd89b45430b8531cb27dead314cd087196a33c27"
+        }
+      ],
+      "entrypoint": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf"
+    },
+    {
+      "id": "mounted_fluorescent_lights",
+      "kind": "model",
+      "provider": "Poly Haven",
+      "source": "https://polyhaven.com/a/mounted_fluorescent_lights",
+      "licenseUrl": "https://polyhaven.com/license",
+      "files": [
+        {
+          "path": "models/mounted_fluorescent_lights/mounted_fluorescent_lights_1k.gltf",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/mounted_fluorescent_lights/mounted_fluorescent_lights_1k.gltf",
+          "bytes": 21071,
+          "sha256": "7a56f167fe7074f4e4d4f314f72c5aa8b01c191394ee5ecb0b3461a240441b4a"
+        },
+        {
+          "path": "models/mounted_fluorescent_lights/textures/mounted_fluorescent_lights_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/mounted_fluorescent_lights/mounted_fluorescent_lights_nor_gl_1k.jpg",
+          "bytes": 267596,
+          "sha256": "3a4504ed0f70061994b37c9ef512e7a2a7e0b7680a977add1643226ae56ea60d"
+        },
+        {
+          "path": "models/mounted_fluorescent_lights/textures/mounted_fluorescent_lights_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/mounted_fluorescent_lights/mounted_fluorescent_lights_diff_1k.jpg",
+          "bytes": 299833,
+          "sha256": "8e56f625c04198792d8e9e5551137cbbd399072c26fe27827b37734afd584ea1"
+        },
+        {
+          "path": "models/mounted_fluorescent_lights/textures/mounted_fluorescent_lights_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/mounted_fluorescent_lights/mounted_fluorescent_lights_arm_1k.jpg",
+          "bytes": 652812,
+          "sha256": "6bb051b47c5e684f7d981595e7a88c3f41989621dc4b8c9460dba989e6421438"
+        },
+        {
+          "path": "models/mounted_fluorescent_lights/textures/mounted_fluorescent_lights_emission_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/mounted_fluorescent_lights/mounted_fluorescent_lights_emission_1k.jpg",
+          "bytes": 71330,
+          "sha256": "185aaca71b4c9d908be69440b807769ce9b2a6472d3a8396755394029196ea59"
+        },
+        {
+          "path": "models/mounted_fluorescent_lights/mounted_fluorescent_lights.bin",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/mounted_fluorescent_lights/mounted_fluorescent_lights.bin",
+          "bytes": 551720,
+          "sha256": "587851c1b4e09e4cf3438f3d8bb084d4591f6be3a7bb1b4324b84af97b3c5f03"
+        }
+      ],
+      "entrypoint": "models/mounted_fluorescent_lights/mounted_fluorescent_lights_1k.gltf"
+    },
+    {
+      "id": "desk_lamp_arm_01",
+      "kind": "model",
+      "provider": "Poly Haven",
+      "source": "https://polyhaven.com/a/desk_lamp_arm_01",
+      "licenseUrl": "https://polyhaven.com/license",
+      "files": [
+        {
+          "path": "models/desk_lamp_arm_01/desk_lamp_arm_01_1k.gltf",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/desk_lamp_arm_01/desk_lamp_arm_01_1k.gltf",
+          "bytes": 4453,
+          "sha256": "2ac8389afc1519449a9cfdf7efd9fa36780a2177bb47ab58f7a7dda7d247dc8c"
+        },
+        {
+          "path": "models/desk_lamp_arm_01/textures/desk_lamp_arm_01_nor_gl_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/desk_lamp_arm_01/desk_lamp_arm_01_nor_gl_1k.jpg",
+          "bytes": 651826,
+          "sha256": "feefedc3835ecef3634e97a24977451671f8f57747a023f48cd14c84bc73513a"
+        },
+        {
+          "path": "models/desk_lamp_arm_01/textures/desk_lamp_arm_01_arm_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/desk_lamp_arm_01/desk_lamp_arm_01_arm_1k.jpg",
+          "bytes": 780379,
+          "sha256": "206404c79fb7dcf8e2c4558c13544342f87d2190526231a1750c3c9adc256fbc"
+        },
+        {
+          "path": "models/desk_lamp_arm_01/textures/desk_lamp_arm_01_diff_1k.jpg",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/desk_lamp_arm_01/desk_lamp_arm_01_diff_1k.jpg",
+          "bytes": 702522,
+          "sha256": "159eb178aba3271bd555cbe07ca36431d8af9a006f0b8e9d8c67030cbdc9e4d3"
+        },
+        {
+          "path": "models/desk_lamp_arm_01/desk_lamp_arm_01.bin",
+          "sourceUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/desk_lamp_arm_01/desk_lamp_arm_01.bin",
+          "bytes": 736804,
+          "sha256": "07f34e32abecbaa63d28b9d12d6a0eb82b775a0f50c92327655909d72ff8489b"
+        }
+      ],
+      "entrypoint": "models/desk_lamp_arm_01/desk_lamp_arm_01_1k.gltf"
+    }
+  ]
+}
