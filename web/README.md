@@ -29,6 +29,16 @@ Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignor
 
 Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Legacy simulation modules remain in the repository but are not the studio workflow.
 
+## Space design and heights
+
+Simple view's **Design space** opens three layers: Spaces (non-solid purpose zones), Elements (physical installations), and Height & ceiling. Booths are optional spaces; legacy booth/lounging solid objects remain importable. Zones may be marked available for later company/team assignment, without adding registration workflows.
+
+The same document drives 2D, 3D, Muse and export. Objects have height and optional elevation above floor; ceilings store a level underside height, finish and estimated/confirmed status. Existing wall extrusion height is persisted. Geometry checks cover reviewed floor boundaries, zone containment, vertical overlap, ceiling exceedance and circulation obstruction. A platform-mounted object's elevation is entered relative to the floor. Walkthrough body clearance is 1.8 m.
+
+3D has independent ceiling, beam/structure and overhead-element visibility toggles. These only affect rendering: hidden geometry remains in Muse context and collision checks. The ceiling defaults off in overview and on in walkthrough until explicitly toggled. A reviewed floor polygon is required to render the ceiling.
+
+Muse drafts zones and installations with explicit review/Apply, preserving source evidence, scale, floor boundary and ceiling review. This uses live model proposals with deterministic geometry checks; the legacy OR-Tools BoothSpec packing engine is not a general 3D design solver and is not invoked here. Ceiling surfaces are level and objects schematic; sloped roofs, detailed trusses, lighting simulation and structural/rigging verification are not implemented.
+
 ## Local real drawings
 
 Place local PDFs under root `DemoData/` or set `DEMO_DATA_DIR`:
@@ -37,6 +47,7 @@ Place local PDFs under root `DemoData/` or set `DEMO_DATA_DIR`:
 - `coex-hall-a-2024.pdf`: official COEX Hall A dimensioned plan, available from [COEX floor plans](https://business.coex.co.kr/exhibition-hall/coex-lease-info/floor-plan/).
 - `fort-mason-ground-floor.pdf`: ground-floor crop of the official Festival Pavilion dimensions sheet. `engine/scripts/prepare_fort_mason.py` prepares the local asset. Adjacent source metadata records crop coordinates and manually checked dimension references.
 - `fort-mason-reviewed-plan.json`: saved live Muse recognition with separately reviewed scale and floor outline; accessible from the example selector. Raw model results and the evaluation report are kept alongside it. This local artifact is required for the saved walkthrough; uploading the PDF starts a fresh review.
+- `fort-mason-spatial-design-plan.json`: actual Muse-generated booth-free concept with 3 zones and 10 installations, available as **Fort Mason · space design demo**. Its level 6 m ceiling and wall extrusion are estimated design assumptions, not surveyed dimensions. The adjacent report records evaluation and limitations.
 
 PDFs are local evaluation assets, not bundled or committed. Source metadata lives alongside them. The UI reports missing files rather than supplying a synthetic substitute.
 

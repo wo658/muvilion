@@ -3,9 +3,10 @@ import type { DerivedWall } from "./walls";
 
 export type WalkPoint = { x: number; y: number };
 export type WalkTelemetry = WalkPoint & { blocked: boolean };
-export type WalkWorld = { width: number; depth: number; walls: DerivedWall[]; objects: DesignObject[]; boundary?: WalkPoint[] };
+export type WalkWorld = { width: number; depth: number; walls: DerivedWall[]; objects: DesignObject[]; boundary?: WalkPoint[]; ceilingHeight?: number; wallHeight?: number };
 export const WALK_RADIUS = 0.25;
 export const EYE_HEIGHT = 1.65;
+export const WALK_BODY_HEIGHT = 1.8;
 export function distanceToSegment(p: WalkPoint, a: WalkPoint, b: WalkPoint): number {
   const dx = b.x - a.x, dy = b.y - a.y;
   const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
@@ -21,13 +22,15 @@ function inside(p: WalkPoint, polygon: WalkPoint[]): boolean {
 }
 export function canStand(p: WalkPoint, world: WalkWorld, radius = WALK_RADIUS): boolean {
   if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+  if (world.ceilingHeight !== undefined && world.ceilingHeight < WALK_BODY_HEIGHT) return false;
   if (p.x < radius || p.y < radius || p.x > world.width - radius || p.y > world.depth - radius) return false;
   if (world.boundary?.length) {
     if (!inside(p, world.boundary)) return false;
     if (world.boundary.some((a, i, points) => distanceToSegment(p, a, points[(i + 1) % points.length]) < radius)) return false;
   }
-  if (world.walls.some(wall => distanceToSegment(p, wall.a, wall.b) < radius + wall.thickness / 2)) return false;
+  if ((world.wallHeight ?? 3) > 0 && world.walls.some(wall => distanceToSegment(p, wall.a, wall.b) < radius + wall.thickness / 2)) return false;
   return !world.objects.some(object => {
+    if ((object.elevation ?? 0) >= WALK_BODY_HEIGHT) return false;
     const theta = object.rotation * Math.PI / 180;
     const dx = p.x - object.x * world.width, dy = p.y - object.y * world.depth;
     const x = dx * Math.cos(theta) + dy * Math.sin(theta), y = -dx * Math.sin(theta) + dy * Math.cos(theta);

@@ -1,35 +1,80 @@
-import type { DesignObject, PlanDocument } from "./schema";
+import type { DesignObject, PlanDocument, SpaceZone } from "./schema";
 
-export function objectBounds(object: DesignObject, document: PlanDocument) {
+type Footprint = Pick<DesignObject, "x" | "y" | "width" | "depth" | "rotation">;
+type Point = { x: number; y: number };
+type Bounds = { x: number; y: number; width: number; height: number };
+const EPS = 1e-9;
+export function objectBounds(object: Footprint, document: PlanDocument) {
   const width = (object.rotation === 90 ? object.depth : object.width) / (document.widthMeters ?? 1);
   const depth = (object.rotation === 90 ? object.width : object.depth) / (document.heightMeters ?? 1);
-  return { x: object.x - width / 2, y: object.y - depth / 2, width, depth };
+  return { x: object.x - width / 2, y: object.y - depth / 2, width, height: depth };
 }
-
+function overlaps(a: Bounds, b: Bounds) {
+  return a.x < b.x + b.width - EPS && a.x + a.width > b.x + EPS && a.y < b.y + b.height - EPS && a.y + a.height > b.y + EPS;
+}
+function contains(a: Bounds, b: Bounds) {
+  return b.x >= a.x - EPS && b.y >= a.y - EPS && b.x + b.width <= a.x + a.width + EPS && b.y + b.height <= a.y + a.height + EPS;
+}
+function segmentHitsRect(start: Point, end: Point, rect: Bounds) {
+  const dx = end.x - start.x, dy = end.y - start.y;
+  let t0 = 0, t1 = 1;
+  for (const [p, q] of [[-dx, start.x - rect.x], [dx, rect.x + rect.width - start.x], [-dy, start.y - rect.y], [dy, rect.y + rect.height - start.y]]) {
+    if (p === 0) { if (q < 0) return false; }
+    else { const t = q / p; if (p < 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t); if (t0 > t1) return false; }
+  }
+  return true;
+}
+function insideOrOn(point: Point, polygon: Point[]) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j], b = polygon[i];
+    const cross = (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
+    if (Math.abs(cross) < EPS && point.x >= Math.min(a.x, b.x) - EPS && point.x <= Math.max(a.x, b.x) + EPS && point.y >= Math.min(a.y, b.y) - EPS && point.y <= Math.max(a.y, b.y) + EPS) return true;
+    if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+/** A concave boundary may cut through a rectangle even if all four corners fit. */
+export function footprintFitsBoundary(bounds: Bounds, polygon: Point[]) {
+  const corners = [{ x: bounds.x, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }, { x: bounds.x, y: bounds.y + bounds.height }];
+  if (!corners.every(point => insideOrOn(point, polygon)) || !insideOrOn({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, polygon)) return false;
+  const interior = { x: bounds.x + EPS, y: bounds.y + EPS, width: bounds.width - 2 * EPS, height: bounds.height - 2 * EPS };
+  return !polygon.some((a, i) => segmentHitsRect(a, polygon[(i + 1) % polygon.length], interior));
+}
 export function designWarnings(document: PlanDocument): string[] {
   if (!document.scaleConfirmed) return ["Confirm the drawing scale before placing objects."];
   const messages: string[] = [];
-  const objects = document.objects ?? [];
+  const objects = document.objects ?? [], zones = document.zones ?? [];
+  if (document.ceiling && document.ceiling.height < 1.8) messages.push("Ceiling clearance is below the 1.8 m walking body height.");
+  const drawing = { x: 0, y: 0, width: 1, height: 1 };
+  const checkFootprint = (item: Footprint & { label: string }) => {
+    const bounds = objectBounds(item, document);
+    if (!contains(drawing, bounds)) messages.push(`${item.label} extends outside the drawing.`);
+    if (document.floorBoundary && !footprintFitsBoundary(bounds, document.floorBoundary)) messages.push(`${item.label} extends outside the reviewed floor boundary.`);
+    return bounds;
+  };
+  for (const zone of zones) checkFootprint(zone);
+  const byZone = new Map<string, SpaceZone>(zones.map(zone => [zone.id, zone]));
   for (let i = 0; i < objects.length; i++) {
-    const object = objects[i], a = objectBounds(object, document);
-    if (a.x < 0 || a.y < 0 || a.x + a.width > 1 || a.y + a.depth > 1) messages.push(`${object.label} extends outside the drawing.`);
-    for (let j = i + 1; j < objects.length; j++) {
-      const b = objectBounds(objects[j], document);
-      if (a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.depth && a.y + a.depth > b.y)
-        messages.push(`${object.label} overlaps ${objects[j].label}.`);
+    const object = objects[i], a = checkFootprint(object);
+    const bottom = object.elevation ?? 0, top = bottom + object.height;
+    if (document.ceiling && top > document.ceiling.height + EPS)
+      messages.push(`${object.label} exceeds the ${document.ceiling.status} ceiling height (${document.ceiling.height} m).`);
+    if (bottom < 1.8 && zones.some(zone => zone.purpose === "circulation" && overlaps(a, objectBounds(zone, document))))
+      messages.push(`${object.label} obstructs a circulation space.`);
+    if (object.zoneId) {
+      const zone = byZone.get(object.zoneId);
+      if (!zone) messages.push(`${object.label} references a missing space.`);
+      else if (!contains(objectBounds(zone, document), a)) messages.push(`${object.label} extends outside its assigned space (${zone.label}).`);
     }
-    // Segment vs axis-aligned rectangle: clip against the four half-spaces.
-    if (document.lines.some(line => {
-      if (line.kind !== "wall") return false;
-      const dx = line.b.x - line.a.x, dy = line.b.y - line.a.y;
-      let t0 = 0, t1 = 1;
-      const pairs = [[-dx, line.a.x-a.x], [dx, a.x+a.width-line.a.x], [-dy, line.a.y-a.y], [dy, a.y+a.depth-line.a.y]];
-      for (const [p, q] of pairs) {
-        if (p === 0) { if (q < 0) return false; }
-        else { const t = q/p; if (p < 0) t0 = Math.max(t0,t); else t1 = Math.min(t1,t); if (t0 > t1) return false; }
-      }
-      return true;
-    })) messages.push(`${object.label} intersects a classified wall line.`);
+    for (let j = i + 1; j < objects.length; j++) {
+      const other = objects[j], otherBottom = other.elevation ?? 0;
+      if (overlaps(a, objectBounds(other, document)) && bottom < otherBottom + other.height - EPS && top > otherBottom + EPS)
+        messages.push(`${object.label} overlaps ${other.label}.`);
+    }
+    // Existing walls occupy [0, wallHeight]. View visibility never changes checks.
+    if (bottom < (document.wallHeight ?? 3) - EPS && document.lines.some(line => line.kind === "wall" && segmentHitsRect(line.a, line.b, a)))
+      messages.push(`${object.label} intersects a classified wall line.`);
   }
   return messages;
 }

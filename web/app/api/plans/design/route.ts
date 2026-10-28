@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       model: model.model,
       instructions: DESIGN_INSTRUCTIONS,
       prompt: JSON.stringify({ brief, context: planChatContext(document), wallLines: document.lines.filter(line => line.kind === "wall") }),
-      tools: { submit_design: tool({ description: "Submit a complete editable concept layout and assumptions for user review.", inputSchema: PlanDesignProposal }) },
+      tools: { submit_design: tool({ description: "Submit editable space zones, physical installations with heights, and assumptions for user review. Existing source and ceiling conditions remain unchanged.", inputSchema: PlanDesignProposal }) },
       toolChoice: "auto",
       temperature: 0.2, maxRetries: 1, timeout: 75_000, abortSignal: req.signal,
     });
