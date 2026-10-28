@@ -7,7 +7,6 @@ import {
   LayoutRequest,
   LayoutResponse,
   ProjectInput,
-  SimResult,
   ValidateResponse,
   defaultConstraints,
 } from "@/lib/engine/contract";
@@ -61,22 +60,5 @@ describe("contract", () => {
     expect(l.layout.booths).toHaveLength(24);
     const v = await e.validate({ venue: p.venue, layout: l.layout, constraints: defaultConstraints() });
     expect(ValidateResponse.parse(v).ok).toBe(true);
-    const s = await e.simulate({
-      venue: p.venue,
-      layout: l.layout,
-      booths: p.booths,
-      scenario: { kind: "entry", agents: 200, duration_s: 300, seed: 1 },
-      grid_cell: 2,
-    });
-    expect(SimResult.parse(s).grid.peak).toHaveLength(s.grid.cols * s.grid.rows);
-    // deterministic
-    const s2 = await e.simulate({
-      venue: p.venue,
-      layout: l.layout,
-      booths: p.booths,
-      scenario: { kind: "entry", agents: 200, duration_s: 300, seed: 1 },
-      grid_cell: 2,
-    });
-    expect(s2).toEqual(s);
   });
 });

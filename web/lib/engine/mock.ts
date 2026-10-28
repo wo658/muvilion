@@ -1,50 +1,15 @@
-/**
- * Deterministic mock engine (ENGINE_MOCK=1) so the whole agent loop is demoable
- * without the Python engine. It is NOT a pedestrian model; it only has to react
- * plausibly to the knobs the agent turns:
- *
- * - /layout: back-to-back booth rows on a grid whose aisle = min_aisle_width (one grid per
- *   footprint size). Honors wall_margin, door_clearance, obstacles, unbuildable zones, keep_out,
- *   fixed and popular_door_distance; with `previous` each booth takes the free slot nearest
- *   its old position (minimal displacement). `steps` imitates the solver's improving solutions.
- * - /validate: plain rectangle checks using the engine's rule ids, incl. zone_unbuildable and
- *   fire_lane_blocked (source "venue:zones/<zone id>") (wall_margin is a
- *   warning; reachability rules — connectivity, entrance_blocked, booth_unreachable,
- *   door_unreachable — are not modeled).
- * - /simulate: a synthetic peak-density field = entrance inflow + crowding around
- *   booths weighted by popularity and amplified near entrances. The hotspot
- *   therefore sits near the entrance and shrinks when popular booths move away.
- *   Sustained congestion (SimResult.congestion) is derived from the same field: a cell whose
- *   peak reaches crowd_threshold is taken to stay crowded for a share of the run that grows
- *   with how far its peak exceeds the threshold (see mockCongestion).
- *   Same inputs (incl. scenario seed) → identical output.
- *
- * - /trajectories: see ./mock-trajectories.ts (aisle-following walkers consistent with the
- *   layout and this density field).
- *
- * All outputs are parsed through the contract schemas, like the HTTP client.
- */
+/** Deterministic layout and rectangle-validation mock for local tests. */
 import type { Engine } from "./client";
-import { mockTrajectories } from "./mock-trajectories";
 import {
   LayoutRequest,
   LayoutResponse,
-  QueueRequest,
-  QueueResult,
-  SimResult,
-  SimulateRequest,
   ValidateRequest,
   ValidateResponse,
   type Booth,
   type BoothSpec,
-  type Congestion,
   type LayoutRequestInput,
-  type QueueRequestInput,
-  type SimulateRequestInput,
   type ValidateRequestInput,
-  type Hotspot,
   type LayoutConstraints,
-  type LayoutStep,
   type Rect,
   type Venue,
   type Violation,
@@ -55,13 +20,8 @@ import {
   dist,
   distanceToNearestEntrance,
   doorClearanceRect,
-  doorMid,
-  entrances,
   hashString,
-  pointRectDistance,
   polygonBBox,
-  prng,
-  rectContainsPoint,
   rectGap,
   inPopularZone,
   rectsOverlap,
@@ -119,7 +79,7 @@ export function mockLayout(input: LayoutRequestInput): LayoutResponse {
   if (cold.status === "infeasible") return warm;
   const prev = new Map(req.previous.booths.map((b) => [b.id, b]));
   const moved = cold.layout.booths.reduce((s, b) => s + (prev.has(b.id) ? dist(b, prev.get(b.id)!) : 0), 0);
-  return LayoutResponse.parse({ ...cold, objective: round(moved, 3), solve_time_s: 0.02, steps: [{ t_s: 0.02, objective: round(moved, 3), booths: cold.layout.booths }] });
+  return LayoutResponse.parse({ ...cold, objective: round(moved, 3), solve_time_s: 0.02 });
 }
 
 function greedyLayout(req: LayoutRequest): LayoutResponse {
@@ -197,69 +157,7 @@ function greedyLayout(req: LayoutRequest): LayoutResponse {
     status: unplaced > 0 ? "infeasible" : "feasible",
     objective,
     solve_time_s: solveTime,
-    steps: unplaced > 0 ? [] : mockSteps(venue, placed, objective, solveTime, previous !== null),
   });
-}
-
-/**
- * Plausible "improving solutions" for the placement animation. A real CP-SAT run reports a
- * rough first feasible arrangement and then better ones; the mock imitates that by starting
- * from the final slots handed out in id order (same footprint ↔ same slot set, so every step is
- * overlap-free) and swapping booths into their final slots, entrance side first. The objective
- * falls with every step; the last step equals the returned layout. Warm-started revisions
- * report a single step.
- */
-function mockSteps(venue: Venue, final: Booth[], objective: number, solveTime: number, warm: boolean): LayoutStep[] {
-  if (warm || final.length === 0) return [{ t_s: solveTime, objective, booths: final }];
-  const target = new Map(final.map((b) => [b.id, { x: b.x, y: b.y }]));
-  const pos = new Map<string, { x: number; y: number }>();
-  const classes = new Map<string, Booth[]>();
-  for (const b of final) {
-    const k = sizeKey(b);
-    if (!classes.has(k)) classes.set(k, []);
-    classes.get(k)!.push(b);
-  }
-  for (const list of classes.values()) {
-    const ids = list.map((b) => b.id).sort();
-    // reading order: far side first, left to right
-    const slots = list.map((b) => ({ x: b.x, y: b.y })).sort((a, b) => b.y - a.y || a.x - b.x);
-    ids.forEach((id, i) => pos.set(id, slots[i]));
-  }
-  const misplaced = () => final.filter((b) => pos.get(b.id)!.x !== b.x || pos.get(b.id)!.y !== b.y);
-  const snapshot = (): Booth[] => final.map((b) => ({ ...b, ...pos.get(b.id)! }));
-  const score = () => {
-    let d = 0;
-    for (const b of final) d += dist(pos.get(b.id)!, b);
-    return round(objective + misplaced().length * 10 + d * 1e-3, 3);
-  };
-  const steps: { booths: Booth[]; objective: number }[] = [{ booths: snapshot(), objective: score() }];
-  const order = misplaced()
-    .map((b) => b.id)
-    .sort((a, b) => distanceToNearestEntrance(boothRect(final.find((x) => x.id === a)!), venue) - distanceToNearestEntrance(boothRect(final.find((x) => x.id === b)!), venue));
-  const rounds = Math.min(9, order.length);
-  const perRound = Math.max(1, Math.ceil(order.length / Math.max(1, rounds)));
-  let i = 0;
-  while (misplaced().length > 0 && steps.length < 12) {
-    for (let n = 0; n < perRound && i < order.length; i++) {
-      const id = order[i];
-      const want = target.get(id)!;
-      const cur = pos.get(id)!;
-      if (cur.x === want.x && cur.y === want.y) continue;
-      const k = sizeKey(final.find((b) => b.id === id)!);
-      const holder = classes.get(k)!.find((b) => b.id !== id && pos.get(b.id)!.x === want.x && pos.get(b.id)!.y === want.y);
-      if (holder) pos.set(holder.id, cur);
-      pos.set(id, want);
-      n++;
-    }
-    if (i >= order.length) for (const b of final) pos.set(b.id, target.get(b.id)!);
-    steps.push({ booths: snapshot(), objective: score() });
-  }
-  if (misplaced().length > 0) {
-    for (const b of final) pos.set(b.id, target.get(b.id)!);
-    steps[steps.length - 1] = { booths: snapshot(), objective: score() };
-  }
-  const n = steps.length;
-  return steps.map((s, k) => ({ t_s: round(0.05 + ((solveTime - 0.05) * k) / Math.max(1, n - 1), 3), objective: s.objective, booths: s.booths }));
 }
 
 // ---------- validate ----------
@@ -310,179 +208,11 @@ export function mockValidate(input: ValidateRequestInput): ValidateResponse {
   return ValidateResponse.parse({ ok: v.every((x) => x.severity !== "error"), violations: v });
 }
 
-// ---------- simulate ----------
-
-const HOTSPOT_THRESHOLD = 2.0; // p/m^2
-// Booth crowd = popularity^3 * GAIN, amplified up to (1 + AMP) next to an entrance, decaying over DECAY m.
-const GAIN = 1.6;
-const AMP = 3;
-const DECAY = 6;
-
-export function mockSimulate(input: SimulateRequestInput): SimResult {
-  const req = SimulateRequest.parse(input);
-  const { venue, layout, booths: specs, scenario, grid_cell: cell } = req;
-  const cols = Math.ceil(venue.width / cell);
-  const rows = Math.ceil(venue.height / cell);
-  const rand = prng(scenario.seed * 7919 + 17);
-  const scale = scenario.agents / 200;
-  const kindGain = scenario.kind === "entry" ? 1.25 : scenario.kind === "exit" ? 1.1 : 1.0;
-  const ents = entrances(venue).map(doorMid);
-  const pop = new Map(specs.map((s) => [s.id, s.popularity]));
-  const boothRects = layout.booths.map((b) => ({ id: b.id, r: boothRect(b), p: pop.get(b.id) ?? 0.5 }));
-  const solid = [...boothRects.map((b) => b.r), ...venue.obstacles.map((o) => polygonBBox(o.polygon))];
-  const boothGain = boothRects.map(({ r, p }) => {
-    const dE = distanceToNearestEntrance(r, venue);
-    return p ** 3 * GAIN * (1 + AMP * Math.exp(-dE / DECAY));
-  });
-
-  const peak: number[] = new Array(cols * rows).fill(0);
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols; i++) {
-      const p = { x: (i + 0.5) * cell, y: (j + 0.5) * cell };
-      const noise = (rand() - 0.5) * 0.08;
-      if (p.x > venue.width || p.y > venue.height || solid.some((r) => rectContainsPoint(r, p))) continue;
-      let d = 0;
-      for (const e of ents) d += 1.1 * Math.exp(-dist(p, e) / 5);
-      boothRects.forEach(({ r }, k) => {
-        const g = pointRectDistance(p, r);
-        d += boothGain[k] * Math.exp(-(g * g) / (2 * 1.4 * 1.4));
-      });
-      peak[j * cols + i] = round(Math.max(0, d * scale * kindGain + noise), 3);
-    }
-  }
-
-  const hotspots = findHotspots(peak, cols, rows, cell, layout.booths);
-  const congestion = mockCongestion(peak, cell, req.crowd_threshold, scenario.duration_s, scenario.agents, hotspots);
-  const maxDensity = Math.max(0, ...peak);
-  const weighted = boothRects.reduce((s, b) => s + b.p * distanceToNearestEntrance(b.r, venue), 0);
-  const wsum = boothRects.reduce((s, b) => s + b.p, 0) || 1;
-  const crowding = peak.reduce((s, x) => s + Math.max(0, x - 1.2) ** 2, 0);
-  const mean = 45 + (weighted / wsum / 1.1) * 2 + crowding * 1.5;
-  const p90 = mean * 1.35 + Math.max(0, maxDensity - 2) * 12;
-  const overload = peak.reduce((s, x) => s + Math.max(0, x - 3), 0);
-  const completed = Math.min(1, Math.max(0.5, 1 - overload * 0.02));
-
-  return SimResult.parse({
-    run_id: `S-${hashString(JSON.stringify([layout.id, scenario, cell, req.crowd_threshold]))}`,
-    scenario,
-    layout_id: layout.id,
-    completed_fraction: round(completed, 3),
-    mean_travel_time_s: round(mean, 1),
-    p90_travel_time_s: round(p90, 1),
-    max_density: round(maxDensity, 3),
-    congestion,
-    hotspots,
-    grid: { cell, cols, rows, peak },
-    sim_time_s: scenario.duration_s,
-    wall_time_s: 0.05,
-    truncated: false,
-  });
-}
-
-/** Share of the run a cell stays crowded when its peak is far above the threshold. */
-const CROWDED_SHARE_MAX = 0.3;
-/** Share of the crowded cells that are crowded at the same moment (peak crowded area). */
-const CROWDED_OVERLAP = 0.6;
-
-/**
- * Synthetic sustained-congestion figures with the engine's definitions (engine/app/sim/metrics.py):
- * a cell is crowded while its density ≥ threshold. Here a cell whose peak p reaches the threshold
- * t is crowded for duration · CROWDED_SHARE_MAX · min(1, (p − t) / t + 0.15) seconds, holding
- * (t + p) / 2 · area people meanwhile. Everyone enters in the mock, so per visitor = person-s / agents.
- */
-function mockCongestion(peak: number[], cell: number, threshold: number, durationS: number, agents: number, hotspots: Hotspot[]): Congestion {
-  const area = cell * cell;
-  let personS = 0;
-  let areaS = 0;
-  let crowdedCells = 0;
-  for (const p of peak) {
-    if (p < threshold) continue;
-    const seconds = durationS * CROWDED_SHARE_MAX * Math.min(1, (p - threshold) / threshold + 0.15);
-    personS += ((threshold + p) / 2) * area * seconds;
-    areaS += area * seconds;
-    crowdedCells++;
-  }
-  return {
-    threshold,
-    crowded_person_s: round(personS, 2),
-    crowded_area_m2s: round(areaS, 2),
-    crowded_s_per_visitor: round(personS / Math.max(1, agents), 3),
-    peak_crowded_area_m2: round(Math.ceil(crowdedCells * CROWDED_OVERLAP) * area, 2),
-    worst_hotspot_mean_density: hotspots.reduce((m, h) => Math.max(m, h.mean_density), 0),
-  };
-}
-
-function findHotspots(peak: number[], cols: number, rows: number, cell: number, booths: Booth[]): Hotspot[] {
-  const seen = new Uint8Array(peak.length);
-  const out: Hotspot[] = [];
-  for (let start = 0; start < peak.length; start++) {
-    if (seen[start] || peak[start] < HOTSPOT_THRESHOLD) continue;
-    const stack = [start];
-    seen[start] = 1;
-    const cells: number[] = [];
-    while (stack.length) {
-      const k = stack.pop()!;
-      cells.push(k);
-      const i = k % cols;
-      const j = Math.floor(k / cols);
-      const nb = [
-        [i - 1, j],
-        [i + 1, j],
-        [i, j - 1],
-        [i, j + 1],
-      ];
-      for (const [a, b] of nb) {
-        if (a < 0 || b < 0 || a >= cols || b >= rows) continue;
-        const n = b * cols + a;
-        if (!seen[n] && peak[n] >= HOTSPOT_THRESHOLD) {
-          seen[n] = 1;
-          stack.push(n);
-        }
-      }
-    }
-    const is = cells.map((k) => k % cols);
-    const js = cells.map((k) => Math.floor(k / cols));
-    const zone = {
-      x: Math.min(...is) * cell,
-      y: Math.min(...js) * cell,
-      w: (Math.max(...is) - Math.min(...is) + 1) * cell,
-      h: (Math.max(...js) - Math.min(...js) + 1) * cell,
-    };
-    const vals = cells.map((k) => peak[k]);
-    out.push({
-      zone,
-      peak_density: round(Math.max(...vals), 3),
-      mean_density: round(vals.reduce((s, x) => s + x, 0) / vals.length, 3),
-      nearby_booth_ids: booths.filter((b) => rectGap(boothRect(b), zone) <= cell + 1e-6).map((b) => b.id),
-    });
-  }
-  return out.sort((a, b) => b.peak_density - a.peak_density).slice(0, 5);
-}
-
-// ---------- queue ----------
-
-export function mockQueue(input: QueueRequestInput): QueueResult {
-  const q = QueueRequest.parse(input);
-  const lambda = q.arrivals_per_min / 60;
-  const rho = (lambda * q.service_time_s) / q.servers;
-  // Sakasegawa approximation for M/M/c waiting time.
-  const wq = rho < 1 ? (rho ** (Math.sqrt(2 * (q.servers + 1)) - 1) / (q.servers * (1 - rho))) * q.service_time_s : q.duration_min * 30;
-  return QueueResult.parse({
-    mean_wait_s: round(wq, 1),
-    p90_wait_s: round(wq * 2.3, 1),
-    max_queue_len: Math.ceil(lambda * wq * 2),
-    utilization: round(Math.min(rho, 1), 3),
-  });
-}
-
 export function createMockEngine(): Engine {
   return {
     kind: "mock",
     health: async () => ({ status: "ok (mock)" }),
     layout: async (req) => mockLayout(req),
     validate: async (req) => mockValidate(req),
-    simulate: async (req) => mockSimulate(req),
-    trajectories: async (req) => mockTrajectories(req),
-    queue: async (req) => mockQueue(req),
   };
 }
