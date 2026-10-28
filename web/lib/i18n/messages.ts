@@ -8,6 +8,6 @@ export function translate(locale: Locale, key: MessageKey, values: Record<string
 }
 
 /** Translate known application errors while preserving external diagnostics verbatim. */
-export function localizeMessage(locale: Locale, message: string): string {
-  return Object.hasOwn(en, message) ? translate(locale, message as MessageKey) : message;
+export function localizeMessage(locale: Locale, message: string, values?: Record<string, string | number>): string {
+  return Object.hasOwn(en, message) ? translate(locale, message as MessageKey, values) : message;
 }

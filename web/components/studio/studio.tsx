@@ -32,7 +32,7 @@ import "./spatial-design.css";
 import "./sources.css";
 import { TOKENS } from "@/lib/ui/tokens";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: SceneLoading });
-const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: () => <p role="status">부스 관리 열기…</p> });
+const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: BoothsLoading });
 const ParticipantPortal = dynamic(() => import("../booths/participant-portal").then(module => module.ParticipantPortal), { ssr: false });
 type Mode = "plan" | "scene";
 type Point = {
@@ -281,7 +281,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const visibleDocument = !spaceMode && focusBooth && boothDocument ? boothDocument : !spaceMode && publicProject && publicProject.id === publishedId ? publicProject.space : document;
     const museCollapsed = Boolean(document) && !chatOpen;
     const [toolbarEnd, setToolbarEnd] = useState<HTMLDivElement | null>(null);
-    const roleToggle = <Segmented options={[{ id: "space", label: "주최" }, { id: "booth", label: "참가" }]} value={designRole} onChange={role => { setDesignRole(role); setChatOpen(true); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label="디자인 모드"/>;
+    const roleToggle = <Segmented options={[{ id: "space", label: t("Organize") }, { id: "booth", label: t("Participate") }]} value={designRole} onChange={role => { setDesignRole(role); setChatOpen(true); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Design mode")}/>;
     return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
 
     {controls.sidebar && createPortal(<>
@@ -337,7 +337,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         <div className="ps-canvas-toolbar">
           {roleToggle}<span className="ps-toolbar-divider" aria-hidden/>
           <Segmented<Mode> options={[{ id: "plan", label: "2D" }, { id: "scene", label: "3D" }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/>
-          {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: "내 부스" }, { id: "venue", label: "전체 공간" }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label="부스 작업 범위"/></>}
+          {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: t("My booth") }, { id: "venue", label: t("Whole venue") }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label={t("Booth work scope")}/></>}
           {spaceMode && document && <Popover>
             <PopoverTrigger render={<Button variant="ghost" className="ps-icon-button" aria-label={t("More tools")} title={t("More tools")}/>}><EllipsisIcon/></PopoverTrigger>
             <PopoverContent align="end" className="ps-tools-menu">
@@ -365,12 +365,12 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
-          {document ? <details className="ps-booth-pricing"><summary>부스 가격 · 신청 관리</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>부스 디자인 예시로 시작</Button></div>}
+          {document ? <details className="ps-booth-pricing"><summary>{t("Booth pricing · applications")}</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>{t("Start with the booth design example")}</Button></div>}
           <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
           {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}
-          {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">Muse · 부스 디자이너</h2><p className="mt-3 text-sm text-muted">아직 공개된 부스가 없어요. 주최 모드에서 Muse와 가격을 정하고 부스를 공개하면, 여기서 추천받고 바로 신청할 수 있어요.</p><Button className="mt-4" onClick={() => setDesignRole("space")}>주최 모드로 돌아가기</Button></section>}
+          {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">{t("Muse · Booth designer")}</h2><p className="mt-3 text-sm text-muted">{t("No booths are published yet. Once you set prices with Muse and publish booths in organizer mode, you can get recommendations and apply here.")}</p><Button className="mt-4" onClick={() => setDesignRole("space")}>{t("Back to organizer mode")}</Button></section>}
         </div>
 
 
@@ -382,6 +382,9 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
   </main>;
 }
+
+function BoothsLoading() {
+  const { t } = useI18n(); return <p role="status">{t("Opening booth management…")}</p>; }
 
 function SceneLoading() {
   const { t } = useI18n(); return <div className="ps-canvas-message">{t("Opening the 3D workspace…")}</div>; }

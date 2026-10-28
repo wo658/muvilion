@@ -26,7 +26,7 @@ describe("Muse booth subagent", () => {
     mocked.getModel.mockReturnValue({ model, hasKey: true });
     const currentDocument = createBoothDocument(bounds);
     currentDocument.texts.push({ id: "private", text: "DO_NOT_FORWARD_VENUE_DATA", x: 0, y: 0 });
-    const result = await designBooth({ booth: bounds, company: "Acme", brief: "카운터 하나", currentDocument });
+    const result = await designBooth({ booth: bounds, company: "Acme", brief: "카운터 하나", locale: "ko", currentDocument });
     expect(model.doGenerateCalls).toHaveLength(4);
     expect(model.doGenerateCalls.every(call => call.toolChoice?.type === "auto")).toBe(true);
     expect(result.steps.map(step => step.tool)).toEqual(["delegate_booth_design", "validate_booth_design", "validate_booth_design", "submit_design"]);

@@ -107,7 +107,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const switchProject = (id: string) => open(() => loadProject(id));
   /** Stores the drawing as the project's original; Studio extracts it when the project opens. */
   const startWithDrawing = (file: File) => open(async () => {
-    const created = await createProject(file.name.replace(/\.[^.]+$/, "").slice(0, 100) || "Untitled project");
+    const created = await createProject(file.name.replace(/\.[^.]+$/, "").slice(0, 100) || t("Untitled project"));
     const originalDrawingId = await uploadOriginal(created.id, file);
     await saveProject(created.id, created.name, created.revision, { ...created.state, originalDrawingId });
     return loadProject(created.id);
@@ -118,7 +118,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   if (!ready) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button></>}</main>;
   const start = <ProjectStart busy={switching} error={starting ? error : ""} notice={notice}
     onDrawing={file => void startWithDrawing(file)} onSample={file => void open(() => createSampleProject(file))}
-    onBlank={() => void open(() => createProject("Untitled project"))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
+    onBlank={() => void open(() => createProject(t("Untitled project")))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
   function navigate(href: string) { void flush().then(() => window.location.assign(href)).catch(() => {}); }
   const controls: ProjectControls | null = project && {
     change: state => { if (session.current?.project.id === project.id) changed(state); },
@@ -130,7 +130,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       const bundle = parsed.projectVersion === 2 ? ProjectExport.parse(parsed) : null;
       const state = bundle?.state ?? (parsed.projectVersion === 1 ? ProjectState.parse(parsed) : { ...emptyProject(), document: PlanDocumentSchema.parse(parsed) });
       await flush();
-      const imported = await createProject(bundle?.name ?? "Imported project", state, bundle?.assets ?? []);
+      const imported = await createProject(bundle?.name ?? t("Imported project"), state, bundle?.assets ?? []);
       await flush(); activate(imported); setProjects(await listProjects());
     },
     export: async () => {

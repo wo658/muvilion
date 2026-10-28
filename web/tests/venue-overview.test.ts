@@ -21,7 +21,7 @@ describe("venue overview", () => {
  it("marks changed elements as AI proposals even if the model claims manual origin", () => {
   const result = applyDesignProposal(document, { summary: "Moved", objects: [{ ...object, x: .6 }], assumptions: [] });
   expect(result.objects?.[0].provenance).toBe("ai");
-  expect(partitionLabel(result.objects![0])).toBe("AI 제안 가벽");
+  expect(partitionLabel(result.objects![0])).toBe("AI-proposed partition");
  });
  it("round trips entrances, rejects duplicates, and remaps cropped markers", () => {
   expect(PlanDocumentSchema.parse(JSON.parse(JSON.stringify(document))).entrances).toEqual(document.entrances);

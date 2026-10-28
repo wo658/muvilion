@@ -5,6 +5,7 @@ export const VENUE_COLORS = { existing: TOKENS.venueExisting, partition: TOKENS.
 export function displayWallHeight(height: number, cutaway: boolean, interior: boolean) {
   return cutaway && !interior ? Math.min(height, 1.1) : height;
 }
+/** Returns a catalog key; translate it at render time. */
 export function partitionLabel(object: DesignObject) {
-  return object.provenance === "ai" ? "AI 제안 가벽" : "계획 가벽";
+  return object.provenance === "ai" ? "AI-proposed partition" as const : "Planned partition" as const;
 }

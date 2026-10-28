@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { DesignObjectSchema, PlanDocumentSchema, type DesignObject, type PlanDocument } from "@/lib/plans/schema";
 import { designWarnings } from "@/lib/plans/design";
+import { translate, type Locale } from "@/lib/i18n/messages";
 
 export const BoothBoundsSchema = z.object({
   id: z.string().min(1), name: z.string().min(1).max(255),
@@ -25,17 +26,18 @@ export function createBoothDocument(bounds: BoothBounds, objects: DesignObject[]
 }
 
 /** Shared deterministic guard used by model tools AND the persistence boundary. */
-export function validateBoothDesign(bounds: BoothBounds, input: unknown): string[] {
+export function validateBoothDesign(bounds: BoothBounds, input: unknown, locale: Locale = "en"): string[] {
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) => translate(locale, key, values);
   const parsed = BoothObjectsSchema.safeParse(input);
-  if (!parsed.success) return ["설치물 형식, 크기 또는 좌표가 올바르지 않습니다."];
+  if (!parsed.success) return [t("Installation type, size or coordinates are invalid.")];
   const objects = parsed.data;
-  if (new Set(objects.map(object => object.id)).size !== objects.length) return ["설치물 ID가 중복되었습니다."];
+  if (new Set(objects.map(object => object.id)).size !== objects.length) return [t("Installation IDs are duplicated.")];
   const issues = objects.flatMap(object => [
-    ...((object.elevation ?? 0) + object.height > bounds.maxHeight + 1e-6 ? [`${object.label}: 부스의 최대 높이 ${bounds.maxHeight}m를 초과합니다.`] : []),
-    ...(object.zoneId ? [`${object.label}: 다른 공간 구역을 참조할 수 없습니다.`] : []),
+    ...((object.elevation ?? 0) + object.height > bounds.maxHeight + 1e-6 ? [t("{label}: exceeds the booth maximum height of {height} m.", { label: object.label, height: bounds.maxHeight })] : []),
+    ...(object.zoneId ? [t("{label}: cannot reference another space zone.", { label: object.label })] : []),
   ]);
   const document = createBoothDocument(bounds, objects);
-  return [...issues, ...designWarnings(document)];
+  return [...issues, ...designWarnings(document, locale)];
 }
 
 export function sanitizeBoothDocument(bounds: BoothBounds, input: unknown): PlanDocument {
@@ -45,7 +47,7 @@ export function sanitizeBoothDocument(bounds: BoothBounds, input: unknown): Plan
   return createBoothDocument(bounds, parsed.objects ?? []);
 }
 
-export function boothHandoff(document: PlanDocument, notes: string[] = []) {
+export function boothHandoff(document: PlanDocument, notes: string[] = [], locale: Locale = "en") {
   return {
     status: "concept" as const,
     items: (document.objects ?? []).map(object => ({
@@ -53,24 +55,24 @@ export function boothHandoff(document: PlanDocument, notes: string[] = []) {
       width: object.width, depth: object.depth, height: object.height,
     })),
     notes: [
-      "시공 협의를 위한 컨셉 자료입니다. 구조·전기·소방·리깅 검토와 시공 견적은 별도 확인이 필요합니다.",
+      translate(locale, "This is concept material for construction coordination. Structural, electrical, fire and rigging review and a construction quote must be confirmed separately."),
       ...notes.slice(0, 12),
     ],
   };
 }
 
 /** Submission must match a successfully checked candidate, never merely claim it passed. */
-export function createBoothReviewSession(bounds: BoothBounds) {
+export function createBoothReviewSession(bounds: BoothBounds, locale: Locale = "en") {
   let checked: string | null = null;
   let accepted: DesignObject[] | null = null;
   return {
     validate(objects: DesignObject[]) {
-      const issues = validateBoothDesign(bounds, objects);
+      const issues = validateBoothDesign(bounds, objects, locale);
       checked = issues.length ? null : JSON.stringify(objects);
       return { valid: issues.length === 0, issues };
     },
     submit(objects: DesignObject[]) {
-      const issues = validateBoothDesign(bounds, objects);
+      const issues = validateBoothDesign(bounds, objects, locale);
       if (issues.length) return { accepted: false, issues };
       if (checked !== JSON.stringify(objects)) return { accepted: false, issues: ["Call validate_booth_design on this exact candidate before submitting."] };
       accepted = structuredClone(objects);
@@ -82,14 +84,14 @@ export function createBoothReviewSession(bounds: BoothBounds) {
 
 /** An organizer explicitly imports a submitted local design into the current venue. */
 export function importBoothDesignIntoVenue(
-  venue: PlanDocument, booth: BoothBounds & { zoneId: string }, applicationId: string, objects: DesignObject[],
+  venue: PlanDocument, booth: BoothBounds & { zoneId: string }, applicationId: string, objects: DesignObject[], locale: Locale = "en",
 ): PlanDocument {
-  if (!venue.scaleConfirmed || !venue.widthMeters || !venue.heightMeters) throw new Error("전체 공간의 축척을 먼저 확정해 주세요.");
-  if (!/^[a-zA-Z0-9-]{1,60}$/.test(applicationId)) throw new Error("신청 ID가 올바르지 않습니다.");
+  if (!venue.scaleConfirmed || !venue.widthMeters || !venue.heightMeters) throw new Error("Confirm the scale of the whole venue first.");
+  if (!/^[a-zA-Z0-9-]{1,60}$/.test(applicationId)) throw new Error("The application ID is invalid.");
   const zone = venue.zones?.find(item => item.id === booth.zoneId);
   if (!zone || !zone.assignable || Math.abs(zone.width - booth.width) > 1e-6 || Math.abs(zone.depth - booth.depth) > 1e-6)
-    throw new Error("공개한 부스의 구역 또는 크기가 변경되었습니다. 원래 구역을 확인해 주세요.");
-  const issues = validateBoothDesign(booth, objects);
+    throw new Error("The published booth zone or size has changed. Check the original zone.");
+  const issues = validateBoothDesign(booth, objects, locale);
   if (issues.length) throw new Error(issues.join("\n"));
   const prefix = `participant-${applicationId}-`;
   const imported: DesignObject[] = objects.map((object, index) => {
@@ -103,7 +105,7 @@ export function importBoothDesignIntoVenue(
   });
   const next = PlanDocumentSchema.parse({ ...venue, objects: [...(venue.objects ?? []).filter(object => !object.id.startsWith(prefix)), ...imported] });
   const labels = imported.map(object => object.label);
-  const conflicts = designWarnings(next).filter(warning => labels.some(label => warning.includes(label)));
+  const conflicts = designWarnings(next, locale).filter(warning => labels.some(label => warning.includes(label)));
   if (conflicts.length) throw new Error(conflicts.join("\n"));
   return next;
 }
