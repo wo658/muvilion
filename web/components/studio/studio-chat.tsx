@@ -190,6 +190,10 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         const abortController = new AbortController();
         controller.current = abortController;
         setInput("");
+        // Show the user's message immediately; intent routing can take a while.
+        const userMessageId = generateId();
+        let handedOff = false;
+        setMessages(previous => [...previous, { id: userMessageId, role: "user", parts: [{ type: "text", text: message }] }]);
         try {
             const response = await fetch("/api/plans/intent", {
                 method: "POST", headers: { "Content-Type": "application/json" }, signal: abortController.signal,
@@ -214,10 +218,11 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 const references = await selectedReferences(sources, document);
                 if (!mounted.current) return;
                 abortController.signal.throwIfAborted();
-                await sendMessage({ text: message }, { body: { locale, boothPricing, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
+                handedOff = true;
+                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, boothPricing, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
             } else {
+                handedOff = true;
                 setMessages(previous => [...previous,
-                    { id: generateId(), role: "user", parts: [{ type: "text", text: message }] },
                     { id: generateId(), role: "assistant", parts: [{ type: "text", text: decision.message }] },
                 ]);
                 if (decision.intent === "design" || decision.intent === "interpret") {
@@ -226,6 +231,8 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             }
         } catch (err) {
             if (!mounted.current) return;
+            // The message never reached Muse: drop the echo and give the text back to the composer.
+            if (!handedOff) setMessages(previous => previous.filter(item => item.id !== userMessageId));
             setInput(current => current || text);
             setNotice(err instanceof Error && err.name === "AbortError"
                 ? t("Request cancelled. Your drawing is unchanged.")
