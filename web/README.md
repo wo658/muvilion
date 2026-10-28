@@ -153,3 +153,17 @@ cross-origin browser requests. This is a local, single-user app, not a hosted ac
 
 Only app-level credentials are persisted in SQLite so far; project persistence remains
 separate from this settings feature.
+
+## Unified message routing
+
+The composer sends the message, recent conversation, selected item, and a compact drawing
+summary to `/api/plans/intent`. `server/plans/intent.ts` uses the configured model to choose
+chat, design, interpretation, or clarification. The browser dispatches the existing
+workflow; regional analysis/cropping continues to run in the browser. There is no autonomous
+agent loop or background job. Each ordinary message adds one classification model call.
+
+The intent layer checks drawing availability, confirmed scale for design, and unknown
+lines for interpretation. Invalid/failed classification never defaults to a mutation.
+Design/analysis still require explicit Apply, and stale proposals cannot be applied.
+The existing analysis shortcut remains available; the main Send action routes automatically.
+Meta supports `toolChoice: "auto"`; routing accepts exactly one validated tool result.

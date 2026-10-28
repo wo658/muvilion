@@ -16,7 +16,7 @@
   "Ask about this": "이 대상으로 요청하기",
   "Tell Muse what you have in mind…": "원하는 배치나 변경을 말씀해 주세요…",
   "Draft a layout": "배치 제안 만들기",
-  "Send ↗": "대화하기 ↗",
+  "Send ↗": "보내기 ↗",
   "Drawing setup": "도면 준비",
   "Space height": "공간 높이",
   "Enter a measured height. A drawing alone cannot confirm it.": "실측한 높이가 있으면 입력하세요. 도면만으로 높이를 확정할 수는 없어요.",
@@ -279,5 +279,7 @@
   "Select a larger region inside the drawing.": "도면 안에서 더 큰 영역을 선택하세요.",
   "Your browser cannot crop this preview.": "이 브라우저에서는 미리보기를 자를 수 없어요.",
   "{count} source notes to review": "확인할 원본 메모 {count}개",
-  "Page {page} of {pages}": "{pages}쪽 중 {page}쪽"
+  "Page {page} of {pages}": "{pages}쪽 중 {page}쪽",
+  "Request cancelled. Your drawing is unchanged.": "요청을 취소했어요. 도면은 변경되지 않았습니다.",
+  "Muse could not determine your request. Please try again.": "요청의 의도를 판단하지 못했어요. 다시 시도해주세요."
 }

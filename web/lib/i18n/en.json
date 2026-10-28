@@ -279,5 +279,7 @@
   "Select a larger region inside the drawing.": "Select a larger region inside the drawing.",
   "Your browser cannot crop this preview.": "Your browser cannot crop this preview.",
   "{count} source notes to review": "{count} source notes to review",
-  "Page {page} of {pages}": "Page {page} of {pages}"
+  "Page {page} of {pages}": "Page {page} of {pages}",
+  "Request cancelled. Your drawing is unchanged.": "Request cancelled. Your drawing is unchanged.",
+  "Muse could not determine your request. Please try again.": "Muse could not determine your request. Please try again."
 }
