@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MockLanguageModelV4 } from "ai/test";
-const handle = vi.hoisted(() => ({ model: undefined as unknown }));
+const handle = vi.hoisted(() => ({ model: undefined as unknown, savedKey: undefined as string | undefined }));
 vi.mock('@/server/agent/model', () => ({getModel:()=>({hasKey:true,model:handle.model})}));
+vi.mock("@/server/settings/store", () => ({ storedMetaKey: () => handle.savedKey }));
 import { designPlan, DesignRequest } from '@/server/plans/design';
 
 const proposal = { summary:'An open central focal point and balanced perimeter.', objects:[], assumptions:[] };
@@ -10,7 +11,7 @@ function call(name:string, input:unknown) {
   return {content:[{type:'tool-call' as const,toolCallId:crypto.randomUUID(),toolName:name,input:JSON.stringify(input)}],finishReason:{unified:'tool-calls' as const,raw:undefined},usage,warnings:[]};
 }
 function input() {return DesignRequest.parse({brief:'Design an open gallery',sources:[],document:{schemaVersion:1,source:{name:'hall',format:'pdf',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:20,heightMeters:20,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'pdf-vector'}});}
-beforeEach(()=>vi.stubEnv('MUSE_IMAGE_ENABLED','false'));
+beforeEach(()=>{handle.savedKey=undefined;vi.stubEnv('MUSE_IMAGE_ENABLED','false');});
 
 describe('Designer Muse SDK loop',()=>{
   it('executes review and delivers image evidence to the next model step before submission',async()=>{
@@ -22,6 +23,14 @@ describe('Designer Muse SDK loop',()=>{
     const images=prompt.filter(m=>m.role==='user').flatMap(m=>m.content).filter(p=>p.type==='file');
     expect(images).toHaveLength(2);
     expect(JSON.stringify(prompt)).toContain('Tool evidence design-1');
+  });
+  it('enables image tools with a Settings key and preserves locale instructions',async()=>{
+    handle.savedKey='stored-test-key';vi.stubEnv('MODEL_API_KEY','');vi.stubEnv('MUSE_IMAGE_ENABLED','true');
+    const model=new MockLanguageModelV4({doGenerate:[call('review_design',proposal),call('submit_design',proposal)]});handle.model=model;
+    await designPlan({...input(),locale:'ko'},new AbortController().signal);
+    expect(model.doGenerateCalls[0].tools?.some(t=>t.name==='generate_design_concept')).toBe(true);
+    expect(JSON.stringify(model.doGenerateCalls[0].prompt)).toContain('Korean');
+    expect(JSON.stringify(model.doGenerateCalls)).not.toContain('stored-test-key');
   });
   it('rejects submission without review',async()=>{
     handle.model=new MockLanguageModelV4({doGenerate:[call('submit_design',proposal)]});

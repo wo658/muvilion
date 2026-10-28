@@ -1,8 +1,10 @@
 "use client";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/provider";
 
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
 import { SceneLabel } from "./scene-label";
-import { displayWallHeight, VENUE_COLORS, partitionLabel } from "@/lib/plans/overview";
+import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
 import { ExhibitionObject } from "./exhibition-object";
 import { SceneCamera } from "./scene-camera";
@@ -23,10 +25,11 @@ import { TOKENS } from "@/lib/ui/tokens";
 class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? <div className="ps-canvas-message"><h3>3D is unavailable in this browser</h3><p>Your plan is safe. Continue editing in 2D.</p></div> : this.props.children; }
+  render() { return this.state.failed ? <SceneUnavailable/> : this.props.children; }
 }
 
 export default function SceneView({ document, wallHeight, selected, onSelect }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void }) {
+  const { t } = useI18n();
   const exhibition = document.visualStyle === "exhibition";
   const width = document.widthMeters ?? 10;
   const depth = document.heightMeters ?? width * document.source.height / document.source.width;
@@ -39,7 +42,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
   const [cameraRevision,setCameraRevision]=useState(0);
   const inside=useMemo(()=>interiorPose(document),[document]);
   const world=useMemo(()=>navigationWorld({...document,wallHeight}),[document,wallHeight]);
-  const [exploreStatus,setExploreStatus]=useState(EXPLORE_HINT);
+  const [exploreStatus,setExploreStatus]=useState<MessageKey>(EXPLORE_HINT);
   const overviewCeiling=useRef("hidden");
   const selectedItem=document.objects?.some(o=>o.id===selected)||document.zones?.some(z=>z.id===selected);
   const changeView=(next:CameraView)=>{
@@ -58,19 +61,19 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     shape.closePath(); return shape;
   }, [document.floorBoundary, width, depth]);
   return <SceneBoundary><div className="ps-scene-tools">
-    <ToggleGroup aria-label="Camera view" value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
-      <ToggleGroupItem value="overview">Overview</ToggleGroupItem><ToggleGroupItem value="top">Top</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?"Review scale and floor boundary; a clear interior viewpoint is required.":"Click the floor to move; drag to look around"}>Explore</ToggleGroupItem>
+    <ToggleGroup aria-label={t("Camera view")} value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
+      <ToggleGroupItem value="overview">{t("Overview")}</ToggleGroupItem><ToggleGroupItem value="top">{t("Top")}</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?t("Review scale and floor boundary; a clear interior viewpoint is required."):t("Click the floor to move; drag to look around")}>{t("Explore")}</ToggleGroupItem>
     </ToggleGroup>
-    <Button variant="outline" size="icon-sm" aria-label="Focus selected area or element" title="Focus selection" disabled={!selectedItem} onClick={()=>changeView("selection")}><FocusIcon/></Button>
-    <Button variant="outline" size="icon-sm" aria-label="Reset camera" title="Reset camera" onClick={()=>changeView(view)}><RotateCcwIcon/></Button>
-    <Button variant={cutaway ? "secondary" : "outline"} size="sm" aria-pressed={cutaway} disabled={view === "interior"} onClick={() => setCutaway(value => !value)}>단면 보기</Button>
-    <Popover><PopoverTrigger render={<Button variant="outline" size="icon-sm" aria-label="Display layers" title="Display layers"/>}><LayersIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>Display layers</PopoverTitle><FieldGroup>
-      <Field><FieldLabel htmlFor="ceiling-display">Ceiling</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">Hidden</option><option value="solid">Solid</option><option value="transparent">Transparent</option></NativeSelect></Field>
-      <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">Beams / structure</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
-      <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">Lights / hanging elements</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
+    <Button variant="outline" size="icon-sm" aria-label={t("Focus selected area or element")} title={t("Focus selection")} disabled={!selectedItem} onClick={()=>changeView("selection")}><FocusIcon/></Button>
+    <Button variant="outline" size="icon-sm" aria-label={t("Reset camera")} title={t("Reset camera")} onClick={()=>changeView(view)}><RotateCcwIcon/></Button>
+    <Button variant={cutaway ? "secondary" : "outline"} size="sm" aria-pressed={cutaway} disabled={view === "interior"} onClick={() => setCutaway(value => !value)}>{t("Cutaway")}</Button>
+    <Popover><PopoverTrigger render={<Button variant="outline" size="icon-sm" aria-label={t("Display layers")} title={t("Display layers")}/>}><LayersIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Display layers")}</PopoverTitle><FieldGroup>
+      <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
+      <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
+      <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
     </FieldGroup></PopoverContent></Popover>
-    <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="View help and model information"/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>Viewing the space</PopoverTitle><p>{view==="interior"?"Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles.":"Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus."}</p><p>{document.ceiling?`Ceiling ${document.ceiling.height} m · ${document.ceiling.status}`:"Ceiling height not set"}. Wall height {wallHeight} m is provisional.</p><p>{walls.length} wall sections from {document.lines.filter(l=>l.kind==="wall").length} source lines. Display settings never change the design or checks.</p></PopoverContent></Popover>
-  </div><div className="ps-venue-legend" aria-label="Space legend"><span><i style={{background:VENUE_COLORS.existing}}/>기존 벽 · 도면 기반</span><span><i style={{background:VENUE_COLORS.partition}}/>계획 / AI 가벽</span><span><i style={{background:VENUE_COLORS.entrance}}/>입구 표시</span>{cutaway && view !== "interior" && <span>단면 조감도</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{exploreStatus}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+    <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View help and model information")}/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Viewing the space")}</PopoverTitle><p>{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.")}</p><p>{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p><p>{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p></PopoverContent></Popover>
+  </div><div className="ps-venue-legend" aria-label={t("Space legend")}><span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
     {exhibition && <hemisphereLight args={["#e6f1ff","#c6b69b",1.4]}/>}
@@ -92,7 +95,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
       {object.kind === "partition" ? <group onClick={e => { if (view === "interior") return; e.stopPropagation(); onSelect(object.id); }}>
         <mesh userData={{navigationObstacle:true}} position={[0,object.height/2,0]} castShadow><boxGeometry args={[object.width,object.height,object.depth]}/><meshStandardMaterial color={selected === object.id ? TOKENS.accent : VENUE_COLORS.partition} roughness={0.85}/></mesh>
         <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color="#256897"/></mesh>
-        {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={partitionLabel(object)} color="#256897"/>}
+        {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color="#256897"/>}
       </group> : exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
 
     </group>)}
@@ -105,3 +108,6 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     <SceneCamera document={document} view={view} revision={cameraRevision} selected={selected}/>
   </Canvas></SceneBoundary>;
 }
+
+function SceneUnavailable() {
+  const { t } = useI18n(); return <div className="ps-canvas-message"><h3>{t("3D is unavailable in this browser")}</h3><p>{t("Your plan is safe. Continue editing in 2D.")}</p></div>; }

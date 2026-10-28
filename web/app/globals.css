@@ -109,7 +109,7 @@ input[type="checkbox"] {
 }
 
 dialog::backdrop {
-  background: rgb(30 30 28 / 0.28);
+  background: var(--overlay);
   backdrop-filter: blur(2px);
 }
 
@@ -125,3 +125,7 @@ dialog::backdrop {
  --ring: var(--accent); --radius: 0.75rem;
 }
 [data-slot="button"], [data-slot="toggle-group-item"] { cursor: pointer; }
+
+.app-settings { margin: auto; width: min(420px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--hairline); border-radius: 20px; background: var(--surface); color: var(--ink); }
+.app-settings header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+.app-settings h2 { font-size: 18px; font-weight: 600; }

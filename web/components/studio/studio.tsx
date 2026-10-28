@@ -3,9 +3,13 @@ import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { localizeMessage } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/provider";
+import { AppSettings } from "../app-settings";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { cropPlan } from "@/lib/plans/crop";
+import { boothExample } from "@/lib/booths/example";
 import { Badge, Button, Segmented } from "../ui";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
@@ -17,7 +21,8 @@ import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
 import "./sources.css";
-const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: () => <div className="ps-canvas-message">Opening the 3D workspace…</div> });
+const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: SceneLoading });
+const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: () => <p role="status">부스 관리 열기…</p> });
 const STORAGE = "pavilion.plan-studio.v1";
 type Mode = "plan" | "scene";
 type Point = {
@@ -29,19 +34,10 @@ function Mark({ small = false }: {
 }) {
     return <svg width={small ? 25 : 44} height={small ? 25 : 44} viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M5 29V13L18 6l13 7v16M5 13l13 7 13-7M18 20v15M11 16v16M25 16v16" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>;
 }
-function EmptyPlan({ onUpload, onDemo, busy }: {
-    onUpload: () => void;
-    onDemo: () => void;
-    busy: boolean;
-}) {
-    return <div className="ps-empty">
-    <div className="ps-empty-drawing" aria-hidden="true"><svg viewBox="0 0 420 230" fill="none"><path d="M65 177L210 94l145 83-145 83z" fill="#e9eff7" transform="translate(0 -45)"/><g stroke="#a2b7ca" strokeWidth="1.3"><path d="M65 132V72l145-83 145 83v60M65 72l145 83 145-83M210 155v60" transform="translate(0 25)"/><path d="M112 184v-58l48-28 49 28v59M257 185v-58l49-28"/><path d="M161 98v57l48 28M257 127l49 28v57"/></g><path d="M65 157l145 83 145-83M210 155v85" stroke="#0064e0" strokeWidth="2"/><circle cx="210" cy="155" r="4" fill="#0064e0"/></svg><span className="ps-drawing-label">A space, waiting to take shape.</span></div>
-    <span className="eyebrow">YOUR NEXT SPACE STARTS HERE</span><h1>From a floor plan<br />to your next space.</h1><p>Bring your drawing. Find its structure.<br />Shape the space together with Muse.</p>
-    <div className="ps-empty-actions"><Button variant="primary" onClick={onUpload} disabled={busy}>Upload a floor plan <span aria-hidden="true">↗</span></Button><Button variant="ghost" onClick={onDemo} disabled={busy}>Explore Fort Mason <span aria-hidden="true">→</span></Button></div>
-    <div className="ps-format-note">PDF, PNG, JPG or DXF <span>·</span> Up to 20 MB</div>
-  </div>;
-}
 export function Studio() {
+    const boothManager = useRef<HTMLDialogElement>(null);
+    const [boothsOpen, setBoothsOpen] = useState(false);
+    const { t, locale } = useI18n();
     const sourceManager = useRef<HTMLDialogElement>(null);
     const [sources, setSources] = useState<SourceLibrary>(emptySources);
     const sourcesRef = useRef(sources);
@@ -50,10 +46,11 @@ export function Studio() {
     const [markingEntrance, setMarkingEntrance] = useState(false);
     const [showOriginal, setShowOriginal] = useState(false);
     const saveQueue = useRef(Promise.resolve());
+    const sourceLoadFailed = useEffectEvent(() => setSourceError(t("Saved sources could not be loaded. Import a project backup to recover them.")));
     useEffect(() => {
         let alive = true;
         readSources().then(saved => { if (alive && saved) { sourcesRef.current = saved; setSources(saved); } })
-            .catch(() => { if (alive) setSourceError("Saved sources could not be loaded. Import a project backup to recover them."); })
+            .catch(() => { if (alive) sourceLoadFailed(); })
             .finally(() => { if (alive) setSourcesReady(true); });
         return () => { alive = false; };
     }, []);
@@ -61,8 +58,8 @@ export function Studio() {
         try {
             const next = SourceLibrarySchema.parse(update(sourcesRef.current));
             sourcesRef.current = next; setSources(next); setSourceError(null);
-            saveQueue.current = saveQueue.current.then(() => writeSources(next)).catch(() => setSourceError("Sources could not be saved in this browser. Export project to keep a backup."));
-        } catch (error) { setSourceError(error instanceof Error ? error.message : "Could not update sources."); }
+            saveQueue.current = saveQueue.current.then(() => writeSources(next)).catch(() => setSourceError(t("Sources could not be saved in this browser. Export project to keep a backup.")));
+        } catch (error) { setSourceError(error instanceof Error ? error.message : t("Could not update sources.")); }
     };
     const [document, setDocument] = useState<PlanDocument | null>(null);
     const [details, setDetails] = useState(false);
@@ -99,9 +96,9 @@ export function Studio() {
             setNotice(null);
         }
         catch {
-            setNotice("Browser storage is full. Export your plan to keep this work.");
+            setNotice(t("Browser storage is full. Export your plan to keep this work."));
         }
-    }, []);
+    }, [t]);
     const change = useCallback((next: PlanDocument) => {
         const previous = planRef.current;
         if (previous)
@@ -129,11 +126,11 @@ export function Studio() {
     };
     const extract = async (file: File, page = 1) => {
         if (file.size > 20 * 1024 * 1024) {
-            setError("Please choose a file smaller than 20 MB.");
+            setError(t("Please choose a file smaller than 20 MB."));
             return;
         }
         if (!/\.(pdf|png|jpe?g|dxf)$/i.test(file.name)) {
-            setError("Choose a PDF, PNG, JPG or DXF drawing.");
+            setError(t("Choose a PDF, PNG, JPG or DXF drawing."));
             return;
         }
         request.current?.abort();
@@ -149,13 +146,13 @@ export function Studio() {
             const response = await fetch("/api/plans/extract", { method: "POST", body: form, signal: controller.signal });
             const data = await response.json();
             if (!response.ok)
-                throw new Error(typeof data.message === "string" ? data.message : typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "We could not read this drawing. Please try another file.");
+                throw new Error(typeof data.message === "string" ? data.message : typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : t("We could not read this drawing. Please try another file."));
             if (!controller.signal.aborted)
                 openDocument(PlanDocumentSchema.parse(data));
         }
         catch (err) {
             if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : "Could not read the drawing.");
+                setError(err instanceof Error ? err.message : t("Could not read the drawing."));
         }
         finally {
             if (request.current === controller) {
@@ -173,14 +170,14 @@ export function Studio() {
         try {
             const response = await fetch(`/api/plans/demo?venue=${venue}`, { signal: controller.signal });
             if (!response.ok)
-                throw new Error("The demo PDF is unavailable. Upload a drawing to continue.");
+                throw new Error(t("The demo PDF is unavailable. Upload a drawing to continue."));
             const file = new File([await response.blob()], venue === "fort-mason" ? "Fort Mason Ground Floor.pdf" : venue === "coex" ? "COEX Hall A 2024.pdf" : "McEnery Convention Center.pdf", { type: "application/pdf" });
             if (!controller.signal.aborted)
                 await extract(file);
         }
         catch (err) {
             if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : "Could not load the demo.");
+                setError(err instanceof Error ? err.message : t("Could not load the demo."));
         }
         finally {
             if (request.current === controller) {
@@ -198,7 +195,7 @@ export function Studio() {
         try {
             const response = await fetch(`/api/plans/demo?venue=fort-mason&artifact=${artifact}`, { signal: controller.signal });
             if (!response.ok)
-                throw new Error("The saved Fort Mason review is unavailable. Load the source drawing instead.");
+                throw new Error(t("The saved Fort Mason review is unavailable. Load the source drawing instead."));
             const next = PlanDocumentSchema.parse(await response.json());
             if (!controller.signal.aborted) {
                 openDocument(next);
@@ -207,7 +204,7 @@ export function Studio() {
         }
         catch (err) {
             if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : "Could not load saved review.");
+                setError(err instanceof Error ? err.message : t("Could not load saved review."));
         }
         finally {
             if (request.current === controller) {
@@ -259,7 +256,7 @@ export function Studio() {
             setError(null);
         }
         catch {
-            setError("This is not a supported muvilion plan. Your current drawing has been kept.");
+            setError(t("This is not a supported muvilion plan. Your current drawing has been kept."));
         }
     };
     const selectedLine = document?.lines.find((line) => line.id === selected);
@@ -268,8 +265,8 @@ export function Studio() {
         ?? document?.zones?.find(item => item.id === selected)
         ?? document?.entrances?.find(item => item.id === selected);
     const selection = selectedItem ? { id: selectedItem.id, label: selectedItem.label }
-        : selectedLine ? { id: selectedLine.id, label: selectedLine.kind === "wall" ? "벽" : "도면 요소" } : null;
-    const issues = document ? designWarnings(document) : [];
+        : selectedLine ? { id: selectedLine.id, label: selectedLine.kind === "wall" ? t("Wall") : t("Drawing element") } : null;
+    const issues = document ? designWarnings(document, locale) : [];
     const removeSelection = () => {
         if (!document || !selected) return;
         change({ ...document,
@@ -295,7 +292,7 @@ export function Studio() {
             setChatKey((k) => k + 1);
         }
         catch (err) {
-            setError(err instanceof Error ? err.message : "Could not crop this space.");
+            setError(err instanceof Error ? err.message : t("Could not crop this space."));
         }
         finally {
             setBusy(false);
@@ -312,12 +309,12 @@ export function Studio() {
             return;
         const pixels = Math.hypot((measure[1].x - measure[0].x) * document.source.width, (measure[1].y - measure[0].y) * document.source.height);
         if (pixels < 3) {
-            setError("Choose a longer segment for reliable calibration.");
+            setError(t("Choose a longer segment for reliable calibration."));
             return;
         }
         const w = document.source.width / pixels * Number(distance), h = document.source.height / pixels * Number(distance);
         if (w > 2000 || h > 2000) {
-            setError("The resulting extent is too large. Check the segment and its distance.");
+            setError(t("The resulting extent is too large. Check the segment and its distance."));
             return;
         }
         change({ ...document, widthMeters: w, heightMeters: h, scaleConfirmed: true });
@@ -331,79 +328,89 @@ export function Studio() {
             return;
         const result = PlanDocumentSchema.safeParse({ ...document, floorBoundary: floorDraft, walkStart: undefined });
         if (!result.success) {
-            setError("Trace at least three corners around the interior without crossing the outline.");
+            setError(t("Trace at least three corners around the interior without crossing the outline."));
             return;
         }
         change(result.data);
         setFloorDraft(null);
     };
     const calibrated = document?.scaleConfirmed && document.widthMeters && document.heightMeters;
-    return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"}`}>
+    return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
     <header className="ps-header">
-      <Link href="/" className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
+      <Link href="/" className="ps-brand" aria-label={t("muvilion home")}><Mark small/><span>muvilion</span></Link>
       <div className="ps-header-actions">
-        <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>자료</Button>
-        <Button variant="ghost" onClick={exportPlan} disabled={!document || busy || !sourcesReady}>내보내기</Button>
+        <Link href="/settings">API key</Link>
+        <Button variant="ghost" onClick={() => { setBoothsOpen(true); boothManager.current?.showModal(); }}>외부 참가 부스</Button>
+        <AppSettings/>
+        <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>{t("Sources")}</Button>
+        <Button variant="ghost" onClick={exportPlan} disabled={!document || busy || !sourcesReady}>{t("Export")}</Button>
       </div>
     </header>
+    <dialog ref={boothManager} className="ps-source-manager" style={{ width: "min(1120px, 96vw)", maxWidth: "96vw" }} aria-labelledby="booth-manager-title" onClose={() => setBoothsOpen(false)}>
+      <header><h2 id="booth-manager-title">외부 참가 부스</h2><Button onClick={() => boothManager.current?.close()} aria-label="부스 관리 닫기">닫기</Button></header>
+      {boothsOpen && (document ? <OrganizerBooths document={document} onDocumentChange={change}/> : <div className="ps-section"><h3>공간에서 참가자의 부스까지</h3><p>도면의 부스 구역을 공개하고 참가비를 설정하세요. 외부 참가자의 신청을 승인하면 전용 부스 디자인 작업실이 열립니다.</p><Button variant="primary" onClick={() => openDocument(boothExample())}>참가 부스 예시로 시작</Button><p className="ps-help">직접 제작한 체험용 공간입니다. 도면을 업로드한 뒤에도 같은 흐름을 사용할 수 있습니다.</p></div>)}
+    </dialog>
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
     <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 32 * 1024 * 1024)
         restore(await file.text());
     else if (file)
-        setError("Plan file must be smaller than 32 MB."); e.target.value = ""; }}/>
+        setError(t("Plan file must be smaller than 32 MB.")); e.target.value = ""; }}/>
     <dialog ref={sourceManager} className="ps-source-manager" aria-labelledby="sources-manager-title">
-      <header><h2 id="sources-manager-title">자료</h2><Button onClick={() => sourceManager.current?.close()} aria-label="Close Sources">Close</Button></header>
-        <div className="ps-section"><NativeSelect className="ps-venue-picker" aria-label="Example drawing" value="" disabled={busy} onChange={(e) => { sourceManager.current?.close(); openExample(e.target.value); }}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : "Choose an example"}</option><option value="fort-mason-showcase">Meta / Muse · exhibition concept</option><option value="fort-mason-spatial">Fort Mason · space design demo</option><option value="fort-mason-reviewed">Fort Mason · reviewed space</option><option value="fort-mason">Fort Mason · source drawing</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">COEX Hall A · detailed plan</option></NativeSelect></div>
+      <header><h2 id="sources-manager-title">{t("Sources")}</h2><Button onClick={() => sourceManager.current?.close()} aria-label={t("Close Sources")}>{t("Close")}</Button></header>
+        <div className="ps-section"><NativeSelect className="ps-venue-picker" aria-label={t("Example drawing")} value="" disabled={busy} onChange={(e) => { sourceManager.current?.close(); openExample(e.target.value); }}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : t("Choose an example")}</option><option value="fort-mason-showcase">{t("Meta / Muse · exhibition concept")}</option><option value="fort-mason-spatial">{t("Fort Mason · space design demo")}</option><option value="fort-mason-reviewed">{t("Fort Mason · reviewed space")}</option><option value="fort-mason">{t("Fort Mason · source drawing")}</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">{t("COEX Hall A · detailed plan")}</option></NativeSelect></div>
         <SourcesPanel library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { sourceManager.current?.close(); input.current?.click(); }}/>
-        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{sourceError}</p>}
-        <div className="ps-section"><Button disabled={!sourcesReady} onClick={() => { sourceManager.current?.close(); restoreInput.current?.click(); }}>Import project</Button></div>
+        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
+        <div className="ps-section"><Button disabled={!sourcesReady} onClick={() => { sourceManager.current?.close(); restoreInput.current?.click(); }}>{t("Import project")}</Button></div>
 
     </dialog>
     <div className="ps-workspace">
       <aside className="ps-sidebar" hidden={!details}>
         <div id="drawing-details" className="ps-drawing-controls" hidden={!details}>
-        <section className="ps-section"><div className="ps-section-heading"><h2>도면 준비</h2><Button variant="ghost" onClick={() => { setDetails(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>닫기</Button></div>
-          {document && document.source.pages > 1 && <label className="ps-field">Drawing page<NativeSelect value={document.source.page} disabled={busy || !sourceFile} onChange={(e) => { if (sourceFile)
-        void extract(sourceFile, Number(e.target.value)); }}>{Array.from({ length: document.source.pages }, (_, i) => <option key={i} value={i + 1}>Page {i + 1}</option>)}</NativeSelect>{!sourceFile && <small>Re-upload the source to change pages.</small>}</label>}
-          {document && <><Button variant={cropping ? "primary" : "secondary"} disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCropping((v) => !v); setCalibrating(false); setDrawing(false); setMeasure(null); setMode("plan"); }}>{cropping ? "Cancel crop" : "Crop to space"}</Button>{cropping && <p className="ps-help" style={{ marginTop: 9 }}>Click opposite corners of one space. Cropping clears design objects; use Undo to restore.</p>}</>}
+        <section className="ps-section"><div className="ps-section-heading"><h2>{t("Drawing setup")}</h2><Button variant="ghost" onClick={() => { setDetails(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{t("Close")}</Button></div>
+          {document && document.source.pages > 1 && <label className="ps-field">{t("Drawing page")}<NativeSelect value={document.source.page} disabled={busy || !sourceFile} onChange={(e) => { if (sourceFile)
+        void extract(sourceFile, Number(e.target.value)); }}>{Array.from({ length: document.source.pages }, (_, i) => <option key={i} value={i + 1}>{t("Page {page}", { page: i + 1 })}</option>)}</NativeSelect>{!sourceFile && <small>{t("Re-upload the source to change pages.")}</small>}</label>}
+          {document && <><Button variant={cropping ? "primary" : "secondary"} disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCropping((v) => !v); setCalibrating(false); setDrawing(false); setMeasure(null); setMode("plan"); }}>{cropping ? t("Cancel crop") : t("Crop to space")}</Button>{cropping && <p className="ps-help" style={{ marginTop: 9 }}>{t("Click opposite corners of one space. Cropping clears design objects; use Undo to restore.")}</p>}</>}
         </section>
-        <section className="ps-section"><div className="ps-section-heading"><h2>Real-world scale</h2>{calibrated ? <Badge tone="ok">Confirmed</Badge> : <span className="ps-small-muted">Needs review</span>}</div><p className="ps-help">Pick a known distance on the drawing to set its scale.</p>
-          <Button disabled={!document || busy} variant={calibrating ? "primary" : "secondary"} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCalibrating((v) => !v); setDrawing(false); setCropping(false); setMeasure(null); setMode("plan"); }}>{calibrating ? "Cancel measurement" : "Measure two points"}</Button>
-          {calibrating && <div className="ps-calibration"><p className="ps-help">{measure ? "Enter the real distance between your two points." : "Click both ends of a known dimension on the plan."}</p><label className="ps-field">Known distance (m)<Input type="number" min="0.01" step="0.01" value={distance} onChange={(e) => setDistance(e.target.value)}/></label><Button variant="primary" disabled={!measure || !(Number(distance) > 0)} onClick={calibrate}>Apply scale</Button></div>}
-          <p className="ps-help" style={{ marginTop: 15 }}>Or enter the full drawing extent:</p>
-          <div className="ps-dimensions"><label className="ps-field">Width<Input aria-label="Drawing width in metres" type="number" min="0.1" max="2000" step="0.01" value={width} placeholder="—" disabled={!document || busy} onChange={(e) => { setWidth(e.target.value); if (document?.scaleConfirmed)
-        change({ ...document, scaleConfirmed: false }); }}/><span>m</span></label><label className="ps-field">Depth<Input aria-label="Drawing depth in metres" type="number" min="0.1" max="2000" step="0.01" value={height} placeholder="—" disabled={!document || busy} onChange={(e) => { setHeight(e.target.value); if (document?.scaleConfirmed)
+        <section className="ps-section"><div className="ps-section-heading"><h2>{t("Real-world scale")}</h2>{calibrated ? <Badge tone="ok">{t("Confirmed")}</Badge> : <span className="ps-small-muted">{t("Needs review")}</span>}</div><p className="ps-help">{t("Pick a known distance on the drawing to set its scale.")}</p>
+          <Button disabled={!document || busy} variant={calibrating ? "primary" : "secondary"} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCalibrating((v) => !v); setDrawing(false); setCropping(false); setMeasure(null); setMode("plan"); }}>{calibrating ? t("Cancel measurement") : t("Measure two points")}</Button>
+          {calibrating && <div className="ps-calibration"><p className="ps-help">{measure ? t("Enter the real distance between your two points.") : t("Click both ends of a known dimension on the plan.")}</p><label className="ps-field">{t("Known distance (m)")}<Input type="number" min="0.01" step="0.01" value={distance} onChange={(e) => setDistance(e.target.value)}/></label><Button variant="primary" disabled={!measure || !(Number(distance) > 0)} onClick={calibrate}>{t("Apply scale")}</Button></div>}
+          <p className="ps-help" style={{ marginTop: 15 }}>{t("Or enter the full drawing extent:")}</p>
+          <div className="ps-dimensions"><label className="ps-field">{t("Width")}<Input aria-label={t("Drawing width in metres")} type="number" min="0.1" max="2000" step="0.01" value={width} placeholder="—" disabled={!document || busy} onChange={(e) => { setWidth(e.target.value); if (document?.scaleConfirmed)
+        change({ ...document, scaleConfirmed: false }); }}/><span>m</span></label><label className="ps-field">{t("Depth")}<Input aria-label={t("Drawing depth in metres")} type="number" min="0.1" max="2000" step="0.01" value={height} placeholder="—" disabled={!document || busy} onChange={(e) => { setHeight(e.target.value); if (document?.scaleConfirmed)
         change({ ...document, scaleConfirmed: false }); }}/><span>m</span></label></div>
           <Button disabled={!document || busy || !(Number(width) > 0 && Number(width) <= 2000 && Number(height) > 0 && Number(height) <= 2000)} onClick={() => { if (document)
-        change({ ...document, widthMeters: Number(width), heightMeters: Number(height), scaleConfirmed: true }); }}>Confirm dimensions <span>✓</span></Button>
+        change({ ...document, widthMeters: Number(width), heightMeters: Number(height), scaleConfirmed: true }); }}>{t("Confirm dimensions")}<span>✓</span></Button>
         </section>
-        {document && <section className="ps-section"><div className="ps-section-heading"><h2>Interior floor outline</h2></div><p className="ps-help">{document.floorBoundary ? `${document.floorBoundary.length} corners reviewed. Only this area becomes the floor; the outline does not create walls.` : "Trace the interior footprint to define usable floor and ceiling surfaces."}</p><Button disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(floorDraft ? null : []); setMode("plan"); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{floorDraft ? "Cancel outline" : "Trace floor outline"}</Button>{floorDraft && <><p className="ps-help">Click corners in order around the inside perimeter. {floorDraft.length} points selected.</p><Button disabled={floorDraft.length < 3} onClick={finishFloor}>Use floor outline</Button><Button variant="ghost" disabled={!floorDraft.length} onClick={() => setFloorDraft(floorDraft.slice(0, -1))}>Undo point</Button></>}{document.floorBoundary && !floorDraft && <Button variant="ghost" onClick={() => change({ ...document, floorBoundary: undefined, walkStart: undefined })}>Clear outline</Button>}</section>}
+        {document && <section className="ps-section"><div className="ps-section-heading"><h2>{t("Interior floor outline")}</h2></div><p className="ps-help">{document.floorBoundary ? t("{count} corners reviewed. This boundary defines the floor, not walls.", { count: document.floorBoundary.length }) : t("Trace the interior footprint to define usable floor and ceiling surfaces.")}</p><Button disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(floorDraft ? null : []); setMode("plan"); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{floorDraft ? t("Cancel outline") : t("Trace floor outline")}</Button>{floorDraft && <><p className="ps-help">{t("Click corners in order around the inside perimeter.")}{floorDraft.length} {t("points selected.")}</p><Button disabled={floorDraft.length < 3} onClick={finishFloor}>{t("Use floor outline")}</Button><Button variant="ghost" disabled={!floorDraft.length} onClick={() => setFloorDraft(floorDraft.slice(0, -1))}>{t("Undo point")}</Button></>}{document.floorBoundary && !floorDraft && <Button variant="ghost" onClick={() => change({ ...document, floorBoundary: undefined, walkStart: undefined })}>{t("Clear outline")}</Button>}</section>}
 
-        {document && <section className="ps-section"><div className="ps-section-heading"><h2>공간 높이</h2></div><p className="ps-help">실측한 높이가 있으면 입력하세요. 도면만으로 높이를 확정할 수는 없어요.</p>
-          <label className="ps-field">벽 높이 (m)<Input type="number" min="0.5" max="30" step="0.1" value={wallHeight} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.5 && n <= 30) change({ ...document, wallHeight: n }); }}/></label>
-          {document.ceiling ? <><label className="ps-field">천장 높이 (m)<Input type="number" min="0.1" max="30" step="0.1" value={document.ceiling.height} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.1 && n <= 30) change({ ...document, ceiling: { ...document.ceiling!, height: n, status: "estimated" } }); }}/></label><Button disabled={document.ceiling.status === "confirmed"} onClick={() => change({ ...document, ceiling: { ...document.ceiling!, status: "confirmed" } })}>{document.ceiling.status === "confirmed" ? "천장 높이 확인됨" : "실측한 천장 높이로 확인"}</Button></> : <Button disabled={!calibrated} onClick={() => change({ ...document, ceiling: { height: 4, status: "estimated", color: "#e2e5e7" } })}>천장 높이 입력</Button>}
+        {document && <section className="ps-section"><div className="ps-section-heading"><h2>{t("Space height")}</h2></div><p className="ps-help">{t("Enter a measured height. A drawing alone cannot confirm it.")}</p>
+          <label className="ps-field">{t("Wall height (m)")}<Input type="number" min="0.5" max="30" step="0.1" value={wallHeight} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.5 && n <= 30) change({ ...document, wallHeight: n }); }}/></label>
+          {document.ceiling ? <><label className="ps-field">{t("Ceiling height (m)")}<Input type="number" min="0.1" max="30" step="0.1" value={document.ceiling.height} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.1 && n <= 30) change({ ...document, ceiling: { ...document.ceiling!, height: n, status: "estimated" } }); }}/></label><Button disabled={document.ceiling.status === "confirmed"} onClick={() => change({ ...document, ceiling: { ...document.ceiling!, status: "confirmed" } })}>{document.ceiling.status === "confirmed" ? t("Ceiling height confirmed") : t("Confirm measured ceiling height")}</Button></> : <Button disabled={!calibrated} onClick={() => change({ ...document, ceiling: { height: 4, status: "estimated", color: "#e2e5e7" } })}>{t("Set ceiling height")}</Button>}
         </section>}
         </div>
       </aside>
-      <section className="ps-center" aria-label="Drawing workspace">
-        <div className="ps-canvas-toolbar"><div className="ps-canvas-title"><span className="eyebrow">{document ? "DRAWING WORKSPACE" : "NEW PROJECT"}</span><strong>{document ? document.source.name.replace(/\.[^.]+$/, "") : "Untitled space"}</strong></div>{document && <div className="ps-editor-actions"><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>되돌리기</Button><Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? "도면 설정" : "실제 크기 확인"}</Button></div>}<Segmented<Mode> options={[{ id: "plan", label: "2D 편집" }, { id: "scene", label: "3D 공간" }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label="Workspace view"/></div>
-        {mode === "plan" && document && <div className="ps-original-toggle"><label className="flex items-center gap-2"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>원본 도면</label><Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? "위치 선택 · 취소" : "입구 표시"}</Button></div>}
-        {error && <div className="ps-alert" role="alert"><span>{error}</span><Button onClick={() => setError(null)} aria-label="Dismiss error">×</Button></div>}
-        {notice && <div className="ps-notice" role="status">{notice}</div>}
+      <section className="ps-center" aria-label={t("Drawing workspace")} hidden={!document}>
+        <div className="ps-canvas-toolbar"><div className="ps-canvas-title"><span className="eyebrow">{document ? "DRAWING WORKSPACE" : "NEW PROJECT"}</span><strong>{document ? document.source.name.replace(/\.[^.]+$/, "") : t("Untitled space")}</strong></div>{document && <div className="ps-editor-actions"><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button><Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button></div>}<Segmented<Mode> options={[{ id: "plan", label: t("2D edit") }, { id: "scene", label: t("3D space") }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/></div>
+        {mode === "plan" && document && <div className="ps-original-toggle"><label className="flex items-center gap-2"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>{t("Original drawing")}</label><Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button></div>}
+        {error && <div className="ps-alert" role="alert"><span>{localizeMessage(locale, error)}</span><Button onClick={() => setError(null)} aria-label={t("Dismiss error")}>×</Button></div>}
+        {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
-          {document ? mode === "scene" ? <><SceneView document={document} wallHeight={wallHeight} selected={selected} onSelect={setSelected}/>{details && <div className="ps-scene-note">{calibrated ? "Scale confirmed" : "Illustrative scale · confirm dimensions"} · ceiling {document.ceiling ? `${document.ceiling.height} m (${document.ceiling.status})` : "not set"} · wall thickness inferred</div>}{wallCount === 0 && <div className="ps-scene-empty">Muse에게 도면 분석을 요청해 벽을 확인하세요.</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={document} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: `입구 ${(document.entrances?.length ?? 0) + 1}`, ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={setSelected} sourceOnly={false} showOriginal={showOriginal} drawing={drawing || calibrating || cropping} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : <EmptyPlan onUpload={() => input.current?.click()} onDemo={() => void loadDemo("fort-mason")} busy={busy}/>}
-          {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? "Cropping your space" : "Reading your drawing"}</strong><span>{cropping ? "Keeping geometry inside the selected area." : "Extracting geometry and preparing the source preview."}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>Cancel</Button>}</div>}
+          {document ? mode === "scene" ? <><SceneView document={document} wallHeight={wallHeight} selected={selected} onSelect={setSelected}/>{details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}{wallCount === 0 && <div className="ps-scene-empty">{t("Ask Muse to identify the walls.")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={document} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={setSelected} sourceOnly={false} showOriginal={showOriginal} drawing={drawing || calibrating || cropping} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? t("Cropping your space") : t("Reading your drawing")}</strong><span>{cropping ? t("Keeping geometry inside the selected area.") : t("Extracting geometry and preparing the source preview.")}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>{t("Cancel")}</Button>}</div>}
         </div>
-        <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || mode !== "plan" || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? "Finish drawing" : "+ Draw wall"}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>↶ Undo</Button></div><span>{floorDraft ? "Click the interior corners, then Use floor outline" : cropping ? "Click opposite corners of the space to keep" : calibrating ? "Click two points along a known dimension" : drawing ? "Click two endpoints · Esc cancels the segment" : mode === "scene" ? "Drag to orbit · scroll to zoom" : document ? "대상을 선택하고 Muse에게 요청하세요" : "Start with a drawing or explore the demo"}</span></div>
+        <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || mode !== "plan" || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : mode === "scene" ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
 
-        {details && document?.warnings.length ? <details className="ps-warnings"><summary>{document.warnings.length} source note{document.warnings.length === 1 ? "" : "s"} to review</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
+        {details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside className="ps-right-panel">
-        <StudioChat key={chatKey} sources={sources} document={document} onDocumentChange={change} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} simple/>
+        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => sourceManager.current?.showModal()} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} simple/>
       </aside>
     </div>
-    {document && <div className="ps-simple-summary"><p>{calibrated ? "실제 크기 확인됨" : "실제 크기를 확인하면 배치를 시작할 수 있어요."}</p>{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>확인할 사항 {issues.length}개</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
-    <footer className="ps-footer"><span>muvilion <span> / </span> Make room for your ideas.</span><span>Editable geometry · Human-reviewed dimensions</span></footer>
+    {document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
+
   </main>;
 }
+
+function SceneLoading() {
+  const { t } = useI18n(); return <div className="ps-canvas-message">{t("Opening the 3D workspace…")}</div>; }

@@ -1,4 +1,5 @@
 "use client";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import type { CameraControlsImpl } from "@react-three/drei";
@@ -8,7 +9,7 @@ import { TOKENS } from "@/lib/ui/tokens";
 const TRAVEL_SPEED_METERS_PER_SECOND = 9;
 export const EXPLORE_HINT = "Click the floor to move · Drag to look around";
 export function RoadView({ world, shape, onStatus }: {
-  world: WalkWorld; shape: Shape; onStatus: (message: string) => void;
+  world: WalkWorld; shape: Shape; onStatus: (message: MessageKey) => void;
 }) {
   const controls = useThree(state => state.controls) as unknown as CameraControlsImpl | null;
   const invalidate = useThree(state => state.invalidate);

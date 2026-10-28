@@ -1,4 +1,5 @@
 import "server-only";
+import { storedMetaKey } from "@/server/settings/store";
 import { ToolLoopAgent, isStepCount, hasToolCall } from "ai";
 import { z } from "zod";
 import { getModel } from "@/server/agent/model";
@@ -11,23 +12,23 @@ import { sourceContent, SOURCE_INSTRUCTIONS } from "./sources";
 import { DESIGN_INSTRUCTIONS } from "./prompts";
 import { PlanServiceError } from "./errors";
 
-export const DesignRequest = z.object({ sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
+export const DesignRequest = z.object({ locale: z.enum(["en", "ko"]).optional(), sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
 
 export async function designPlan(input: z.infer<typeof DesignRequest>, signal: AbortSignal) {
   const { document, brief } = input;
   const model = getModel();
-  if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add MODEL_API_KEY to web/.env.local.", 503);
+  if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   const runSignal = AbortSignal.any([signal, AbortSignal.timeout(75_000)]);
   const context: DesignToolContext = {
     base: document, draft: document, revision: 0,
     phase: document.objects?.length || document.zones?.length ? "revision" : "initial",
-    sources: input.sources.filter(source => source.selected), signal: runSignal, env: process.env,
+    sources: input.sources.filter(source => source.selected), signal: runSignal, env: { ...process.env, MODEL_API_KEY: storedMetaKey() ?? process.env.MODEL_API_KEY },
     artifacts: [], pendingImages: [], calls: new Map(),
   };
   let seenRevision = 0;
   const agent = new ToolLoopAgent({
     model: model.model,
-    instructions: DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS,
+    instructions: DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + (input.locale ? `\nWrite user-facing replies, summaries and new labels in ${input.locale === "ko" ? "Korean" : "English"}. Preserve existing user content and identifiers.` : ""),
     tools: createDesignTools(context),
     stopWhen: [isStepCount(8), hasToolCall("submit_design")],
     toolCallConcurrency: 1,

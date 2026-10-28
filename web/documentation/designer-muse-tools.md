@@ -9,7 +9,7 @@ space is initial design. There is no separate post-processing agent.
 - `review_design`: stages a complete candidate without changing the user's document,
   computes existing geometry warnings, and renders plan and isometric PNG evidence.
 - `generate_design_concept`: calls Meta Muse Image using selected reference images
-  and the latest draft schematic. Available when `MODEL_API_KEY` exists unless
+  and the latest draft schematic. Uses the key saved in Settings, falling back to `MODEL_API_KEY`. Available with a key unless
   `MUSE_IMAGE_ENABLED=false`. `META_IMAGE_MODEL` defaults to `muse-image-1.0`.
 - `submit_design`: submits the last visually reviewed geometry for user Apply.
 
