@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { PlanDocument } from "@/lib/plans/schema";
 
 type Point = { x: number; y: number };
@@ -12,6 +12,12 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, drawing, 
   const [start, setStart] = useState<Point | null>(null);
   const [cursor, setCursor] = useState<Point | null>(null);
   const width = document.source.width, height = document.source.height;
+  const paths = useMemo(() => {
+    const paths = {unknown: "", wall: "", dimension: ""};
+    for (const line of document.lines) paths[line.kind] += `M${line.a.x*width},${line.a.y*height}L${line.b.x*width},${line.b.y*height}`;
+    return paths;
+  }, [document.lines, width, height]);
+  const selectedLine = document.lines.find(line => line.id === selected);
   const point = (event: React.PointerEvent<SVGSVGElement>): Point => {
     const svg = event.currentTarget;
     const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM()!.inverse());
@@ -19,23 +25,30 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, drawing, 
   };
   return <div className={`ps-plan ${drawing ? "is-drawing" : ""}`}>
     <div className="ps-plan-scroll"><svg style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%`, minWidth: `${zoom * 100}%`, minHeight: `${zoom * 100}%` }} viewBox={`0 0 ${width} ${height}`} aria-label="Floor plan with extracted geometry" onPointerDown={(e) => {
-      if (!drawing) { if (e.target === e.currentTarget) onSelect(null); return; }
+      if (!drawing) {
+        if (sourceOnly) return;
+        const p=point(e),px=p.x*width,py=p.y*height;
+        let best: string | null=null, distance=8/(e.currentTarget.getScreenCTM()?.a ?? 1);
+        for (const line of document.lines) {
+          const ax=line.a.x*width,ay=line.a.y*height,dx=(line.b.x-line.a.x)*width,dy=(line.b.y-line.a.y)*height;
+          const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy || 1)));
+          const d=Math.hypot(px-ax-t*dx,py-ay-t*dy);
+          if (d<distance) {distance=d;best=line.id;}
+        }
+        onSelect(best); return;
+      }
       const p = point(e);
       if (start) { if (Math.hypot(p.x - start.x, p.y - start.y) > 0.002) onDraw(start, p); setStart(null); }
       else setStart(p);
     }} onPointerMove={(e) => { if (drawing && start) setCursor(point(e)); }} onKeyDown={(e) => { if (e.key === "Escape") setStart(null); }} tabIndex={drawing ? 0 : -1}>
       <rect width={width} height={height} fill="white" />
       <image href={document.preview} width={width} height={height} opacity={sourceOnly ? 1 : 0.5} />
-      {!sourceOnly && document.lines.map((line) => <g key={line.id}>
-        <line x1={line.a.x * width} y1={line.a.y * height} x2={line.b.x * width} y2={line.b.y * height}
-          stroke={selected === line.id ? "#0064e0" : line.kind === "wall" ? "#2f7a5b" : line.kind === "dimension" ? "#aa7933" : "#8596a5"}
-          strokeWidth={selected === line.id ? 4 : line.kind === "wall" ? 2.5 : 1.1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-        <line x1={line.a.x * width} y1={line.a.y * height} x2={line.b.x * width} y2={line.b.y * height}
-          stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" className="ps-line-hit"
-          onPointerDown={(e) => { if (!drawing) { e.stopPropagation(); onSelect(line.id); } }}>
-          <title>{line.kind} · {line.id}</title>
-        </line>
-      </g>)}
+      {!sourceOnly && <g pointerEvents="none">
+        <path d={paths.unknown} fill="none" stroke="#8596a5" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
+        <path d={paths.dimension} fill="none" stroke="#aa7933" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />
+        <path d={paths.wall} fill="none" stroke="#2f7a5b" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+        {selectedLine && <line x1={selectedLine.a.x*width} y1={selectedLine.a.y*height} x2={selectedLine.b.x*width} y2={selectedLine.b.y*height} stroke="#0064e0" strokeWidth={4} vectorEffect="non-scaling-stroke" />}
+      </g>}
       {!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.objects ?? []).map((object) => {
         const w = (object.rotation === 90 ? object.depth : object.width) / document.widthMeters! * width, h = (object.rotation === 90 ? object.width : object.depth) / document.heightMeters! * height;
         return <g key={object.id} transform={`translate(${object.x * width} ${object.y * height})`} pointerEvents="none"><rect x={-w / 2} y={-h / 2} width={w} height={h} fill={object.color} fillOpacity={0.8} stroke="white" strokeWidth={1} vectorEffect="non-scaling-stroke" /><text textAnchor="middle" dominantBaseline="central" fontSize={Math.max(6, Math.min(w / 6, 15))} fill="white">{object.label}</text></g>;

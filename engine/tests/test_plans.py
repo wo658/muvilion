@@ -8,13 +8,14 @@ from PIL import Image, ImageDraw
 from app.plans.extract import PlanInputError, extract_plan
 
 
-def vector_pdf(page_options=b""):
+def vector_pdf(page_options=b"", stream=None, page_size=b"0 0 200 100"):
     """Small real PDF with a rectangle, diagonal line and selectable text."""
-    stream = b"2 w 20 20 160 60 re S 20 20 m 180 80 l S BT /F1 12 Tf 30 50 Td (Hall 1) Tj ET"
+    if stream is None:
+        stream = b"2 w 20 20 160 60 re S 20 20 m 180 80 l S BT /F1 12 Tf 30 50 Td (Hall 1) Tj ET"
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] "
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [" + page_size + b"] "
         b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R " + page_options + b" >>",
         b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
@@ -154,3 +155,54 @@ def test_rotated_cropped_pdf_evidence_matches_preview(options):
         assert pixels.convert("L").getextrema()[0] < 100
     if b"CropBox" in options:
         assert any("crop box" in warning for warning in plan.warnings)
+
+
+def test_dense_pdf_retains_geometry_and_words_beyond_old_limits():
+    # Short CAD-detail strokes must survive too, including late drawing-order elements.
+    strokes = " ".join(f"{i / 10} 20 m {i / 10 + 0.25} 20 l S" for i in range(1405))
+    labels = " ".join(
+        f"BT /F1 5 Tf {5 + (i % 25) * 20} {30 + (i // 25) * 15} Td (T{i}) Tj ET" for i in range(450)
+    )
+    plan = extract_plan(
+        vector_pdf(stream=(strokes + " " + labels).encode(), page_size=b"0 0 600 400"), "dense.pdf"
+    )
+    assert len(plan.lines) == 1405
+    assert len(plan.texts) == 450
+    assert any(text.text == "T449" for text in plan.texts)
+    assert plan.lines[-1].a.x == pytest.approx(140.4 / 600)
+    assert not any("limited to" in warning for warning in plan.warnings)
+
+
+def test_dense_dxf_retains_late_geometry_and_all_labels():
+    doc = ezdxf.new()
+    doc.units = 6
+    for i in range(1305):
+        doc.modelspace().add_line((i / 100, 0), (i / 100, 10))
+    for i in range(450):
+        doc.modelspace().add_text(f"T{i}", dxfattribs={"insert": (i / 100, 2), "height": 0.1})
+    out = io.StringIO()
+    doc.write(out)
+    plan = extract_plan(out.getvalue().encode(), "dense.dxf")
+    assert len(plan.lines) == 1305
+    assert len(plan.texts) == 450
+    assert plan.texts[-1].text == "T449"
+    assert plan.widthMeters == pytest.approx(13.04 * 1.04)
+
+
+def test_resource_limit_rejects_whole_plan_instead_of_returning_partial(client, monkeypatch):
+    import app.plans.extract as extractor
+
+    monkeypatch.setattr(extractor, "MAX_LINES", 3)
+    response = client.post("/plans/extract", files={"file": ("hall.pdf", vector_pdf())})
+    assert response.status_code == 413
+    assert "No partial evidence" in response.json()["detail"]
+    assert "lines" not in response.json()
+
+
+def test_text_resource_limit_rejects_whole_plan(client, monkeypatch):
+    import app.plans.extract as extractor
+
+    monkeypatch.setattr(extractor, "MAX_TEXTS", 1)
+    response = client.post("/plans/extract", files={"file": ("hall.pdf", vector_pdf())})
+    assert response.status_code == 413
+    assert "No partial evidence" in response.json()["detail"]

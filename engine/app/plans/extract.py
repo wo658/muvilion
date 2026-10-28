@@ -8,6 +8,7 @@ import base64
 import io
 import math
 import threading
+from itertools import pairwise
 from pathlib import Path
 
 import cv2
@@ -19,10 +20,20 @@ from ezdxf import disassemble, units
 from ezdxf.path import make_path
 from PIL import Image, ImageDraw, ImageOps
 
-from app.plan_schemas import PlanEvidence, PlanLine, PlanPoint, PlanSource, PlanText
+from app.plan_schemas import (
+    MAX_PLAN_LINES,
+    MAX_PLAN_TEXTS,
+    PlanEvidence,
+    PlanLine,
+    PlanPoint,
+    PlanSource,
+    PlanText,
+)
 
-MAX_LINES = 1200
-MAX_TEXTS = 400
+MAX_LINES = MAX_PLAN_LINES
+MAX_TEXTS = MAX_PLAN_TEXTS
+MAX_CAD_ENTITIES = 200_000
+MAX_TEXT_CHARACTERS = 2_000_000
 MAX_PIXELS = 30_000_000
 # PDFium explicitly disallows simultaneous calls even for different documents.
 _PDF_LOCK = threading.Lock()
@@ -30,6 +41,23 @@ _PDF_LOCK = threading.Lock()
 
 class PlanInputError(ValueError):
     pass
+
+
+class PlanResourceError(PlanInputError):
+    """The full extraction cannot fit; never return a silently truncated plan."""
+
+
+def check_evidence_budget(line_count=0, text_count=0, text_characters=0):
+    if line_count > MAX_LINES:
+        raise PlanResourceError(
+            f"Drawing exceeds the {MAX_LINES:,}-line extraction resource limit. "
+            "No partial evidence was returned. Export a smaller region or simplify the drawing."
+        )
+    if text_count > MAX_TEXTS or text_characters > MAX_TEXT_CHARACTERS:
+        raise PlanResourceError(
+            "Drawing text exceeds the extraction resource limit. No partial evidence was "
+            "returned. Export a smaller region."
+        )
 
 
 def point(x, y):
@@ -62,23 +90,21 @@ def raster_lines(image):
     )
     if candidates is None:
         return []
-    # Longest observations first, with bounded output for noisy scans.
+    # Keep every detected segment, ordered longest first for consistent review.
+    check_evidence_budget(line_count=len(candidates))
     candidates = sorted(
         candidates.reshape(-1, 4), key=lambda p: -math.hypot(p[2] - p[0], p[3] - p[1])
     )
     return [
         line(point(x1 / width, y1 / height), point(x2 / width, y2 / height), "raster", i, 0.5)
-        for i, (x1, y1, x2, y2) in enumerate(candidates[:MAX_LINES])
+        for i, (x1, y1, x2, y2) in enumerate(candidates)
     ]
 
 
 def result(
     name, fmt, image, lines, texts, warnings, method, page=1, pages=1, width_m=None, height_m=None
 ):
-    if len(lines) >= MAX_LINES:
-        warnings.append("Line evidence was limited to 1,200 observations; inspect dense regions.")
-    if len(texts) >= MAX_TEXTS:
-        warnings.append("Text evidence was limited to 400 observations.")
+    check_evidence_budget(len(lines), len(texts), sum(len(text.text) for text in texts))
     if not lines:
         warnings.append(
             "No usable line evidence found. Trace geometry manually or try another page."
@@ -93,8 +119,8 @@ def result(
             name=name, format=fmt, page=page, pages=pages, width=image.width, height=image.height
         ),
         preview=preview_url(image),
-        lines=lines[:MAX_LINES],
-        texts=texts[:MAX_TEXTS],
+        lines=lines,
+        texts=texts,
         warnings=warnings,
         method=method,
         widthMeters=width_m,
@@ -148,15 +174,13 @@ def read_pdf(data, name, page):
             lines = []
             # .edges includes line objects, rectangle edges and curve segments.
             for edge in p.edges:
-                if len(lines) >= MAX_LINES:
-                    break
                 x0, x1 = edge["x0"], edge["x1"]
                 top, bottom = edge["top"], edge["bottom"]
                 # For actual lines preserve the endpoint direction (diagonal sign).
                 pts = edge.get("pts")
                 if pts and len(pts) == 2:
                     (x0, top), (x1, bottom) = pts
-                if math.hypot(x1 - x0, bottom - top) < 1:
+                if math.hypot(x1 - x0, bottom - top) <= 1e-9:
                     continue
                 lines.append(
                     line(
@@ -166,14 +190,19 @@ def read_pdf(data, name, page):
                         len(lines),
                     )
                 )
+                check_evidence_budget(line_count=len(lines))
+            words = p.extract_words()
+            check_evidence_budget(
+                text_count=len(words), text_characters=sum(len(word["text"]) for word in words)
+            )
             texts = [
                 PlanText(
                     id=f"text-{i}",
-                    text=word["text"][:1000],
+                    text=word["text"],
                     x=point((word["x0"] - ox) / w, (word["top"] - oy) / h).x,
                     y=point((word["x0"] - ox) / w, (word["top"] - oy) / h).y,
                 )
-                for i, word in enumerate(p.extract_words()[:MAX_TEXTS])
+                for i, word in enumerate(words)
             ]
             warnings = []
             if p.cropbox and tuple(p.cropbox) != tuple(p.mediabox):
@@ -194,8 +223,7 @@ def read_pdf(data, name, page):
                     "cover image-only drawing regions; review the preview."
                 )
                 # Retain vector precision; offer additional observations from raster content.
-                remaining = MAX_LINES - len(lines)
-                lines.extend(raster_lines(image)[:remaining])
+                lines.extend(raster_lines(image))
             return result(
                 name,
                 "pdf",
@@ -221,24 +249,27 @@ def read_dxf(data, name, page):
     count = 0
     for entity in disassemble.recursive_decompose(document.modelspace()):
         count += 1
-        if count > 20_000 or len(segments) >= MAX_LINES:
-            break
+        if count > MAX_CAD_ENTITIES:
+            raise PlanResourceError(
+                f"DXF exceeds the {MAX_CAD_ENTITIES:,}-entity resource limit. "
+                "No partial evidence was returned. Export a smaller model-space region."
+            )
         kind = entity.dxftype()
         if kind in {"TEXT", "MTEXT"}:
             pos = entity.dxf.insert
             text = entity.plain_text() if kind == "MTEXT" else entity.dxf.text
-            labels.append((str(text)[:1000], pos.x, pos.y))
+            labels.append((str(text), pos.x, pos.y))
+            check_evidence_budget(text_count=len(labels))
             continue
         try:
-            vertices = list(make_path(entity).flattening(distance=0.1, segments=8))
+            vertices = make_path(entity).flattening(distance=0.1, segments=8)
         except (TypeError, ValueError, AttributeError):
             skipped.add(kind)
             continue
-        for a, b in zip(vertices, vertices[1:], strict=False):
-            if len(segments) >= MAX_LINES:
-                break
+        for a, b in pairwise(vertices):
             if all(math.isfinite(v) for v in (a.x, a.y, b.x, b.y)):
                 segments.append((a.x, a.y, b.x, b.y))
+                check_evidence_budget(line_count=len(segments))
     if not segments:
         raise PlanInputError("No supported model-space geometry in this DXF.")
     xs = [v for segment in segments for v in (segment[0], segment[2])]
@@ -259,7 +290,7 @@ def read_dxf(data, name, page):
         lines.append(line(a, b, "cad", i))
         draw.line((a.x * width, a.y * height, b.x * width, b.y * height), fill="#444444", width=1)
     texts = []
-    for i, (value, x, y) in enumerate(labels[:MAX_TEXTS]):
+    for i, (value, x, y) in enumerate(labels):
         pos = point((x - xmin) / w, 1 - (y - ymin) / h)
         texts.append(PlanText(id=f"text-{i}", text=value, x=pos.x, y=pos.y))
         draw.text((pos.x * width, pos.y * height), value, fill="#555555")
@@ -283,8 +314,6 @@ def read_dxf(data, name, page):
             warnings.append("Unsupported DXF unit declaration; calibration required.")
     if skipped:
         warnings.append("Unsupported entity types omitted: " + ", ".join(sorted(skipped)))
-    if count > 20_000:
-        warnings.append("Only the first 20,000 CAD entities were inspected.")
     return result(
         name, "dxf", image, lines, texts, warnings, "dxf", width_m=width_m, height_m=height_m
     )

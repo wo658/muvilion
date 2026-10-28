@@ -849,7 +849,7 @@
               "$ref": "#/components/schemas/PlanLine"
             },
             "type": "array",
-            "maxItems": 1200,
+            "maxItems": 100000,
             "title": "Lines"
           },
           "texts": {
@@ -857,7 +857,7 @@
               "$ref": "#/components/schemas/PlanText"
             },
             "type": "array",
-            "maxItems": 400,
+            "maxItems": 20000,
             "title": "Texts"
           },
           "warnings": {
