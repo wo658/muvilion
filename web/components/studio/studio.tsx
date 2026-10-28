@@ -1,4 +1,5 @@
 "use client";
+import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
 import dynamic from "next/dynamic";
@@ -30,11 +31,7 @@ type Point = {
     x: number;
     y: number;
 };
-function Mark({ small = false }: {
-    small?: boolean;
-}) {
-    return <svg width={small ? 25 : 44} height={small ? 25 : 44} viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M5 29V13L18 6l13 7v16M5 13l13 7 13-7M18 20v15M11 16v16M25 16v16" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>;
-}
+
 export function Studio() {
     return <ProjectWorkspace editor={StudioEditor}/>;
 }
@@ -267,7 +264,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const calibrated = document?.scaleConfirmed && document.widthMeters && document.heightMeters;
     return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
     <div className="ps-topbar">
-      <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label={t("muvilion home")}><Mark small/></Link>
+      <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label={t("muvilion home")}><MuviAvatar size={30}/></Link>
       <div className="ps-topbar-actions">
         <Button variant="ghost" onClick={() => { setBoothsOpen(true); boothManager.current?.showModal(); }}>외부 참가 부스</Button>
         <Button variant="ghost" className="ps-icon-button" aria-label={t("Settings")} title={t("Settings")} onClick={() => setSettings("general")}><SettingsIcon/></Button>
@@ -335,7 +332,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       <aside id="muse-panel" className="ps-right-panel" data-collapsed={document && !chatOpen ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
         <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
       </aside>
-      {document && !chatOpen && <button type="button" className="ps-muse-launcher" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><span className="ps-muse-orb" aria-hidden="true"/><span><strong>Muse</strong><small>{selection ? selection.label : t("Talk to Muse")}</small></span></button>}
+      {document && !chatOpen && <button type="button" className="ps-muse-launcher" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/><span><strong>Muse</strong><small>{selection ? selection.label : t("Talk to Muse")}</small></span></button>}
     </div>
     {document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 
