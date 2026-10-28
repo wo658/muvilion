@@ -169,8 +169,6 @@
 .ps-role-panel { display:flex; flex-direction:column; min-height:0; height:100%; overflow-y:auto; }
 .ps-role-panel[hidden], .ps-sidebar[hidden] { display:none!important; }
 .ps-role-panel > .ps-conversation { flex:1; min-height:360px; height:auto; overflow:hidden; }
-.ps-booth-pricing { flex-shrink:0; border-bottom:1px solid var(--hairline); max-height:55vh; overflow-y:auto; }
-.ps-booth-pricing > summary { cursor:pointer; padding:16px 20px; font-weight:600; }
 @media(max-width:760px) { .ps-header { height:auto; min-height:68px; flex-wrap:wrap; padding:16px; } .ps-header-actions { flex-wrap:wrap; gap:12px; } }
 
 /* No top bar: actions live in the project sidebar, so give the workspace its own top inset. */
@@ -211,7 +209,6 @@
 .ps-has-plan .ps-simple-summary{top:60px}
 .ps-has-plan .ps-design-drawer{top:60px}
 .ps-panel-head{display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 16px;flex-shrink:0}
-.ps-booth-pricing>summary{padding:22px 20px;line-height:20px}
 .ps-canvas-toolbar .ps-icon-button{width:32px;height:32px}
 /* Canva-style header: no strip and no chip backgrounds. Controls sit directly on the canvas as
    quiet text/icon buttons; only the active choice gets a soft fill. Groups breathe apart, and the

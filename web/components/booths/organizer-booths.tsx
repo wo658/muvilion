@@ -96,7 +96,7 @@ function OrganizerBoothsInner({ document, onDocumentChange, onPublished, onPrici
   }
   const publicPath = project ? `/participate/${project.id}` : "";
   return <div className="flex flex-col gap-6 p-5">
-    <div><p className="eyebrow">{t("SPACE DESIGN")}</p><h2 className="mt-2 text-xl font-semibold">{t("Booth pricing · applications")}</h2><p className="mt-2 text-sm text-muted">{t("Review prices with Muse, then publish. You can preview the application experience in participant mode.")}</p></div>
+    <div><p className="text-sm text-muted">{t("Review prices with Muse, then publish. You can preview the application experience in participant mode.")}</p></div>
     {error && <p role="alert" className="text-sm text-bad">{localizeMessage(locale, error)}</p>}
     {notice && <p role="status" className="text-sm text-accent">{localizeMessage(locale, notice)}</p>}
     {restoring && <p role="status" className="text-sm text-muted">{t("Checking saved recruitment details…")}</p>}

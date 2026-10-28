@@ -19,11 +19,11 @@ import { StudioChat } from "./studio-chat";
 import { SourcesPanel } from "./sources-panel";
 import { SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
 import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-workspace";
+import { ProjectDialog } from "./project-dialog";
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
-import { Switch } from "../ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { EllipsisIcon, SettingsIcon } from "lucide-react";
+import { EllipsisIcon, FileImageIcon, SettingsIcon, StoreIcon } from "lucide-react";
 
 
 import { designWarnings } from "@/lib/plans/design";
@@ -34,7 +34,6 @@ import { TOKENS } from "@/lib/ui/tokens";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: SceneLoading });
 const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: BoothsLoading });
 const ParticipantPortal = dynamic(() => import("../booths/participant-portal").then(module => module.ParticipantPortal), { ssr: false });
-type Mode = "plan" | "scene";
 type Point = {
     x: number;
     y: number;
@@ -62,10 +61,10 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const originalDrawing = useRef(project.state.originalDrawingId);
     const [sourceError, setSourceError] = useState<string | null>(null);
     const [markingEntrance, setMarkingEntrance] = useState(false);
-    const [showOriginal, setShowOriginal] = useState(false);
     const [document, setDocument] = useState<PlanDocument | null>(project.state.document);
     const [details, setDetails] = useState(false);
-    const [mode, setMode] = useState<Mode>("plan");
+    const [sourcesOpen, setSourcesOpen] = useState(false);
+    const [boothsOpen, setBoothsOpen] = useState(false);
     const [floorDraft, setFloorDraft] = useState<Point[] | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
     const [history, setHistory] = useState<PlanDocument[]>([]);
@@ -140,7 +139,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setWidth(next.widthMeters?.toString() ?? "");
         setHeight(next.heightMeters?.toString() ?? "");
         setMarkingEntrance(false);
-        setMode("plan");
         setChatKey((k) => k + 1);
         save(next);
     };
@@ -280,6 +278,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const selectCanvas = editingBooth ? setBoothSelection : setSelected;
     const visibleDocument = !spaceMode && focusBooth && boothDocument ? boothDocument : !spaceMode && publicProject && publicProject.id === publishedId ? publicProject.space : document;
     const museCollapsed = Boolean(document) && !chatOpen;
+    // The workspace is 3D; the 2D plan appears only while a drawing setup tool needs it.
+    const planTools = spaceMode && (details || markingEntrance || drawing || calibrating || cropping || floorDraft !== null);
     const [toolbarEnd, setToolbarEnd] = useState<HTMLDivElement | null>(null);
     const roleToggle = <Segmented options={[{ id: "space", label: t("Organize") }, { id: "booth", label: t("Participate") }]} value={designRole} onChange={role => { setDesignRole(role); setChatOpen(true); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Design mode")}/>;
     return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
@@ -291,16 +291,19 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     <AppSettings section={settings} onSectionChange={setSettings} sections={spaceMode ? [
 
 
-      { id: "sources", label: t("Sources"), content: <>
-        <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSettings(null); input.current?.click(); }}/>
-        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
-      </> },
       { id: "project", label: t("Project"), content: <div className="flex flex-col gap-6">
         <section className="flex flex-col gap-2"><h3 className="font-semibold">{t("Export project")}</h3><p className="ps-help">{t("Download this project and its original files as one JSON bundle.")}</p><Button className="self-start" variant="primary" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button></section>
         <section className="flex flex-col gap-2"><h3 className="font-semibold">{t("Import project")}</h3><p className="ps-help">{t("Open an exported JSON bundle as a new project. The current project is kept.")}</p><Button className="self-start" disabled={!sourcesReady} onClick={() => { setSettings(null); restoreInput.current?.click(); }}>{t("Import project")}</Button></section>
       </div> },
     ] : []}/>
 
+    <ProjectDialog open={sourcesOpen} title={t("Sources")} onClose={() => setSourcesOpen(false)}>
+      <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSourcesOpen(false); input.current?.click(); }}/>
+      {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
+    </ProjectDialog>
+    {spaceMode && document && <ProjectDialog open={boothsOpen} title={t("Booth pricing · applications")} onClose={() => setBoothsOpen(false)}>
+      <OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
+    </ProjectDialog>}
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
     <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 400 * 1024 * 1024)
@@ -313,10 +316,10 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         <section className="ps-section"><div className="ps-section-heading"><h2>{t("Drawing setup")}</h2><Button variant="ghost" onClick={() => { setDetails(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{t("Close")}</Button></div>
           {document && document.source.pages > 1 && <label className="ps-field">{t("Drawing page")}<NativeSelect value={document.source.page} disabled={busy || !sourceFile} onChange={(e) => { if (sourceFile)
         void extract(sourceFile, Number(e.target.value)); }}>{Array.from({ length: document.source.pages }, (_, i) => <option key={i} value={i + 1}>{t("Page {page}", { page: i + 1 })}</option>)}</NativeSelect>{!sourceFile && <small>{t("Re-upload the source to change pages.")}</small>}</label>}
-          {document && <><Button variant={cropping ? "primary" : "secondary"} disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCropping((v) => !v); setCalibrating(false); setDrawing(false); setMeasure(null); setMode("plan"); }}>{cropping ? t("Cancel crop") : t("Crop to space")}</Button>{cropping && <p className="ps-help" style={{ marginTop: 9 }}>{t("Click opposite corners of one space. Cropping clears design objects; use Undo to restore.")}</p>}</>}
+          {document && <><Button variant={cropping ? "primary" : "secondary"} disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCropping((v) => !v); setCalibrating(false); setDrawing(false); setMeasure(null); }}>{cropping ? t("Cancel crop") : t("Crop to space")}</Button>{cropping && <p className="ps-help" style={{ marginTop: 9 }}>{t("Click opposite corners of one space. Cropping clears design objects; use Undo to restore.")}</p>}</>}
         </section>
         <section className="ps-section"><div className="ps-section-heading"><h2>{t("Real-world scale")}</h2>{calibrated ? <Badge tone="ok">{t("Confirmed")}</Badge> : <span className="ps-small-muted">{t("Needs review")}</span>}</div><p className="ps-help">{t("Pick a known distance on the drawing to set its scale.")}</p>
-          <Button disabled={!document || busy} variant={calibrating ? "primary" : "secondary"} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCalibrating((v) => !v); setDrawing(false); setCropping(false); setMeasure(null); setMode("plan"); }}>{calibrating ? t("Cancel measurement") : t("Measure two points")}</Button>
+          <Button disabled={!document || busy} variant={calibrating ? "primary" : "secondary"} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCalibrating((v) => !v); setDrawing(false); setCropping(false); setMeasure(null); }}>{calibrating ? t("Cancel measurement") : t("Measure two points")}</Button>
           {calibrating && <div className="ps-calibration"><p className="ps-help">{measure ? t("Enter the real distance between your two points.") : t("Click both ends of a known dimension on the plan.")}</p><label className="ps-field">{t("Known distance (m)")}<Input type="number" min="0.01" step="0.01" value={distance} onChange={(e) => setDistance(e.target.value)}/></label><Button variant="primary" disabled={!measure || !(Number(distance) > 0)} onClick={calibrate}>{t("Apply scale")}</Button></div>}
           <p className="ps-help" style={{ marginTop: 15 }}>{t("Or enter the full drawing extent:")}</p>
           <div className="ps-dimensions"><label className="ps-field">{t("Width")}<Input aria-label={t("Drawing width in metres")} type="number" min="0.1" max="2000" step="0.01" value={width} placeholder="—" disabled={!document || busy} onChange={(e) => { setWidth(e.target.value); if (document?.scaleConfirmed)
@@ -325,7 +328,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
           <Button disabled={!document || busy || !(Number(width) > 0 && Number(width) <= 2000 && Number(height) > 0 && Number(height) <= 2000)} onClick={() => { if (document)
         change({ ...document, widthMeters: Number(width), heightMeters: Number(height), scaleConfirmed: true }); }}>{t("Confirm dimensions")}<span>✓</span></Button>
         </section>
-        {document && <section className="ps-section"><div className="ps-section-heading"><h2>{t("Interior floor outline")}</h2></div><p className="ps-help">{document.floorBoundary ? t("{count} corners reviewed. This boundary defines the floor, not walls.", { count: document.floorBoundary.length }) : t("Trace the interior footprint to define usable floor and ceiling surfaces.")}</p><Button disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(floorDraft ? null : []); setMode("plan"); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{floorDraft ? t("Cancel outline") : t("Trace floor outline")}</Button>{floorDraft && <><p className="ps-help">{t("Click corners in order around the inside perimeter.")}{floorDraft.length} {t("points selected.")}</p><Button disabled={floorDraft.length < 3} onClick={finishFloor}>{t("Use floor outline")}</Button><Button variant="ghost" disabled={!floorDraft.length} onClick={() => setFloorDraft(floorDraft.slice(0, -1))}>{t("Undo point")}</Button></>}{document.floorBoundary && !floorDraft && <Button variant="ghost" onClick={() => change({ ...document, floorBoundary: undefined, walkStart: undefined })}>{t("Clear outline")}</Button>}</section>}
+        {document && <section className="ps-section"><div className="ps-section-heading"><h2>{t("Interior floor outline")}</h2></div><p className="ps-help">{document.floorBoundary ? t("{count} corners reviewed. This boundary defines the floor, not walls.", { count: document.floorBoundary.length }) : t("Trace the interior footprint to define usable floor and ceiling surfaces.")}</p><Button disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(floorDraft ? null : []); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{floorDraft ? t("Cancel outline") : t("Trace floor outline")}</Button>{floorDraft && <><p className="ps-help">{t("Click corners in order around the inside perimeter.")}{floorDraft.length} {t("points selected.")}</p><Button disabled={floorDraft.length < 3} onClick={finishFloor}>{t("Use floor outline")}</Button><Button variant="ghost" disabled={!floorDraft.length} onClick={() => setFloorDraft(floorDraft.slice(0, -1))}>{t("Undo point")}</Button></>}{document.floorBoundary && !floorDraft && <Button variant="ghost" onClick={() => change({ ...document, floorBoundary: undefined, walkStart: undefined })}>{t("Clear outline")}</Button>}</section>}
 
         {document && <section className="ps-section"><div className="ps-section-heading"><h2>{t("Space height")}</h2></div><p className="ps-help">{t("Enter a measured height. A drawing alone cannot confirm it.")}</p>
           <label className="ps-field">{t("Wall height (m)")}<Input type="number" min="0.5" max="30" step="0.1" value={wallHeight} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.5 && n <= 30) change({ ...document, wallHeight: n }); }}/></label>
@@ -335,38 +338,38 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </aside>
       <section className="ps-center" aria-label={t("Drawing workspace")} hidden={!document}>
         <div className="ps-canvas-toolbar">
-          {roleToggle}<span className="ps-toolbar-divider" aria-hidden/>
-          <Segmented<Mode> options={[{ id: "plan", label: "2D" }, { id: "scene", label: "3D" }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/>
+          {roleToggle}
           {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: t("My booth") }, { id: "venue", label: t("Whole venue") }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label={t("Booth work scope")}/></>}
           {spaceMode && document && <Popover>
             <PopoverTrigger render={<Button variant="ghost" className="ps-icon-button" aria-label={t("More tools")} title={t("More tools")}/>}><EllipsisIcon/></PopoverTrigger>
             <PopoverContent align="end" className="ps-tools-menu">
               <Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button>
               <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button>
-              {mode === "plan" && <>
-                <Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button>
-                <label className="flex items-center gap-2 px-2.5 py-1.5"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>{t("Original drawing")}</label>
-              </>}
+              <Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button>
             </PopoverContent>
           </Popover>}
+          {spaceMode && document && <>
+            <Button variant="ghost" onClick={() => setSourcesOpen(true)}><FileImageIcon/><span>{t("Sources")}</span></Button>
+            <Button variant="ghost" onClick={() => setBoothsOpen(true)}><StoreIcon/><span>{t("Booth pricing · applications")}</span></Button>
+          </>}
           <div ref={setToolbarEnd} className="ps-toolbar-end"/>
         </div>
 
         {error && <div className="ps-alert" role="alert"><span>{localizeMessage(locale, error)}</span><Button onClick={() => setError(null)} aria-label={t("Dismiss error")}>×</Button></div>}
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
-          {document ? mode === "scene" ? <><SceneView toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={selectCanvas} sourceOnly={false} showOriginal={spaceMode && showOriginal} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {document ? !planTools ? <><SceneView toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={selectCanvas} sourceOnly={false} showOriginal={false} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
           {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? t("Cropping your space") : t("Reading your drawing")}</strong><span>{cropping ? t("Keeping geometry inside the selected area.") : t("Extracting geometry and preparing the source preview.")}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>{t("Cancel")}</Button>}</div>}
         </div>
-        <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details || !spaceMode}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || mode !== "plan" || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : mode === "scene" ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
+        <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details || !spaceMode}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || !planTools || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : !planTools ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
 
         {spaceMode && details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
-          {document ? <details className="ps-booth-pricing"><summary>{t("Booth pricing · applications")}</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          {!document && <div className="p-5"><Button onClick={() => openDocument(boothExample())}>{t("Start with the booth design example")}</Button></div>}
+          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSourcesOpen(true)} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
           {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}
