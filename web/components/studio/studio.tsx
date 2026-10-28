@@ -388,7 +388,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside className="ps-right-panel">
-        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => sourceManager.current?.showModal()} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} simple/>
+        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => sourceManager.current?.showModal()} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection}/>
       </aside>
     </div>
     {document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}

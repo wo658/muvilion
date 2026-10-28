@@ -5,10 +5,10 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
-import { ArrowUpIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SparklesIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans/regions";
 import { runRegionalBatches, globalWallAuditBatches, applyGlobalWallAudit, type RegionalProgress } from "@/lib/plans/regional-client";
@@ -24,13 +24,12 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection }: {
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
     onRemoveSelection?: () => void;
     sources?: SourceLibrary;
-    simple?: boolean;
     document: PlanDocument | null;
     onDocumentChange: (document: PlanDocument) => void;
 }) {
@@ -57,7 +56,6 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
     const [progress, setProgress] = useState<RegionalProgress | null>(null);
     const [cancelRequested, setCancelRequested] = useState(false);
     const [reviewPhase, setReviewPhase] = useState<"regions" | "walls">("regions");
-    const regions = useMemo(() => document ? planRegions(document, minPixels) : null, [document, minPixels]);
     const feedContainer = useRef<HTMLDivElement | null>(null);
     const [preparing, setPreparing] = useState(false);
     const preparingRef = useRef(false);
@@ -234,12 +232,8 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
       <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
         <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2></div></div>
       </header>
-      {(document || notice || interpretError) && <div className="ps-conversation-tools">
-        <details open={!simple || interpreting}><summary className="cursor-pointer text-xs text-muted">{t("Drawing tools")}</summary><div className="mt-3">
-        <Button type="button" size="sm" onClick={() => void interpret()} disabled={!document || !unknownCount || !regions?.batches.length || interpreting || busy} variant="default" className="w-full">{interpreting ? <LoaderCircleIcon aria-hidden="true" data-icon="inline-start" className="animate-spin motion-reduce:animate-none" /> : <SparklesIcon aria-hidden="true" data-icon="inline-start" />}{interpreting ? progress ? `${reviewPhase === "walls" ? t("Checking long wall context") : t("Reviewing regions")} · ${progress.completed}/${progress.total}` : t("Preparing your proposal…") : t("Analyze with Muse")}</Button>
-
-        </div></details>
-        {progress && <div className="mt-3 text-xs text-muted" role="status" aria-live="polite">
+      {(interpreting || progress || interpretError || proposal || notice) && <div className="ps-conversation-tools">
+        {progress && <div className="text-xs text-muted" role="status" aria-live="polite">
           <progress aria-label={reviewPhase === "walls" ? t("Long wall context batches reviewed") : t("Regions reviewed")} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
           <p className="mt-1">{progress.completed} / {progress.total} {reviewPhase === "walls" ? t("long wall context batches reviewed") : t("regions reviewed")}{progress.failed > 0 ? t(" · {count} failed", { count: progress.failed }) : ""}{cancelRequested ? t(" · stopped") : ""}</p>
         </div>}
