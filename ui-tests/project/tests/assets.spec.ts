@@ -14,7 +14,7 @@ test('에셋 제안은 Apply 후 반영되고 내보내기와 새로고침에 �
  });
  await test.step('3D에서 glTF와 재질 이미지 실제 로딩 확인',()=>showAssets(page));
  await test.step('새로고침 후 저장된 에셋 참조 확인',async()=>{
-  await expect(page.getByRole("status").filter({hasText:"저장됨"})).toBeVisible();await page.reload();await expect(page.getByRole('button',{name:'설정',exact:true})).toBeEnabled();
+  await page.getByRole("button",{name:"프로젝트 목록 펼치기",exact:true}).click();await expect(page.getByRole("status").filter({hasText:"저장됨"})).toBeVisible();await page.reload();await expect(page.getByRole('button',{name:'설정',exact:true})).toBeEnabled();
   const restored=await exportPlan(page);expect(restored.document.objects[0].modelAssetId).toBe('modern_arm_chair_01');expect(restored.document.objects[1].materialAssetId).toBe('Wood051');
  });
 });

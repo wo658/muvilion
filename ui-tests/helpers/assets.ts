@@ -2,6 +2,9 @@ import { expect, type Page } from '@playwright/test';
 export const emptyPlan={schemaVersion:1,source:{name:'CC0 에셋 테스트.png',format:'image',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAIAAAD/gAIDAAAA5UlEQVR4nO3QQQ0AIAzAwPk3DRbWFyG5U9B0DmvzOuAnZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBRctw8GdrTzzwQAAAABJRU5ErkJggg==',widthMeters:12,heightMeters:12,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'opencv',floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}],objects:[]};
 export async function importPlan(page:Page){
  await page.goto('/');
+ const blank=page.getByRole('button',{name:'빈 프로젝트로 시작',exact:true});
+ await expect(blank.or(page.getByRole('button',{name:'설정',exact:true}))).toBeVisible();
+ if(await blank.isVisible()) await blank.click();
  await projectSettings(page);
  await expect(page.getByRole('button',{name:'프로젝트 가져오기'})).toBeEnabled();
  const previousUrl=page.url();
@@ -10,6 +13,7 @@ export async function importPlan(page:Page){
  await (await chooser).setFiles({name:'cc0-plan.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(emptyPlan))});
  await expect(page).not.toHaveURL(previousUrl);
  await expect(page.getByText('CC0 에셋 테스트',{exact:true})).toBeVisible();
+ if(!await page.getByLabel('Muse에게 도면에 관해 질문하기').isVisible()) await page.locator('button[aria-controls="muse-panel"][aria-expanded="false"]').click();
  await expect(page.getByLabel('Muse에게 도면에 관해 질문하기')).toBeVisible();
 }
 export async function draft(page:Page){
@@ -38,6 +42,7 @@ export async function exportPlan(page:Page){
  const stream=await(await event).createReadStream();await page.getByRole('dialog',{name:'설정',exact:true}).getByRole('button',{name:'닫기',exact:true}).click();const chunks:Buffer[]=[];for await(const c of stream)chunks.push(Buffer.from(c));const bundle=JSON.parse(Buffer.concat(chunks).toString());return bundle.projectVersion===2?bundle.state:bundle;
 }
 export async function showAssets(page:Page){
+ if((page.viewportSize()?.width??1920)<800) await page.locator('button[aria-controls="muse-panel"][aria-expanded="true"]').click();
  const loaded=[
   page.waitForResponse(r=>r.url().endsWith('modern_arm_chair_01_1k.gltf')&&r.status()===200),
   page.waitForResponse(r=>r.url().endsWith('modern_ceiling_lamp_01_1k.gltf')&&r.status()===200),

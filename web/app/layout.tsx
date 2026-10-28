@@ -9,6 +9,7 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 
 export const metadata: Metadata = {
   title: "muvilion",
+  icons: { icon: { url: "/mascot/muvi-face.svg", type: "image/svg+xml" } },
   description: "Turn floor plans into editable spaces. Review drawing evidence and design with Muse.",
 };
 

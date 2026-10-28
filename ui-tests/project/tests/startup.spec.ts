@@ -3,7 +3,10 @@ import { expect, test } from "@playwright/test";
 test("스튜디오 시작과 자료 설정 열기 및 닫기", async ({ page }) => {
   await test.step("새 프로젝트 열기", async () => {
     await page.goto("/");
-    await page.getByRole("button", { name: "새 프로젝트", exact:true }).click();
+    const blank=page.getByRole("button", { name: "빈 프로젝트로 시작", exact:true });
+    await expect(blank.or(page.getByRole("button",{name:"설정",exact:true}))).toBeVisible();
+    if(!await blank.isVisible()) await page.getByRole("button", { name: "새 프로젝트", exact:true }).click();
+    const before=page.url();await blank.click();await expect(page).not.toHaveURL(before);
     await expect(page.getByRole("heading", { name: "어떤 공간을 만들고 싶으세요?" })).toBeVisible();
   });
   await test.step("설정에서 자료 메뉴 열기", async () => {

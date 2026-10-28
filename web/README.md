@@ -47,13 +47,14 @@ Studio controls use shadcn Base UI primitives mapped to Muse semantic colors. An
 
 Muse drafts zones and installations with explicit review/Apply, preserving source evidence, scale, floor boundary and ceiling review. This uses live model proposals with deterministic geometry checks; the legacy OR-Tools BoothSpec packing engine is not a general 3D design solver and is not invoked here. Ceiling surfaces are level and objects schematic; sloped roofs, detailed trusses, lighting simulation and structural/rigging verification are not implemented.
 
-## Sample projects
+## Starting a project
 
-On first start with an empty project database, the server seeds one project per drawing listed in
-`data/samples/samples.json` (sources and redistribution notes in `data/samples/README.md`). Originals
-are stored in SQLite; Studio extracts each drawing the first time its project opens, so the Python
-engine must be running. Set `SAMPLES_DIR` to seed from another directory. Existing databases are never
-reseeded.
+With no projects (or a link to a project that no longer exists), the app opens a start screen:
+start from your own drawing, a sample drawing, or an empty project. Sample drawings are listed in
+`data/samples/samples.json` (sources and redistribution notes in `data/samples/README.md`); choosing
+one copies it into SQLite as a new project. Drawings are stored as the project's original and
+extracted when the project opens, so the Python engine must be running. Set `SAMPLES_DIR` to read
+samples from another directory.
 
 ## Checks
 
@@ -128,7 +129,7 @@ work on the local machine.
 `app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns
 model configuration; `server/plans` executes drawing workflows; `server/engine` is the
 single Python transport (including multipart extraction); `server/projects` stores projects
-and seeds samples. Runtime entry points import `server-only`. Shared schemas and pure
+and creates sample projects. Runtime entry points import `server-only`. Shared schemas and pure
 transformations stay in `lib/`.
 
 ### Chat controls

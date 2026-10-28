@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { CanvasTexture, SRGBColorSpace } from "three";
+import { TOKENS } from "@/lib/ui/tokens";
 
 /** Screen-sized, local canvas labels also remain visible in captured WebGL views. */
 export function SceneLabel({ text, color, position, onSelect }: { text: string; color: string; position: [number, number, number]; onSelect?: () => void }) {
@@ -11,7 +12,7 @@ export function SceneLabel({ text, color, position, onSelect }: { text: string; 
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.roundRect(0, 0, 512, 128, 48); ctx.fill();
-    ctx.fillStyle = "white"; ctx.font = "600 48px sans-serif";
+    ctx.fillStyle = TOKENS.surface; ctx.font = "600 48px sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(text, 256, 64, 460);
     const result = new CanvasTexture(canvas); result.colorSpace = SRGBColorSpace;
