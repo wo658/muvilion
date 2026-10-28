@@ -1,6 +1,6 @@
 import { createUIMessageStreamResponse, streamText, toUIMessageStream } from "ai";
 import { z } from "zod";
-import { getModel } from "@/lib/agent/model";
+import { getModel } from "@/server/agent/model";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { CHAT_INSTRUCTIONS, planChatContext } from "@/lib/plans/muse";
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const parsed = RequestBody.safeParse(body);
   if (!parsed.success) return Response.json({ error: "Invalid drawing conversation." }, { status: 400 });
   const handle = getModel();
-  if (!handle.hasKey) return Response.json({ error: "Muse is not configured. Add MODEL_API_KEY to web/.env.local." }, { status: 503 });
+  if (!handle.hasKey) return Response.json({ error: "Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local." }, { status: 503 });
   const result = streamText({
     model: handle.model,
     instructions: CHAT_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS,

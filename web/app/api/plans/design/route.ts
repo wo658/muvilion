@@ -1,6 +1,6 @@
 import { generateText, tool } from "ai";
 import { z } from "zod";
-import { getModel } from "@/lib/agent/model";
+import { getModel } from "@/server/agent/model";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { applyDesignProposal, DESIGN_INSTRUCTIONS, PlanDesignProposal, planChatContext } from "@/lib/plans/muse";
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const { document, brief } = parsed.data;
   if (!document.scaleConfirmed) return Response.json({ error: "Confirm the drawing scale before drafting a layout." }, { status: 400 });
   const model = getModel();
-  if (!model.hasKey) return Response.json({ error: "Muse is not configured. Add MODEL_API_KEY to web/.env.local." }, { status: 503 });
+  if (!model.hasKey) return Response.json({ error: "Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local." }, { status: 503 });
   try {
     const result = await generateText({
       model: model.model,

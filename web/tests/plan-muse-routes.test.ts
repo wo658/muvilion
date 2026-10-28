@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { POST as interpret } from "@/app/api/plans/interpret/route";
 import { POST as chat } from "@/app/api/plans/chat/route";
 
-vi.mock("@/lib/agent/model", () => ({ getModel: () => ({ hasKey: false }) }));
+vi.mock("@/server/agent/model", () => ({ getModel: () => ({ hasKey: false }) }));
 const document = {
   schemaVersion: 1,
   source: { name: "test.pdf", format: "pdf", page: 1, pages: 1, width: 100, height: 100 },

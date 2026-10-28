@@ -335,6 +335,7 @@ export function Studio() {
       <Link href="/" className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
       <NativeSelect className="ps-venue-picker" aria-label="Example drawing" value="" disabled={busy} onChange={(e) => openExample(e.target.value)}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : "Choose an example"}</option><option value="fort-mason-showcase">Meta / Muse · exhibition concept</option><option value="fort-mason-spatial">Fort Mason · space design demo</option><option value="fort-mason-reviewed">Fort Mason · reviewed space</option><option value="fort-mason">Fort Mason · source drawing</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">COEX Hall A · detailed plan</option></NativeSelect>
       <div className="ps-header-actions">
+        <Link href="/settings">Settings</Link>
         <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>Sources · {sources.items.length + Number(Boolean(document))}</Button>
         <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails((value) => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{details ? "← Simple view" : "Details"}</Button>
         {document && <Button variant="ghost" aria-expanded={designOpen} aria-controls="space-designer" onClick={() => setDesignOpen(v => !v)}>Design space</Button>}

@@ -1,3 +1,5 @@
+import "server-only";
+import { storedMetaKey } from "@/server/settings/store";
 /**
  * Model provider configuration. Both providers speak the OpenAI chat-completions
  * protocol (function tools + streaming), so they share @ai-sdk/openai-compatible.
@@ -12,7 +14,8 @@ import type { LanguageModel } from "ai";
 export type ModelHandle = { model: LanguageModel; provider: string; modelId: string; hasKey: boolean };
 
 export function getModel(env: Env = process.env): ModelHandle {
-  const which = env.MODEL_PROVIDER ?? "meta";
+  const saved = storedMetaKey();
+  const which = saved ? "meta" : env.MODEL_PROVIDER ?? "meta";
   if (which === "baseten") {
     const modelId = env.BASETEN_MODEL ?? "meta-models/muse-spark-open-1026";
     const provider = createOpenAICompatible({
@@ -27,8 +30,8 @@ export function getModel(env: Env = process.env): ModelHandle {
   const provider = createOpenAICompatible({
     name: "meta",
     baseURL: env.META_BASE_URL ?? "https://api.meta.ai/v1",
-    apiKey: env.MODEL_API_KEY,
+    apiKey: saved ?? env.MODEL_API_KEY,
     includeUsage: true,
   });
-  return { model: provider(modelId), provider: "meta", modelId, hasKey: Boolean(env.MODEL_API_KEY) };
+  return { model: provider(modelId), provider: "meta", modelId, hasKey: Boolean(saved ?? env.MODEL_API_KEY) };
 }

@@ -1,5 +1,5 @@
 import { generateText, tool } from "ai";
-import { getModel } from "@/lib/agent/model";
+import { getModel } from "@/server/agent/model";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { applyInterpretation, interpretationEvidence, INTERPRET_INSTRUCTIONS, PlanInterpretation } from "@/lib/plans/muse";
 
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   if (!document.lines.some((line) => line.kind === "unknown")) return Response.json({ error: "No unclassified lines to review." }, { status: 400 });
   if (document.lines.filter(line => line.kind === "unknown").length > 600) return Response.json({ error: "Use regional analysis for more than 600 candidates." }, { status: 422 });
   const model = getModel();
-  if (!model.hasKey) return Response.json({ error: "Muse is not configured. Add MODEL_API_KEY to web/.env.local." }, { status: 503 });
+  if (!model.hasKey) return Response.json({ error: "Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local." }, { status: 503 });
   try {
     const result = await generateText({
       model: model.model,
