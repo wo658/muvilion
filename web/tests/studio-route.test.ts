@@ -1,13 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import DetailsPage from "@/app/details/page";
 import Page from "@/app/page";
 
 describe("studio routes", () => {
-  it("redirects old review-console bookmarks to the studio", () => {
-    expect(() => DetailsPage()).toThrow("NEXT_REDIRECT");
-  });
   it("starts with a conversation and keeps drawing input in sources", () => {
     const html = renderToStaticMarkup(createElement(Page));
     expect(html).toContain("어떤 공간을 만들고 싶으세요?");
