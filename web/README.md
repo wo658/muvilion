@@ -31,7 +31,7 @@ Extraction no longer truncates at 1,200 lines or 400 text items. The engine expl
 
 ## Space design and heights
 
-CC0 materials, furniture and lighting candidates with individual download links and adoption notes are listed in [ASSET-SHORTLIST.md](ASSET-SHORTLIST.md). This is a researched shortlist; assets are not bundled or wired into the editor yet.
+CC0 materials, furniture and lighting candidates with individual download links and adoption notes are listed in [ASSET-SHORTLIST.md](ASSET-SHORTLIST.md). The 12 selected assets are bundled at 1K under `public/assets/cc0/`, with source URLs and hashes in its manifest. Editor selection UI integration is still pending.
 
 Simple view's **Design space** opens three layers: Spaces (non-solid purpose zones), Elements (physical installations), and Height & ceiling. Booths are optional spaces; legacy booth/lounging solid objects remain importable. Zones may be marked available for later company/team assignment, without adding registration workflows.
 
