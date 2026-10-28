@@ -1,11 +1,11 @@
 import type { ProjectSummary } from "./schema";
 
-/** Two-letter tile label: first letters of the first and last words ("KINTEX · 2홀" → "K2"). */
+/** Tile label: the first two English letters of the name ("KINTEX · 2홀" → "KI"); names without
+ *  English letters fall back to their first character. */
 export function monogram(name: string) {
-  const words = name.split(/[\s·\-_/()|,.]+/u).filter(Boolean);
-  if (!words.length) return "?";
-  const letters = words.length === 1 ? [...words[0]].slice(0, 2) : [[...words[0]][0], [...words.at(-1)!][0]];
-  return letters.join("").toUpperCase();
+  const latin = name.match(/[a-z]/gi);
+  if (latin) return latin.slice(0, 2).join("").toUpperCase();
+  return [...name.trim()][0] ?? "?";
 }
 
 /** Most recently updated projects for the collapsed rail, always including the open one. */
