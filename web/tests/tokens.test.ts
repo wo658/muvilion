@@ -59,6 +59,8 @@ const ALLOWED: Record<string, string[]> = {
   "lib/sources/files.ts": ['"white"'],
 };
 const LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch)\(|["'](?:white|black)["']/g;
+// shadcn's accent/muted backgrounds collide with Muse's accent blue and muted text color.
+const MISUSED_ROLE = /\bbg-(?:accent|muted)(?![-\w])/g;
 
 function sources(dir: string): string[] {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap(entry => {
@@ -77,5 +79,9 @@ describe("UI code uses color tokens only", () => {
     const allowed = ALLOWED[file] ?? [];
     const found = (readFileSync(join(root, file), "utf8").match(LITERAL) ?? []).filter(match => !allowed.includes(match));
     expect(found).toEqual([]);
+  });
+
+  it.each(files)("%s uses sunken/selected for hover and selection backgrounds", file => {
+    expect(readFileSync(join(root, file), "utf8").match(MISUSED_ROLE) ?? []).toEqual([]);
   });
 });

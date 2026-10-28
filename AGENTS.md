@@ -81,6 +81,26 @@ attribution behavior built into the tool.
 - Put public setup and example documentation in tracked locations; the root README and
   `docs/` remain private under the workflow above.
 
+## Design and color tokens
+
+- `web/design.md` is the interface specification: layout, copy, tokens, language and
+  verification. Read it before changing UI and update it in the same commit when a rule changes.
+- `web/lib/ui/tokens.ts` is the only place colors are defined. Neutrals come from one
+  validated scale (Radix Colors Slate, light); keep the brand accent and status colors as they are.
+- In UI code, use token roles only: Tailwind theme names (`bg-surface`, `text-muted`), CSS
+  variables (`var(--hairline)`) or `TOKENS` in canvas/3D code. Never write hex, `rgb()`,
+  `oklch()` or `"white"`/`"black"` literals. Need a new color? Add a named token by role,
+  not by appearance, and reuse an existing token when one is close.
+- Pick tokens by role, not by how they look: `bg` behind panels, `surface` for sidebars,
+  headers, panels and dialogs, `sunken` for wells and hover, `selected` for current/pressed.
+  Text uses `ink`, `inkSoft` or `muted`; `faint` is for icons only.
+- `web/tests/tokens.test.ts` enforces this. It checks WCAG AA contrast for token pairs and
+  rejects literal colors outside the documented artwork exceptions (exhibition materials,
+  the mascot). Do not weaken a threshold or widen an exception to make a change pass.
+  Fix the token or the usage instead, and record any new exception in `web/design.md`.
+- The engine does not style the UI. Its raster previews of source drawings (for example DXF)
+  are evidence images and stay neutral grey; the web applies all UI colors.
+
 ## Muvi mascot
 
 - Muvi is the muvilion mascot. Use the canonical assets in `web/public/mascot/`
