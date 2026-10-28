@@ -19,6 +19,10 @@ The root `AGENTS.md` also applies here.
 - Model configuration lives in `server/agent`; drawing/model workflows in `server/plans`;
   Python transport in `server/engine`; optional local examples in `server/examples`.
   `lib/engine` retains shared contracts and mock computation, not HTTP transport.
+- The unified composer calls `/api/plans/intent` before dispatching chat, design, or
+  interpretation. Keep routing decisions server-side, validate model output and enforce
+  prerequisites in code. Ambiguous requests ask for clarification; failures must not
+  fall back to a drawing mutation. Changes remain proposals until the user applies them.
 - Unit tests use a test-only `server-only` alias. Next.js compilation must also pass to
   verify that server code is not imported into the client module graph.
 - Keep public HTTP request/response shapes and example behavior stable during structural
