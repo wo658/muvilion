@@ -16,6 +16,8 @@ import { emptySources, type SourceLibrary } from "@/lib/sources/schema";
 import { selectedReferences } from "@/lib/sources/files";
 import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
 import Image from "next/image";
+import Link from "next/link";
+import { MuviGreeting } from "@/components/muvi/muvi";
 type Proposal = {
     artifacts?: DesignArtifact[];
     sources: SourceLibrary;
@@ -231,7 +233,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
-        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2>{busy && <p className="text-xs text-muted">{t("Muse is replying…")}</p>}</div></div>
+        <div className="flex items-center gap-3"><Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={locale === "ko" ? "뮤비 3D 만나기 (새 탭)" : "Meet Muvi in 3D (new tab)"}><Image src="/mascot/muvi-face.svg" alt="" width={32} height={32}/></Link><div><h2 className="text-sm font-semibold">Muse</h2>{busy && <p className="text-xs text-muted">{t("Muse is replying…")}</p>}</div></div>
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")}><ChevronDownIcon aria-hidden="true" /></Button>}
       </header>
       {(interpreting || progress || interpretError || proposal || notice) && <div className="ps-conversation-tools">
@@ -260,7 +262,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         {notice && <p role="status" className="mt-3 text-xs text-accent">{localizeMessage(locale, notice)}</p>}
       </div>}
       <div ref={feedContainer} className="ps-conversation-feed" aria-live="polite" aria-relevant="additions text">
-        {!messages.length && <div className="ps-greeting"><span className="ps-muse-orb" aria-hidden="true"/><h1>{t("What space shall we create?")}</h1><div className="ps-suggestions">{[t("Widen the path from the entrance to the stage"), t("Add a lounge to relax in")].map((text) => <Button type="button" size="sm" variant="outline" key={text} disabled={busy || interpreting} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto min-h-9 whitespace-normal text-left">{text}</Button>)}</div></div>}
+        {!messages.length && <div className="ps-greeting"><MuviGreeting thinking={interpreting || status === "submitted" || status === "streaming"}/><h1>{t("What space shall we create?")}</h1><div className="ps-suggestions">{[t("Widen the path from the entrance to the stage"), t("Add a lounge to relax in")].map((text) => <Button type="button" size="sm" variant="outline" key={text} disabled={busy || interpreting} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto min-h-9 whitespace-normal text-left">{text}</Button>)}</div></div>}
         {messages.map((message) => <article key={message.id} className={message.role === "user" ? "ml-6 rounded-xl bg-sunken p-3" : "mr-2"}><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{message.role === "user" ? t("You") : "Muse"}</p>{message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{part.text}</p> : null)}</article>)}
         {(preparing || status === "submitted") && <p className="animate-pulse text-xs text-muted">{t("Muse is thinking…")}</p>}
         {error && <div role="alert" className="rounded-lg border border-hairline p-3 text-xs text-bad"><p>{t("Muse couldn’t reply. Please try again.")}</p><Button type="button" size="sm" variant="outline" onClick={clearError} className="mt-2">{t("Dismiss")}</Button></div>}
