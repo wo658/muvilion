@@ -296,5 +296,17 @@
   "Open an exported JSON bundle as a new project. The current project is kept.": "내보낸 JSON 묶음을 새 프로젝트로 엽니다. 현재 프로젝트는 그대로 유지됩니다.",
   "Minimize Muse": "Muse 접기",
   "Talk to Muse": "Muse와 대화하기",
-  "Muse is replying…": "Muse가 답하는 중…"
+  "Muse is replying…": "Muse가 답하는 중…",
+  "How would you like to start?": "어떻게 시작할까요?",
+  "Bring a floor plan and design the space with Muse.": "도면을 가져오면 Muse와 함께 공간을 설계할 수 있어요.",
+  "Start with my drawing": "내 도면으로 시작",
+  "PDF, PNG, JPG or DXF · up to 20 MB": "PDF, PNG, JPG, DXF · 20MB 이하",
+  "Start with a sample": "샘플 도면으로 시작",
+  "Loading samples…": "샘플을 불러오는 중…",
+  "{count} public venue drawings": "공개 전시장 도면 {count}개",
+  "No sample drawings in this checkout": "이 환경에는 샘플 도면이 없어요",
+  "Creating project…": "프로젝트를 만드는 중…",
+  "Start with an empty project": "빈 프로젝트로 시작",
+  "The project in this link no longer exists.": "이 링크의 프로젝트를 찾을 수 없어요. 새로 시작해 주세요.",
+  "Sample drawing not found.": "샘플 도면을 찾을 수 없어요."
 }
