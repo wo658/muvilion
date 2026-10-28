@@ -2,8 +2,7 @@
 
 CP-SAT's parallel search can return different layouts with the same objective for an identical
 model, so repeated requests are answered from here: the same request then gets the same layout
-across calls and engine restarts (replays and live runs agree). Simulation needs no such memo; it
-is deterministic for a given layout. Set LAYOUT_CACHE_DIR="" to disable.
+across calls and engine restarts. Set LAYOUT_CACHE_DIR="" to disable.
 """
 
 from __future__ import annotations

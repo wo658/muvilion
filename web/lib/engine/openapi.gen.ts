@@ -55,57 +55,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/queue": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Queue */
-        post: operations["queue_queue_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/simulate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Simulate */
-        post: operations["simulate_simulate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trajectories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Trajectories */
-        post: operations["trajectories_trajectories_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/validate": {
         parameters: {
             query?: never;
@@ -127,15 +76,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AgentTrack */
-        AgentTrack: {
-            /** Id */
-            id: number;
-            /** T0 */
-            t0: number;
-            /** Xy */
-            xy: number[];
-        };
         /** Body_extract_plans_extract_post */
         Body_extract_plans_extract_post: {
             /** File */
@@ -187,35 +127,6 @@ export interface components {
              */
             kind: "booth" | "tent" | "food_truck" | "kiosk";
         };
-        /**
-         * Congestion
-         * @description Sustained congestion: how much crowding there was and for how long, not just its peak.
-         */
-        Congestion: {
-            /** Threshold */
-            threshold: number;
-            /** Crowded Person S */
-            crowded_person_s: number;
-            /** Crowded Area M2S */
-            crowded_area_m2s: number;
-            /** Crowded S Per Visitor */
-            crowded_s_per_visitor: number;
-            /** Peak Crowded Area M2 */
-            peak_crowded_area_m2: number;
-            /** Worst Hotspot Mean Density */
-            worst_hotspot_mean_density: number;
-        };
-        /** DensityGrid */
-        DensityGrid: {
-            /** Cell */
-            cell: number;
-            /** Cols */
-            cols: number;
-            /** Rows */
-            rows: number;
-            /** Peak */
-            peak: number[];
-        };
         /** Door */
         Door: {
             /** Id */
@@ -232,19 +143,6 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
-        };
-        /** Hotspot */
-        Hotspot: {
-            zone: components["schemas"]["Rect"];
-            /** Peak Density */
-            peak_density: number;
-            /** Mean Density */
-            mean_density: number;
-            /**
-             * Nearby Booth Ids
-             * @default []
-             */
-            nearby_booth_ids: string[];
         };
         /** Layout */
         Layout: {
@@ -336,23 +234,6 @@ export interface components {
             objective?: number | null;
             /** Solve Time S */
             solve_time_s: number;
-            /**
-             * Steps
-             * @default []
-             */
-            steps: components["schemas"]["LayoutStep"][];
-        };
-        /**
-         * LayoutStep
-         * @description An improving solution found by the solver on the way to the returned layout.
-         */
-        LayoutStep: {
-            /** T S */
-            t_s: number;
-            /** Objective */
-            objective: number;
-            /** Booths */
-            booths: components["schemas"]["Booth"][];
         };
         /** Obstacle */
         Obstacle: {
@@ -462,36 +343,6 @@ export interface components {
             /** Y */
             y: number;
         };
-        /** QueueRequest */
-        QueueRequest: {
-            /** Arrivals Per Min */
-            arrivals_per_min: number;
-            /** Service Time S */
-            service_time_s: number;
-            /** Servers */
-            servers: number;
-            /**
-             * Duration Min
-             * @default 60
-             */
-            duration_min: number;
-            /**
-             * Seed
-             * @default 0
-             */
-            seed: number;
-        };
-        /** QueueResult */
-        QueueResult: {
-            /** Mean Wait S */
-            mean_wait_s: number;
-            /** P90 Wait S */
-            p90_wait_s: number;
-            /** Max Queue Len */
-            max_queue_len: number;
-            /** Utilization */
-            utilization: number;
-        };
         /** Rect */
         Rect: {
             /** X */
@@ -502,99 +353,6 @@ export interface components {
             w: number;
             /** H */
             h: number;
-        };
-        /** Scenario */
-        Scenario: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "entry" | "browse" | "exit";
-            /**
-             * Agents
-             * @default 200
-             */
-            agents: number;
-            /**
-             * Duration S
-             * @default 300
-             */
-            duration_s: number;
-            /**
-             * Seed
-             * @default 0
-             */
-            seed: number;
-        };
-        /** SimResult */
-        SimResult: {
-            /** Run Id */
-            run_id: string;
-            scenario: components["schemas"]["Scenario"];
-            /** Layout Id */
-            layout_id: string;
-            /** Completed Fraction */
-            completed_fraction: number;
-            /** Mean Travel Time S */
-            mean_travel_time_s: number;
-            /** P90 Travel Time S */
-            p90_travel_time_s: number;
-            /** Max Density */
-            max_density: number;
-            congestion: components["schemas"]["Congestion"];
-            /** Hotspots */
-            hotspots: components["schemas"]["Hotspot"][];
-            grid: components["schemas"]["DensityGrid"];
-            /** Sim Time S */
-            sim_time_s: number;
-            /** Wall Time S */
-            wall_time_s: number;
-            /**
-             * Truncated
-             * @default false
-             */
-            truncated: boolean;
-        };
-        /** SimulateRequest */
-        SimulateRequest: {
-            venue: components["schemas"]["Venue"];
-            layout: components["schemas"]["Layout"];
-            /** Booths */
-            booths: components["schemas"]["BoothSpec"][];
-            scenario: components["schemas"]["Scenario"];
-            /**
-             * Grid Cell
-             * @default 2
-             */
-            grid_cell: number;
-            /**
-             * Max Wall Time S
-             * @default 60
-             */
-            max_wall_time_s: number;
-            /**
-             * Trajectory Dt
-             * @default 0.5
-             */
-            trajectory_dt: number;
-            /**
-             * Crowd Threshold
-             * @default 2
-             */
-            crowd_threshold: number;
-        };
-        /** Trajectories */
-        Trajectories: {
-            /** Run Id */
-            run_id: string;
-            /** Layout Id */
-            layout_id: string;
-            /** Dt */
-            dt: number;
-            /** Frames */
-            frames: number;
-            /** Agents */
-            agents: components["schemas"]["AgentTrack"][];
         };
         /** ValidateRequest */
         ValidateRequest: {
@@ -794,105 +552,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanEvidence"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    queue_queue_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["QueueRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QueueResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    simulate_simulate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SimulateRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SimResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    trajectories_trajectories_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SimulateRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Trajectories"];
                 };
             };
             /** @description Validation Error */

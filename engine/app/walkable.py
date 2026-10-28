@@ -1,4 +1,4 @@
-"""Walkable-area geometry for the pedestrian simulation."""
+"""Reusable walkable-area geometry for layout and accessibility checks."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from shapely.geometry import Polygon
 
 from app.geometry import (
     blocked_union,
-    booth_polygon,
     door_segment,
     footprint_size,
     hall_polygon,
@@ -109,27 +108,3 @@ def door_geometry(venue: Venue, door: Door, walkable: Polygon) -> DoorGeometry:
             approach = (px, py)
             break
     return DoorGeometry(door, exit_poly, approach)
-
-
-def spawn_candidates(
-    venue: Venue, door: Door, walkable: Polygon, spacing: float = 0.6
-) -> list[tuple[float, float]]:
-    """Grid of spawn points in a 3 m deep strip just inside the door, nearest rows first."""
-    nx, ny = inward_normal(venue, door)
-    a, b = (door.a.x, door.a.y), (door.b.x, door.b.y)
-    length = ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5
-    pts = []
-    n_across = max(1, int(length / spacing))
-    for row in range(5):
-        depth = 0.8 + row * spacing
-        for i in range(n_across):
-            t = (i + 0.5) / n_across
-            px = a[0] + (b[0] - a[0]) * t + nx * depth
-            py = a[1] + (b[1] - a[1]) * t + ny * depth
-            if is_open(walkable, px, py):
-                pts.append((px, py))
-    return pts
-
-
-def booth_polys(layout: Layout) -> dict[str, Polygon]:
-    return {b.id: booth_polygon(b) for b in layout.booths}

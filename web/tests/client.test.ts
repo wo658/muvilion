@@ -12,8 +12,8 @@ describe("HTTP engine client", () => {
   });
 
   it("rejects responses that break the contract", async () => {
-    const e = createHttpEngine({ baseUrl: "http://x", fetch: json({ ok: "yes", violations: [] }) });
-    await expect(e.queue({ arrivals_per_min: 1, service_time_s: 1, servers: 1 })).rejects.toBeInstanceOf(EngineError);
+    const e = createHttpEngine({ baseUrl: "http://x", fetch: json({ status: 123 }) });
+    await expect(e.health()).rejects.toBeInstanceOf(EngineError);
   });
 
   it("surfaces HTTP errors with status and body", async () => {
@@ -25,6 +25,6 @@ describe("HTTP engine client", () => {
     const hang = ((_u: string, init: RequestInit) =>
       new Promise((_, rej) => init.signal?.addEventListener("abort", () => rej(init.signal!.reason)))) as unknown as typeof fetch;
     const e = createHttpEngine({ baseUrl: "http://x", timeoutMs: 20, fetch: hang });
-    await expect(e.queue({ arrivals_per_min: 1, service_time_s: 1, servers: 1 })).rejects.toThrow(/timed out/);
+    await expect(e.health()).rejects.toThrow(/timed out/);
   });
 });

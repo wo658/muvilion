@@ -1,4 +1,4 @@
-"""Shared Shapely helpers used by layout, validation and simulation."""
+"""Shared Shapely helpers used by layout, validation and walkable-area calculations."""
 
 from __future__ import annotations
 
