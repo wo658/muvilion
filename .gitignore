@@ -42,3 +42,8 @@ engine/.cache/
 # Redpact local runtime and task-only browser scenarios
 .redpact/
 /ui-tests/worktree/
+
+# Local SQLite settings and project assets (may contain API keys)
+/web/data/
+*.sqlite
+*.sqlite-*

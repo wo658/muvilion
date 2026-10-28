@@ -342,6 +342,7 @@ export function Studio() {
     <header className="ps-header">
       <Link href="/" className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
       <div className="ps-header-actions">
+        <Link href="/settings">Settings</Link>
         <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>자료</Button>
         <Button variant="ghost" onClick={exportPlan} disabled={!document || busy || !sourcesReady}>내보내기</Button>
       </div>

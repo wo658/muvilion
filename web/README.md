@@ -103,3 +103,20 @@ transformations stay in `lib/`.
 Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
 in a worktree or packaged install); the default is `../DemoData` relative to the web
 working directory. Missing examples return 404 and users can upload their own drawings.
+
+## Local Meta API key
+
+Requires Node.js 24 or newer for built-in SQLite. Open **Settings** from Studio to
+save a Meta API key or import the server's `MODEL_API_KEY` (loaded by Next.js from
+`.env.local` or the launch environment). A stored key selects Meta and takes precedence
+over environment provider settings. Remove it to restore the environment configuration.
+Changes apply to the next model request; saving does not make a paid validation call.
+
+The server stores the key, unencrypted, in `web/data/app.sqlite` with owner-only file
+permissions on Unix. Set `MUVILION_DATA_DIR` to use a different local data directory.
+Keys never appear in status responses, browser storage or project exports. Do not share
+the data directory or commit it. Settings endpoints accept only loopback hosts and reject
+cross-origin browser requests. This is a local, single-user app, not a hosted account system.
+
+Only app-level credentials are persisted in SQLite so far; project persistence remains
+separate from this settings feature.

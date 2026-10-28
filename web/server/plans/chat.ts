@@ -21,7 +21,7 @@ export const RequestBody = z.object({
 
 export function chatPlan(input: z.infer<typeof RequestBody>, signal: AbortSignal) {
   const handle = getModel();
-  if (!handle.hasKey) throw new PlanServiceError("Muse is not configured. Add MODEL_API_KEY to web/.env.local.", 503);
+  if (!handle.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   return streamText({
     model: handle.model,
     instructions: CHAT_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS,
