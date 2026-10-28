@@ -1,4 +1,5 @@
 import "server-only";
+import { publicSpace } from "@/lib/booths/public-space";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import type { z } from "zod";
 import { CreateBoothProjectSchema, UpdateBoothProjectSchema, ApplyForBoothSchema, SaveBoothDesignSchema, type BoothApplication, type BoothListing, type PublicBoothProject, type OrganizerBoothProject, type BoothApplicationAccess } from "@/lib/booths/schema";
@@ -9,7 +10,7 @@ import { withBoothDatabase, type BoothDatabase } from "./store";
 export class BoothError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
-type StoredProject = Omit<OrganizerBoothProject, "applications">;
+type StoredProject = Omit<OrganizerBoothProject, "applications" | "space">;
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 function authorized(token: string | undefined, expected: string) {
   if (!token || token.length > 200) return false;
@@ -27,7 +28,7 @@ function applications(db: BoothDatabase, projectId: string): BoothApplication[] 
   return db.prepare("SELECT data FROM booth_applications WHERE project_id = ? ORDER BY rowid DESC").all(projectId).map(row => JSON.parse(String(row.data)));
 }
 function publicProject(project: StoredProject, apps: BoothApplication[]): PublicBoothProject {
-  return { id: project.id, title: project.title, createdAt: project.createdAt,
+  return { id: project.id, title: project.title, createdAt: project.createdAt, space: publicSpace(project.document),
     booths: project.booths.map(booth => ({ ...booth, available: !apps.some(app => app.boothId === booth.id && app.status === "approved") })) };
 }
 export function createBoothProject(input: z.infer<typeof CreateBoothProjectSchema>) {
@@ -62,7 +63,7 @@ export function createBoothProject(input: z.infer<typeof CreateBoothProjectSchem
   const project: StoredProject = { id: randomUUID(), title: data.title, document: data.document, booths, createdAt: new Date().toISOString() };
   const organizerToken = randomBytes(32).toString("base64url");
   withBoothDatabase(db => db.prepare("INSERT INTO booth_projects (id, organizer_hash, data) VALUES (?, ?, ?)").run(project.id, hash(organizerToken), JSON.stringify(project)));
-  return { project: { ...project, applications: [] } satisfies OrganizerBoothProject, organizerToken };
+  return { project: { ...project, space: publicSpace(project.document), applications: [] } satisfies OrganizerBoothProject, organizerToken };
 }
 export function readBoothProject(projectId: string, token?: string) {
   return withBoothDatabase(db => {

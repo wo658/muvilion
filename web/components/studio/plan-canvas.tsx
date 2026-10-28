@@ -9,7 +9,7 @@ type Point = {
     x: number;
     y: number;
 };
-export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = false, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint, onEntrancePoint }: {
+export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = false, showSourceFallback = true, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint, onEntrancePoint }: {
     onEntrancePoint?: (point: Point) => void;
     floorDraft?: Point[] | null;
     onBoundaryPoint?: (point: Point) => void;
@@ -18,6 +18,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
     onSelect: (id: string | null) => void;
     sourceOnly: boolean;
     showOriginal?: boolean;
+    showSourceFallback?: boolean;
     drawing: boolean;
     onDraw: (a: Point, b: Point) => void;
     measurement: [
@@ -41,7 +42,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
         return () => observer.disconnect();
     }, []);
     const walls = useMemo(() => deriveWalls(document, { pairParallelEdges: true }), [document]);
-    const reference = sourceOnly || showOriginal || drawing || Boolean(onBoundaryPoint) || walls.length === 0;
+    const reference = sourceOnly || showOriginal || drawing || Boolean(onBoundaryPoint) || (showSourceFallback && walls.length === 0);
     const scale = Math.max(.001, Math.min(viewportSize.width / width, viewportSize.height / height) * zoom);
     const labelSize = 11 / scale;
     const labelEdge = document.lines.reduce((edge, line) => line.kind === "wall" ? Math.max(edge, line.a.x * width, line.b.x * width) : edge, width * .6) + 14 / scale;
@@ -134,6 +135,6 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
       </g>)}
       {measurement && <g stroke="#aa7933" strokeWidth={3} fill="#aa7933"><line x1={measurement[0].x * width} y1={measurement[0].y * height} x2={measurement[1].x * width} y2={measurement[1].y * height} vectorEffect="non-scaling-stroke"/>{measurement.map((p, i) => <circle key={i} cx={p.x * width} cy={p.y * height} r={width / 150}/>)}</g>}
       {drawing && start && cursor && (rectangle ? <rect x={Math.min(start.x, cursor.x) * width} y={Math.min(start.y, cursor.y) * height} width={Math.abs(start.x - cursor.x) * width} height={Math.abs(start.y - cursor.y) * height} fill="var(--accent)" fillOpacity={0.12} stroke="var(--accent)" strokeWidth={2} strokeDasharray="6 4" vectorEffect="non-scaling-stroke"/> : <line x1={start.x * width} y1={start.y * height} x2={cursor.x * width} y2={cursor.y * height} stroke="var(--accent)" strokeWidth={3} strokeDasharray="6 4" vectorEffect="non-scaling-stroke"/>)}
-    </svg></div>{!sourceOnly && walls.length === 0 && !showOriginal && <span className="ps-schematic-note">{t("Walls not reviewed · showing original")}</span>}<div className="ps-zoom" role="group" aria-label={t("Plan zoom")}><Button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} disabled={zoom <= 1} aria-label={t("Zoom out")}>−</Button><span>{Math.round(zoom * 100)}%</span><Button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} disabled={zoom >= 4} aria-label={t("Zoom in")}>+</Button><Button onClick={() => setZoom(1)}>{t("Fit")}</Button></div>
+    </svg></div>{showSourceFallback && !sourceOnly && walls.length === 0 && !showOriginal && <span className="ps-schematic-note">{t("Walls not reviewed · showing original")}</span>}<div className="ps-zoom" role="group" aria-label={t("Plan zoom")}><Button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} disabled={zoom <= 1} aria-label={t("Zoom out")}>−</Button><span>{Math.round(zoom * 100)}%</span><Button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} disabled={zoom >= 4} aria-label={t("Zoom in")}>+</Button><Button onClick={() => setZoom(1)}>{t("Fit")}</Button></div>
   </div>;
 }
