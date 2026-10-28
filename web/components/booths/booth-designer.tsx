@@ -1,4 +1,5 @@
 "use client";
+import { BoothChat } from "./booth-chat";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesignObject, PlanDocument } from "@/lib/plans/schema";
@@ -16,10 +17,12 @@ import "../studio/spatial-design.css";
 const SceneView = dynamic(() => import("../studio/scene-view"), { ssr: false, loading: () => <p role="status">3D 공간을 준비하는 중…</p> });
 type Generation = { document: PlanDocument; summary: string; steps: { agent: string; tool: string; outcome: string }[]; handoff: { notes: string[] } };
 const kinds: { value: DesignObject["kind"]; label: string }[] = [{ value: "furniture", label: "가구" }, { value: "partition", label: "가벽" }, { value: "equipment", label: "전시 장비" }, { value: "light", label: "조명" }, { value: "hanging-sign", label: "행잉 사인" }];
-export function BoothDesigner({ projectId, applicationId, token, organizerDocument, onDocumentChange }: { projectId: string; applicationId: string; token: string; organizerDocument?: PlanDocument; onDocumentChange?: (document: PlanDocument) => void }) {
+export function BoothDesigner({ projectId, applicationId, token, organizerDocument, onDocumentChange, onPreview, embedded = false, selectedObjectId, onObjectSelect }: { selectedObjectId?: string | null; onObjectSelect?: (id: string | null) => void; onPreview?: (document: PlanDocument | null) => void; embedded?: boolean; projectId: string; applicationId: string; token: string; organizerDocument?: PlanDocument; onDocumentChange?: (document: PlanDocument) => void }) {
   const [data, setData] = useState<BoothApplicationAccess | null>(null);
   const [document, setDocument] = useState<PlanDocument | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [localSelected, setLocalSelected] = useState<string | null>(null);
+  const selected = selectedObjectId === undefined ? localSelected : selectedObjectId;
+  function setSelected(id: string | null) { setLocalSelected(id); onObjectSelect?.(id); }
   const [view, setView] = useState<"plan" | "scene">("scene");
   const [brief, setBrief] = useState("");
   const [notes, setNotes] = useState("");
@@ -41,6 +44,8 @@ export function BoothDesigner({ projectId, applicationId, token, organizerDocume
     return () => { controller.abort(); generation.current?.abort(); };
   }, [base, token]);
   const issues = useMemo(() => data && document ? validateBoothDesign(data.booth, document.objects ?? []) : [], [data, document]);
+  useEffect(() => { onPreview?.(document); }, [document, onPreview]);
+  useEffect(() => () => onPreview?.(null), [onPreview]);
   const object = document?.objects?.find(item => item.id === selected);
   const locked = busy || generating;
   function changeObjects(objects: DesignObject[]) { if (data) { setDocument(createBoothDocument(data.booth, objects)); setDirty(true); setNotice(""); } }
@@ -50,11 +55,11 @@ export function BoothDesigner({ projectId, applicationId, token, organizerDocume
     const id = crypto.randomUUID();
     changeObjects([...(document.objects ?? []), { id, kind, label: kinds.find(item => item.value === kind)?.label ?? kind, x: .5, y: .5, width: Math.min(1, data.booth.width / 2), depth: Math.min(.5, data.booth.depth / 2), height: Math.min(1, data.booth.maxHeight), elevation: 0, rotation: 0, color: "#89a9b6", provenance: "manual" }]); setSelected(id);
   }
-  async function generate() {
-    if (!brief.trim() || locked) return;
+  async function generate(designBrief = brief) {
+    if (!designBrief.trim() || locked) return;
     const controller = new AbortController(); generation.current = controller;
     setGenerating(true); setError(""); setNotice(""); setProposal(null);
-    try { setProposal(await boothRequest<Generation>(`${base}/design/generate`, { method: "POST", token, body: { brief }, signal: controller.signal })); }
+    try { setProposal(await boothRequest<Generation>(`${base}/design/generate`, { method: "POST", token, body: { brief: designBrief }, signal: controller.signal })); }
     catch (err) { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "디자인을 생성하지 못했습니다."); else setNotice("디자인 요청을 중단했습니다. 현재 초안은 유지됩니다."); }
     finally { setGenerating(false); generation.current = null; }
   }
@@ -77,11 +82,14 @@ export function BoothDesigner({ projectId, applicationId, token, organizerDocume
     {error && <p role="alert" className="text-sm text-bad">{error}</p>}{notice && <p role="status" className="text-sm text-accent">{notice}</p>}
     {!data || !document ? <p role="status">부스 작업실을 불러오는 중…</p> : data.application.status !== "approved" ? <p>참가 승인 후 디자인할 수 있습니다.</p> : <>
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-semibold">{data.booth.name} 디자인 작업실</h3><p className="mt-1 text-sm text-muted">{data.booth.width} × {data.booth.depth} m · 설치 높이 {data.booth.maxHeight} m 이하</p></div><Badge tone={dirty ? "neutral" : "ok"}>{dirty ? "저장하지 않은 변경" : data.application.design?.status === "submitted" ? "검토 제출됨" : "디자인 초안"}</Badge></div>
-      <section className="flex flex-col gap-3 rounded-lg border border-hairline p-4"><h4 className="font-semibold">Muse · 부스 전담 디자이너</h4><p className="text-sm text-muted">부스 전담 하위 에이전트가 배치안을 만들고 경계·높이·겹침을 검사하며 수정합니다.</p><FieldGroup><Field><FieldLabel htmlFor={`design-brief-${applicationId}`}>원하는 부스 디자인</FieldLabel><Textarea id={`design-brief-${applicationId}`} value={brief} maxLength={6000} rows={3} disabled={locked} onChange={event => setBrief(event.target.value)} placeholder="예: 제품 체험 테이블과 상담 카운터, 브랜드 사인이 있는 부스"/></Field></FieldGroup><div className="flex flex-wrap gap-2"><Button variant="primary" disabled={locked || !brief.trim()} onClick={() => void generate()}>{generating ? "Muse가 디자인 · 검증 중…" : "부스 전담 에이전트에게 디자인 요청"}</Button>{generating && <Button onClick={() => generation.current?.abort()}>요청 중단</Button>}</div>
+      <BoothChat projectId={projectId} applicationId={applicationId} token={token} designing={locked} onDesign={text => { setBrief(text); void generate(text); }}/>
+      <section className="flex flex-col gap-3">{generating && <Button onClick={() => generation.current?.abort()}>디자인 요청 중단</Button>}
         {proposal && <div className="flex flex-col gap-3 rounded-lg bg-sunken p-4"><strong>검토할 디자인 제안</strong><p className="whitespace-pre-wrap text-sm">{proposal.summary}</p><p className="text-sm">설치물 {proposal.document.objects?.length ?? 0}개 · 현재 초안을 대체합니다.</p><details><summary className="cursor-pointer text-sm">에이전트 작업 기록</summary><ol className="mt-2 flex flex-col gap-1 text-xs text-muted">{proposal.steps.map((step, index) => <li key={index}>{step.agent} · {step.tool} · {step.outcome}</li>)}</ol></details><div className="flex gap-2"><Button variant="primary" disabled={locked} onClick={() => { setDocument(proposal.document); setNotes(proposal.summary); setBuildNotes(proposal.handoff.notes.join("\n")); setDirty(true); setSelected(null); setProposal(null); }}>이 제안 적용</Button><Button onClick={() => setProposal(null)}>제안 버리기</Button></div></div>}
       </section>
+      {!embedded && <>
       <div className="flex items-center justify-between gap-3"><Segmented options={[{ id: "plan", label: "2D 편집" }, { id: "scene", label: "3D 공간" }]} value={view} onChange={setView} label="부스 보기"/><span className="text-sm text-muted">설치물 {document.objects?.length ?? 0}개</span></div>
-      <div className="ps-canvas-area relative min-h-96 overflow-hidden rounded-xl border border-hairline" style={{ height: 420 }}>{view === "plan" ? <PlanCanvas document={document} selected={selected} onSelect={setSelected} sourceOnly={false} drawing={false} onDraw={() => {}} measurement={null} rectangle={false}/> : <SceneView document={document} wallHeight={data.booth.maxHeight} selected={selected} onSelect={setSelected}/>}</div>
+      <div className="ps-canvas-area relative min-h-96 overflow-hidden rounded-xl border border-hairline" style={{ height: 420 }}>{view === "plan" ? <PlanCanvas document={document} selected={selected} onSelect={setSelected} sourceOnly={false} showSourceFallback={false} drawing={false} onDraw={() => {}} measurement={null} rectangle={false}/> : <SceneView document={document} wallHeight={data.booth.maxHeight} selected={selected} onSelect={setSelected}/>}</div>
+      </>}
       <details><summary className="cursor-pointer text-sm font-semibold">설치물 직접 조정</summary><div className="mt-4 flex flex-col gap-4"><div className="flex flex-wrap gap-2">{kinds.map(kind => <Button key={kind.value} disabled={locked || (document.objects?.length ?? 0) >= 80} onClick={() => addObject(kind.value)}>＋ {kind.label}</Button>)}</div>
       <FieldGroup><Field><FieldLabel htmlFor={`booth-object-${applicationId}`}>편집할 설치물</FieldLabel><NativeSelect id={`booth-object-${applicationId}`} value={selected ?? ""} onChange={event => setSelected(event.target.value || null)}><option value="">설치물을 선택하세요</option>{document.objects?.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</NativeSelect></Field></FieldGroup>
       {object && <fieldset disabled={locked} className="flex flex-col gap-4 rounded-lg border border-hairline p-4"><legend className="px-2 text-sm">{object.label} 편집</legend><FieldGroup><Field><FieldLabel htmlFor={`object-name-${applicationId}`}>이름</FieldLabel><Input id={`object-name-${applicationId}`} value={object.label} maxLength={100} onChange={event => updateObject({ label: event.target.value })}/></Field></FieldGroup><div className="grid gap-3 sm:grid-cols-3">{([{ key: "width", label: "너비 (m)", min: .1, max: data.booth.width }, { key: "depth", label: "깊이 (m)", min: .1, max: data.booth.depth }, { key: "height", label: "높이 (m)", min: .1, max: data.booth.maxHeight }, { key: "elevation", label: "바닥에서 띄운 높이 (m)", min: 0, max: data.booth.maxHeight }, { key: "x", label: "가로 위치 (0–1)", min: 0, max: 1 }, { key: "y", label: "세로 위치 (0–1)", min: 0, max: 1 }] as const).map(field => <Field key={field.key}><FieldLabel htmlFor={`${applicationId}-${field.key}`}>{field.label}</FieldLabel><Input id={`${applicationId}-${field.key}`} type="number" step={field.key === "x" || field.key === "y" ? .01 : .1} min={field.min} max={field.max} value={object[field.key] ?? 0} onChange={event => { const value = event.target.valueAsNumber; if (Number.isFinite(value) && value >= field.min && value <= field.max) updateObject({ [field.key]: value }); }}/></Field>)}</div><FieldGroup><Field><FieldLabel htmlFor={`object-color-${applicationId}`}>색상</FieldLabel><Input id={`object-color-${applicationId}`} type="color" value={object.color} onChange={event => updateObject({ color: event.target.value })}/></Field></FieldGroup><div className="flex gap-2"><Button onClick={() => updateObject({ rotation: object.rotation === 0 ? 90 : 0 })}>90° 회전</Button><Button variant="danger" onClick={() => { changeObjects((document.objects ?? []).filter(item => item.id !== object.id)); setSelected(null); }}>설치물 삭제</Button></div></fieldset>}</div></details>

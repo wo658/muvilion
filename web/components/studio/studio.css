@@ -162,6 +162,13 @@
 .ps-send:disabled{background:var(--hairline-strong)!important;opacity:1}
 .ps-muse-selection{margin:0 12px 8px;border:1px solid var(--hairline);border-radius:14px}
 @media(prefers-reduced-motion:reduce){.ps-muse-thinking{animation:none}}
+/* Role changes preserve the canvas and both conversations. */
+.ps-role-panel { display:flex; flex-direction:column; min-height:0; height:100%; overflow-y:auto; }
+.ps-role-panel[hidden], .ps-sidebar[hidden] { display:none!important; }
+.ps-role-panel > .ps-conversation { flex:1; min-height:360px; height:auto; overflow:hidden; }
+.ps-booth-pricing { flex-shrink:0; border-bottom:1px solid var(--hairline); max-height:55vh; overflow-y:auto; }
+.ps-booth-pricing > summary { cursor:pointer; padding:16px 20px; font-weight:600; }
+@media(max-width:760px) { .ps-header { height:auto; min-height:68px; flex-wrap:wrap; padding:16px; } .ps-header-actions { flex-wrap:wrap; gap:12px; } }
 
 /* No top bar: actions live in the project sidebar, so give the workspace its own top inset. */
 .ps-simple-view .ps-workspace,.ps-detail-view .ps-workspace{padding-top:24px}
@@ -175,3 +182,7 @@
 .ps-simple-view .ps-center{border:0;border-radius:0;box-shadow:none;background:transparent}
 .ps-simple-view .ps-canvas-area{background:transparent}
 .ps-simple-view .ps-canvas-toolbar{background:transparent;border-bottom:0}
+
+.ps-design-mode-bar { display:flex; justify-content:flex-start; padding:10px 24px; flex-shrink:0; }
+.ps-has-plan .ps-right-panel > .ps-role-panel { width:100%; flex:1; height:auto; min-height:0; overflow-y:auto; }
+.ps-has-plan .ps-right-panel[data-collapsed] > .ps-role-panel { display:none; }
