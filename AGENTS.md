@@ -70,8 +70,8 @@ attribution behavior built into the tool.
 
 - Keep test fixtures distinct from user-facing examples and generated run artifacts.
 - User-facing sample drawings live in `data/samples/`, listed once in `samples.json`
-  (provenance in its README). On first run with an empty database they are seeded into
-  SQLite as projects; do not add another list of example filenames in UI or API handlers.
+  (provenance in its README). The start screen copies a chosen sample into SQLite as a new
+  project; do not add another list of example filenames in UI or API handlers.
 - When adding generated examples, distinguish recorded playback, mock computation, and live computation in example metadata
   and user-facing descriptions. A mock result is not a measured simulation result.
 - Do not assume local untracked `DemoData/` files exist in a fresh checkout. Declare any
