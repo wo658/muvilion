@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
-import { ArrowUpIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SparklesIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SparklesIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -23,7 +23,8 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection }: {
+export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse }: {
+    onCollapse?: () => void;
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
@@ -183,7 +184,8 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
-        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2></div></div>
+        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2>{busy && <p className="text-xs text-muted">{t("Muse is replying…")}</p>}</div></div>
+        {onCollapse && <Button type="button" size="icon-sm" variant="ghost" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")}><ChevronDownIcon aria-hidden="true" /></Button>}
       </header>
       {(document || notice || interpretError) && <div className="ps-conversation-tools">
         <details open={!simple || interpreting}><summary className="cursor-pointer text-xs text-muted">{t("Drawing tools")}</summary><div className="mt-3">

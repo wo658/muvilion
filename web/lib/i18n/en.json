@@ -297,5 +297,15 @@
   "Retry opening projects": "Retry opening projects",
   "Open SQLite projects without browser import": "Open SQLite projects without browser import",
   "Local projects": "Local projects",
-  "Could not open the project. Browser data has not been replaced.": "Could not open the project. Browser data has not been replaced."
+  "Could not open the project. Browser data has not been replaced.": "Could not open the project. Browser data has not been replaced.",
+  "General": "General",
+  "API key": "API key",
+  "Project": "Project",
+  "Settings sections": "Settings sections",
+  "Export project": "Export project",
+  "Download this project and its original files as one JSON bundle.": "Download this project and its original files as one JSON bundle.",
+  "Open an exported JSON bundle as a new project. The current project is kept.": "Open an exported JSON bundle as a new project. The current project is kept.",
+  "Minimize Muse": "Minimize Muse",
+  "Talk to Muse": "Talk to Muse",
+  "Muse is replying…": "Muse is replying…"
 }
