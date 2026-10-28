@@ -1,4 +1,5 @@
 "use client";
+import type { PricingContext } from "@/lib/booths/pricing";
 import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -27,8 +28,10 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse, boothPricing }: {
+    boothPricing?: PricingContext;
     onCollapse?: () => void;
+
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
@@ -42,6 +45,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         api: "/api/plans/chat",
         prepareSendMessagesRequest: ({ messages, body }) => ({ body: {
                 document: body?.document ?? null,
+                boothPricing: body?.boothPricing,
                 locale: body?.locale,
                 sources: body?.sources ?? [],
                 messages: messages.slice(-24).map((message) => ({ role: message.role, parts: message.parts.filter((part) => part.type === "text").map((part) => ({ type: "text", text: part.text })) })),
@@ -209,7 +213,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 const references = await selectedReferences(sources, document);
                 if (!mounted.current) return;
                 abortController.signal.throwIfAborted();
-                await sendMessage({ text: message }, { body: { locale, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
+                await sendMessage({ text: message }, { body: { locale, boothPricing, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
             } else {
                 setMessages(previous => [...previous,
                     { id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: message }] },
@@ -233,11 +237,12 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const changed = proposal?.document.lines.filter((line, i) => line.kind !== proposal.base.lines[i]?.kind).length ?? 0;
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     const tools = interpreting || progress || interpretError || proposal || notice;
-    const suggestions = [t("Widen the path from the entrance to the stage"), t("Add a lounge to relax in")];
+    const suggestions = [t("Widen the path from the entrance to the stage"), "부스 크기와 위치를 보고 가격을 함께 책정해줘"];
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="ps-conversation-head">
-        <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={locale === "ko" ? "뮤비 3D 만나기 (새 탭)" : "Meet Muvi in 3D (new tab)"}><MuviAvatar/></Link>
-        <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : "Muse"}</h2>
+        <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={locale === "ko" ? "뮤비 3D 만나기 (새 탭)" : "Meet Muvi in 3D (new tab)"}><MuviAvatar size={32}/></Link>
+        <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : "Muse · 공간 디자이너"}</h2>
+
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 
       </header>

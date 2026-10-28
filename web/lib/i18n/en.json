@@ -32,7 +32,6 @@
   "Original drawing": "Original drawing",
   "Choose position · cancel": "Choose position · cancel",
   "Mark entrance": "Mark entrance",
-  "Ask Muse to identify the walls.": "Ask Muse to identify the walls.",
   "Select an item and ask Muse": "Select an item and ask Muse",
   "Scale confirmed": "Scale confirmed",
   "Items to review": "Items to review",
@@ -42,7 +41,6 @@
   "Space layout": "Space layout",
   " · AI-proposed partition": " · AI-proposed partition",
   " · Planned partition": " · Planned partition",
-  "Walls not reviewed · showing original": "Walls not reviewed · showing original",
   "Cutaway": "Cutaway",
   "Existing walls · from drawing": "Existing walls · from drawing",
   "Planned / AI partitions": "Planned / AI partitions",
@@ -307,5 +305,8 @@
   "Creating project…": "Creating project…",
   "Start with an empty project": "Start with an empty project",
   "The project in this link no longer exists.": "The project in this link no longer exists.",
-  "Sample drawing not found.": "Sample drawing not found."
+  "Sample drawing not found.": "Sample drawing not found.",
+  "Search projects": "Search projects",
+  "No matching projects": "No matching projects",
+  "Recent projects": "Recent projects"
 }

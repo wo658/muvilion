@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { PricingContext } from "@/lib/booths/pricing";
 import type { PlanDocument, SpaceZone } from "@/lib/plans/schema";
 import type { BoothApplication, OrganizerBoothProject } from "@/lib/booths/schema";
 import { Badge, Button } from "../ui";
@@ -12,12 +13,12 @@ import { BoothDesigner } from "./booth-designer";
 
 type Credential = { projectId: string; token: string };
 type OfferDraft = { name: string; price: number; maxHeight: number; description: string; selected: boolean };
-type OrganizerProps = { document: PlanDocument; onDocumentChange: (document: PlanDocument) => void };
+type OrganizerProps = { onPublished?: (id: string | null) => void; onPricing?: (pricing: PricingContext) => void; document: PlanDocument; onDocumentChange: (document: PlanDocument) => void };
 function sourceKey(document: PlanDocument) {
   return `muvilion.booth-organizer.v1:${JSON.stringify(document.source)}:${document.lines.slice(0, 5).map(line => `${line.a.x},${line.a.y},${line.b.x},${line.b.y}`).join(";")}`;
 }
 export function OrganizerBooths(props: OrganizerProps) { return <OrganizerBoothsInner key={sourceKey(props.document)} {...props}/>; }
-function OrganizerBoothsInner({ document, onDocumentChange }: OrganizerProps) {
+function OrganizerBoothsInner({ document, onDocumentChange, onPublished, onPricing }: OrganizerProps) {
   const zones = (document.zones ?? []).filter(zone => zone.assignable || zone.purpose === "booth");
   const [title, setTitle] = useState(document.source.name.replace(/\.[^.]+$/, ""));
   const [drafts, setDrafts] = useState<Record<string, OfferDraft>>({});
@@ -32,6 +33,10 @@ function OrganizerBoothsInner({ document, onDocumentChange }: OrganizerProps) {
   const key = sourceKey(document);
   const offer = (id: string, name: string): OfferDraft => drafts[id] ?? { name, price: 0, maxHeight: Math.min(document.ceiling?.height ?? 3, 3), description: "", selected: true };
   const updateOffer = (id: string, name: string, patch: Partial<OfferDraft>) => setDrafts(current => ({ ...current, [id]: { ...offer(id, name), ...patch } }));
+  useEffect(() => {
+    onPublished?.(project?.id ?? null);
+    onPricing?.(project ? project.booths.map(booth => ({ name: booth.name, width: booth.width, depth: booth.depth, price: booth.price, description: booth.description, published: true })) : (document.zones ?? []).filter(zone => zone.assignable || zone.purpose === "booth").map(zone => ({ name: drafts[zone.id]?.name ?? zone.label, width: zone.width, depth: zone.depth, price: drafts[zone.id]?.price ?? 0, description: drafts[zone.id]?.description ?? "", published: false })));
+  }, [project, document, drafts, onPublished, onPricing]);
   async function load(auth: Credential, signal?: AbortSignal) {
     const data = await boothRequest<{ project: OrganizerBoothProject }>(`/api/booths/projects/${auth.projectId}`, { token: auth.token, signal });
     setProject(data.project);
@@ -88,7 +93,7 @@ function OrganizerBoothsInner({ document, onDocumentChange }: OrganizerProps) {
   }
   const publicPath = project ? `/participate/${project.id}` : "";
   return <div className="flex flex-col gap-6 p-5">
-    <div><p className="eyebrow">EXHIBITOR WORKSPACE</p><h2 className="mt-2 text-xl font-semibold">외부 참가 부스</h2><p className="mt-2 text-sm text-muted">부스 공개 → 참가 신청 → 운영자 승인 → 부스별 디자인 → 시공 검토 제출</p></div>
+    <div><p className="eyebrow">SPACE DESIGN</p><h2 className="mt-2 text-xl font-semibold">부스 가격 · 신청 관리</h2><p className="mt-2 text-sm text-muted">Muse와 가격을 검토한 뒤 공개하세요. 참가 모드에서 신청 경험을 바로 확인할 수 있어요.</p></div>
     {error && <p role="alert" className="text-sm text-bad">{error}</p>}
     {notice && <p role="status" className="text-sm text-accent">{notice}</p>}
     {restoring && <p role="status" className="text-sm text-muted">저장된 모집 정보를 확인하는 중…</p>}
@@ -106,7 +111,7 @@ function OrganizerBoothsInner({ document, onDocumentChange }: OrganizerProps) {
           <Field><FieldLabel htmlFor={`booth-description-${zone.id}`}>제공 사항 · 참가 조건</FieldLabel><Textarea id={`booth-description-${zone.id}`} value={value.description} maxLength={2000} placeholder="예: 전기 1kW 포함, 가구 별도, VAT 포함" onChange={event => updateOffer(zone.id, zone.label, { description: event.target.value })}/></Field></FieldGroup>
       </section>; })}
       <p className="text-xs text-muted">참가비를 안내하고 신청을 받습니다. 결제는 처리하지 않습니다. 공개 시점의 부스 위치와 크기가 참가자 작업 범위로 고정됩니다.</p>
-      <Button variant="primary" disabled={busy || restoring || !document.scaleConfirmed || !title.trim() || !zones.some(zone => offer(zone.id, zone.label).selected)} onClick={() => void publish()}>{busy ? "공개하는 중…" : "참가 모집 페이지 공개"}</Button>
+      <Button variant="primary" disabled={busy || restoring || !document.scaleConfirmed || !title.trim() || !zones.some(zone => offer(zone.id, zone.label).selected)} onClick={() => void publish()}>{busy ? "공개하는 중…" : "가격 확정 · 부스 공개"}</Button>
       <details><summary className="cursor-pointer text-sm">기존 모집 관리 권한 복구</summary><FieldGroup className="mt-3"><Field><FieldLabel htmlFor="organizer-restore">관리 복구 코드</FieldLabel><Textarea id="organizer-restore" value={restoreCode} onChange={event => setRestoreCode(event.target.value)}/></Field></FieldGroup><Button className="mt-3" disabled={busy || !restoreCode.trim()} onClick={() => void action(async () => { const auth = JSON.parse(restoreCode) as Credential; if (typeof auth.projectId !== "string" || typeof auth.token !== "string" || !auth.projectId || !auth.token) throw new Error("복구 코드 형식이 올바르지 않습니다."); await load(auth); remember(auth); })}>관리 페이지 열기</Button></details>
     </> : <>
       <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-lg font-semibold">{project.title}</h3><Badge tone="ok">모집 페이지 공개됨</Badge></div>

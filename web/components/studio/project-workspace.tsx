@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type ComponentProps, type ComponentType, type ReactNode } from "react";
-import { CircleAlertIcon, FolderIcon, PanelLeftIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, FolderIcon, PanelLeftIcon, PlusIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { matchProjects, monogram, recentProjects } from "@/lib/projects/rail";
 import { Button } from "../ui";
 import { Input } from "../ui/input";
 import { ProjectState, ProjectExport, emptyProject, type Project, type ProjectSummary } from "@/lib/projects/schema";
@@ -45,6 +47,8 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const initial = useRef<Promise<Project | null> | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [finding, setFinding] = useState(false);
+  const [query, setQuery] = useState("");
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -151,7 +155,23 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       </div>
       <RailButton icon={<PlusIcon/>} label={t("New project")} disabled={switching || starting} onClick={() => void newProject()}/>
       {collapsed
-        ? <RailButton icon={<FolderIcon/>} label={t("Projects")} aria-expanded={false} onClick={() => setCollapsed(false)}/>
+        ? <>
+          <Popover open={finding} onOpenChange={open => { setFinding(open); if (!open) setQuery(""); }}>
+            <PopoverTrigger render={<RailButton icon={<FolderIcon/>} label={t("Projects")} disabled={switching}/>}/>
+            <PopoverContent side="right" align="start" sideOffset={10} className="pw-finder">
+              <Input autoFocus aria-label={t("Search projects")} placeholder={t("Search projects")} value={query} onChange={event => setQuery(event.target.value)}/>
+              <ul className="pw-finder-list">{matchProjects(projects, query).map(item => <li key={item.id}>
+                <button type="button" aria-current={item.id === project?.id ? "page" : undefined} onClick={() => { setFinding(false); setQuery(""); if (item.id !== project?.id) void switchProject(item.id); }}>
+                  <span className="pw-tile" aria-hidden="true">{monogram(item.name)}</span><span className="pw-label">{item.name}</span>{item.id === project?.id && <CheckIcon aria-hidden="true"/>}
+                </button>
+              </li>)}</ul>
+              {!matchProjects(projects, query).length && <p className="pw-finder-empty">{t("No matching projects")}</p>}
+            </PopoverContent>
+          </Popover>
+          <ul className="pw-recent" aria-label={t("Recent projects")}>{recentProjects(projects, project?.id).map(item => <li key={item.id}>
+            <button type="button" className="pw-tile" aria-label={item.name} title={item.name} aria-current={item.id === project?.id && !starting ? "page" : undefined} disabled={switching} onClick={() => { if (item.id !== project?.id || starting) void switchProject(item.id); }}>{monogram(item.name)}</button>
+          </li>)}</ul>
+        </>
         : <>
           <h2 className="pw-heading">{t("Projects")}</h2>
           <ul className="pw-list">{projects.map(item => <li key={item.id}>

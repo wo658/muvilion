@@ -27,6 +27,6 @@ export type BoothApplication = z.infer<typeof ApplyForBoothSchema> & {
   id: string; status: "pending" | "approved" | "rejected"; createdAt: string; design?: BoothDesign;
   quotedPrice: number; currency: "KRW";
 };
-export type PublicBoothProject = { id: string; title: string; booths: BoothListing[]; createdAt: string };
+export type PublicBoothProject = { id: string; title: string; booths: BoothListing[]; space: PlanDocument; createdAt: string };
 export type OrganizerBoothProject = PublicBoothProject & { document: PlanDocument; applications: BoothApplication[] };
 export type BoothApplicationAccess = { application: BoothApplication; booth: BoothListing; document: PlanDocument };

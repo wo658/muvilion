@@ -2,6 +2,7 @@
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 
+import { createPortal } from "react-dom";
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
 import { MuviRoaming } from "@/components/muvi/muvi-roaming";
 import { useMotionPaused } from "@/components/muvi/use-motion-paused";
@@ -31,11 +32,13 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   render() { return this.state.failed ? <SceneUnavailable/> : this.props.children; }
 }
 
-export default function SceneView({ document, wallHeight, selected, onSelect }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void }) {
+/** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
+export default function SceneView({ document, wallHeight, selected, onSelect, toolbar }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null }) {
   const { t, locale } = useI18n();
   const systemPaused = useMotionPaused();
   const [showMuvi, setShowMuvi] = useState(true);
   const [muviPaused, setMuviPaused] = useState(false);
+
   const exhibition = document.visualStyle === "exhibition";
   const width = document.widthMeters ?? 10;
   const depth = document.heightMeters ?? width * document.source.height / document.source.width;
@@ -66,7 +69,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     document.floorBoundary.forEach((p, i) => { if (i === 0) shape.moveTo(p.x * width - width / 2, depth / 2 - p.y * depth); else shape.lineTo(p.x * width - width / 2, depth / 2 - p.y * depth); });
     shape.closePath(); return shape;
   }, [document.floorBoundary, width, depth]);
-  return <SceneBoundary><div className="ps-scene-tools">
+  const tools = <div className="ps-scene-tools">
     <ToggleGroup aria-label={t("Camera view")} value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
       <ToggleGroupItem value="overview">{t("Overview")}</ToggleGroupItem><ToggleGroupItem value="top">{t("Top")}</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?t("Review scale and floor boundary; a clear interior viewpoint is required."):t("Click the floor to move; drag to look around")}>{t("Explore")}</ToggleGroupItem>
     </ToggleGroup>
@@ -81,14 +84,16 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
       <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
     </FieldGroup></PopoverContent></Popover>
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View help and model information")}/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Viewing the space")}</PopoverTitle><p>{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.")}</p><p>{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p><p>{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p></PopoverContent></Popover>
-  </div><div className="ps-venue-legend" aria-label={t("Space legend")}>{showMuvi && <span title={locale === "ko" ? "벽 충돌이나 실제 동선과 연결되지 않은 보기용 산책입니다." : "Decorative roaming; not connected to collisions or real navigation."}>{locale === "ko" ? "뮤비 산책 · 데모" : "Muvi roaming · demo"}</span>}<span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  </div>;
+  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}<div className="ps-venue-legend" aria-label={t("Space legend")}>{showMuvi && <span title={locale === "ko" ? "벽 충돌이나 실제 동선과 연결되지 않은 보기용 산책입니다." : "Decorative roaming; not connected to collisions or real navigation."}>{locale === "ko" ? "뮤비 산책 · 데모" : "Muvi roaming · demo"}</span>}<span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
     {exhibition && <hemisphereLight args={["#e6f1ff","#c6b69b",1.4]}/>}
     <directionalLight position={[span / 3, span, span / 2]} intensity={2.4} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0002} shadow-normalBias={0.04} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
-    <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":"#ffffff"} roughness={0.9} /></mesh>
+    <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":TOKENS.model} roughness={0.9} /></mesh>
     {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
-    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):"#7fb7b2"} transparent opacity={selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
+    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
     {!exhibition && <gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />}
     {walls.map((line) => {
       const ax = line.a.x - width / 2, az = line.a.y - depth / 2;
@@ -102,8 +107,8 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
       {object.kind === "partition" ? <group onClick={e => { if (view === "interior") return; e.stopPropagation(); onSelect(object.id); }}>
         <mesh userData={{navigationObstacle:true}} position={[0,object.height/2,0]} castShadow><boxGeometry args={[object.width,object.height,object.depth]}/><meshStandardMaterial color={selected === object.id ? TOKENS.accent : VENUE_COLORS.partition} roughness={0.85}/></mesh>
-        <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color="#256897"/></mesh>
-        {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color="#256897"/>}
+        <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
+        {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
       </group> : exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
 
     </group>)}

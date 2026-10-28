@@ -1,5 +1,6 @@
 import type { DesignObject } from "./schema";
-export const VENUE_COLORS = { existing: "#a5afb8", partition: "#82b9df", entrance: "#17876f", cap: "#657582" };
+import { TOKENS } from "@/lib/ui/tokens";
+export const VENUE_COLORS = { existing: TOKENS.venueExisting, partition: TOKENS.venuePartition, entrance: TOKENS.venueEntrance, cap: TOKENS.venueCap };
 /** Display-only cutaway: never rewrite physical dimensions or navigation obstacles. */
 export function displayWallHeight(height: number, cutaway: boolean, interior: boolean) {
   return cutaway && !interior ? Math.min(height, 1.1) : height;
