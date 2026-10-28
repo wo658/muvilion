@@ -1,5 +1,5 @@
 /** Deterministic layout and rectangle-validation mock for local tests. */
-import type { Engine } from "./client";
+import type { Engine } from "@/server/engine/client";
 import {
   LayoutRequest,
   LayoutResponse,

@@ -1,4 +1,4 @@
-import { PlanDocumentSchema } from "@/lib/plans/schema";
+import { createHttpEngine, EngineError } from "@/server/engine/client";
 
 export const maxDuration = 120;
 const MAX_FILE = 20 * 1024 * 1024;
@@ -15,18 +15,17 @@ export async function POST(request: Request) {
   if (!/\.(pdf|png|jpe?g|dxf)$/i.test(file.name)) return Response.json({ error: "Supported formats: PDF, PNG, JPG, DXF." }, { status: 415 });
   const page = Number(form.get("page") ?? 1);
   if (!Number.isInteger(page) || page < 1) return Response.json({ error: "Choose a valid page." }, { status: 400 });
-  const body = new FormData(); body.set("file", file); body.set("page", String(page));
   try {
-    const base = (process.env.ENGINE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
-    const response = await fetch(`${base}/plans/extract`, {
-      method: "POST", body, signal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
-    });
-    const data = await response.json();
-    if (!response.ok) return Response.json({ error: typeof data.detail === "string" ? data.detail : "This file could not be read. Check its format and page." }, { status: response.status });
-    const parsed = PlanDocumentSchema.safeParse(data);
-    if (!parsed.success) return Response.json({ error: "The extraction service returned an incompatible plan." }, { status: 502 });
-    return Response.json(parsed.data);
-  } catch {
+    return Response.json(await createHttpEngine().extract(file, page, { signal: request.signal }));
+  } catch (error) {
+    if (error instanceof EngineError && error.status !== undefined) {
+      if (error.status >= 400) {
+        let detail: unknown;
+        try { detail = JSON.parse(error.body ?? "{}").detail; } catch { /* Non-JSON upstream error. */ }
+        return Response.json({ error: typeof detail === "string" ? detail : "This file could not be read. Check its format and page." }, { status: error.status });
+      }
+      return Response.json({ error: "The extraction service returned an incompatible plan." }, { status: 502 });
+    }
     return Response.json({ error: "The plan service is unavailable or timed out. Start the Python engine and try again." }, { status: 503 });
   }
 }

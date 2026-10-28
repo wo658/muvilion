@@ -52,3 +52,21 @@ in `web/`, update `web/lib/engine/contract.ts` and run `pnpm typecheck`.
 
 Shared fixtures are in `../fixtures/`. `scripts/demo.py` exercises layout and validation.
 `scripts/prepare_fort_mason.py` prepares local drawing assets; local PDFs are not bundled.
+
+## Layout disk cache
+
+The engine owns computation, not user/project persistence. `/layout` optionally memoizes
+responses in `engine/.cache/layout` (or `LAYOUT_CACHE_DIR`). Set `LAYOUT_CACHE_DIR=""`
+to disable it. Cache failures fall back to computing/returning a result.
+
+- `LAYOUT_CACHE_MAX_ENTRIES`: 128 by default.
+- `LAYOUT_CACHE_MAX_BYTES`: 67108864 (64 MiB) total by default.
+- `LAYOUT_CACHE_TTL_S`: 604800 (7 days from write) by default.
+
+Limits must be positive integers; invalid settings use defaults. Writes expire old entries
+and evict oldest writes to meet count/byte limits. Oversized results are not cached.
+Limits are best-effort across processes sharing a directory. Writes use unique temporary
+files and atomic replacement. Keys include `CACHE_VERSION` and the OR-Tools version; bump
+the former when solver semantics change. A miss can produce an equivalent but different
+layout because the solver uses parallel search. Cache retention is not a reproducibility
+guarantee. Old cache files are disposable and can be removed while the engine is stopped.

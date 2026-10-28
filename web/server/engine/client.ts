@@ -1,8 +1,10 @@
+import "server-only";
 /**
  * Typed HTTP client for the Python engine (FastAPI).
- * Every response is zod-validated against the contract mirror in ./contract.ts,
+ * Every response is zod-validated against the contract mirrors in lib/engine/contract.ts and lib/plans/schema.ts,
  * so contract drift fails loudly at the boundary instead of deep in the agent.
  */
+import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import type { z } from "zod";
 import {
   HealthResponse,
@@ -10,13 +12,15 @@ import {
   ValidateResponse,
   type LayoutRequestInput,
   type ValidateRequestInput,
-} from "./contract";
+} from "@/lib/engine/contract";
+
+export interface EngineRequestOptions { signal?: AbortSignal; timeoutMs?: number }
 
 export interface Engine {
   readonly kind: "http" | "mock";
-  health(): Promise<HealthResponse>;
-  layout(req: LayoutRequestInput): Promise<LayoutResponse>;
-  validate(req: ValidateRequestInput): Promise<ValidateResponse>;
+  health(options?: EngineRequestOptions): Promise<HealthResponse>;
+  layout(req: LayoutRequestInput, options?: EngineRequestOptions): Promise<LayoutResponse>;
+  validate(req: ValidateRequestInput, options?: EngineRequestOptions): Promise<ValidateResponse>;
 }
 
 export class EngineError extends Error {
@@ -38,7 +42,11 @@ export interface HttpEngineOptions {
   fetch?: typeof fetch;
 }
 
-export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
+export interface HttpEngine extends Engine {
+  extract(file: File, page?: number, options?: EngineRequestOptions): Promise<PlanDocument>;
+}
+
+export function createHttpEngine(opts: HttpEngineOptions = {}): HttpEngine {
   const baseUrl = (opts.baseUrl ?? process.env.ENGINE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
   const timeoutMs = opts.timeoutMs ?? Number(process.env.ENGINE_TIMEOUT_MS ?? 30_000);
   const doFetch = opts.fetch ?? fetch;
@@ -49,20 +57,25 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
     schema: S,
     body: unknown,
     ms: number,
+    options: EngineRequestOptions = {},
   ): Promise<z.infer<S>> {
     let res: Response;
+    let text: string;
+    const multipart = body instanceof FormData;
+    const effectiveTimeoutMs = options.timeoutMs ?? ms;
     try {
       res = await doFetch(`${baseUrl}${path}`, {
         method,
-        headers: body === undefined ? undefined : { "content-type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(ms),
+        headers: body === undefined || multipart ? undefined : { "content-type": "application/json" },
+        body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
+        signal: AbortSignal.any([AbortSignal.timeout(effectiveTimeoutMs), ...(options.signal ? [options.signal] : [])]),
+        cache: "no-store",
       });
+      text = await res.text();
     } catch (err) {
-      const reason = err instanceof Error && err.name === "TimeoutError" ? `timed out after ${ms}ms` : String(err);
+      const reason = err instanceof Error && err.name === "TimeoutError" ? `timed out after ${effectiveTimeoutMs}ms` : String(err);
       throw new EngineError(`engine ${path} request failed: ${reason}`, path);
     }
-    const text = await res.text();
     if (!res.ok) {
       throw new EngineError(`engine ${path} returned HTTP ${res.status}`, path, res.status, text.slice(0, 2000));
     }
@@ -86,9 +99,15 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): Engine {
 
   return {
     kind: "http",
-    health: () => call("GET", "/health", HealthResponse, undefined, Math.min(timeoutMs, 5_000)),
+    health: (options) => call("GET", "/health", HealthResponse, undefined, Math.min(timeoutMs, 5_000), options),
     // Solver time limit plus network/serialization headroom.
-    layout: (req) => call("POST", "/layout", LayoutResponse, req, (req.time_limit_s ?? 10) * 1000 + timeoutMs),
-    validate: (req) => call("POST", "/validate", ValidateResponse, req, timeoutMs),
+    layout: (req, options) => call("POST", "/layout", LayoutResponse, req, (req.time_limit_s ?? 10) * 1000 + timeoutMs, options),
+    validate: (req, options) => call("POST", "/validate", ValidateResponse, req, timeoutMs, options),
+    extract: (file, page = 1, options) => {
+      const body = new FormData();
+      body.set("file", file);
+      body.set("page", String(page));
+      return call("POST", "/plans/extract", PlanDocumentSchema, body, 90_000, options);
+    },
   };
 }

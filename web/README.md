@@ -91,3 +91,15 @@ Use **입구 표시** in 2D to place an entrance marker, then edit its name or d
 ### 2D presentation principle
 
 The default 2D editor is a human-readable space diagram, not a technical drawing viewer: retain essential walls, entrances, zones and object footprints; use a muted floor and furniture symbols; show labels only where they fit or on selection. Source linework, dimensions and images are available through Original drawing, and appear during geometry-review tools. An unclassified plan falls back to its source instead of pretending to have a reconstructed structure. Schematic presentation never changes geometry, wall openings, object IDs, coordinates or validation inputs.
+
+## Server code
+
+`app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns
+model configuration; `server/plans` executes drawing workflows; `server/engine` is the
+single Python transport (including multipart extraction); `server/examples` loads local
+example assets. Runtime entry points import `server-only`. Shared schemas and pure
+transformations stay in `lib/`.
+
+Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
+in a worktree or packaged install); the default is `../DemoData` relative to the web
+working directory. Missing examples return 404 and users can upload their own drawings.
