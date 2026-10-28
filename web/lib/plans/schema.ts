@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { isSimpleFootprint } from "./footprint";
+import { MODEL_ASSET_IDS, MATERIAL_ASSET_IDS, getModelAsset } from "@/lib/assets/catalog";
 
 const PointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 export const DesignObjectSchema = z.object({
+  modelAssetId: z.enum(MODEL_ASSET_IDS).optional().describe("Downloaded CC0 model ID from search_design_assets. Use the matching furniture/light kind; omit for schematic geometry."),
+  materialAssetId: z.enum(MATERIAL_ASSET_IDS).optional().describe("Downloaded PBR material ID for a schematic installation such as a partition. Do not combine with modelAssetId."),
   provenance: z.enum(["ai", "manual"]).optional(),
   appearance: z.enum(["screen", "counter", "sofa", "table", "plant", "truss", "seat"]).optional(),
   id: z.string().min(1).max(100), kind: z.enum(["booth", "stage", "lounge", "partition", "furniture", "equipment", "light", "hanging-sign", "canopy", "beam"]), label: z.string().max(100),
@@ -10,6 +13,12 @@ export const DesignObjectSchema = z.object({
   width: z.number().positive().max(100), depth: z.number().positive().max(100), height: z.number().positive().max(30),
   elevation: z.number().min(0).max(30).optional(), zoneId: z.string().min(1).max(100).optional(),
   rotation: z.union([z.literal(0), z.literal(90)]), color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+}).superRefine((object, ctx) => {
+  const model = getModelAsset(object.modelAssetId);
+  if (model && model.kind !== object.kind)
+    ctx.addIssue({ code: "custom", path: ["modelAssetId"], message: "Model asset does not match the installation kind." });
+  if (object.modelAssetId && object.materialAssetId)
+    ctx.addIssue({ code: "custom", path: ["materialAssetId"], message: "Models retain their original materials; choose a model or a surface material." });
 });
 export type DesignObject = z.infer<typeof DesignObjectSchema>;
 export const ZoneSchema = z.object({

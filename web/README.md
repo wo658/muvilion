@@ -31,7 +31,11 @@ Extraction no longer truncates at 1,200 lines or 400 text items. The engine expl
 
 ## Space design and heights
 
-CC0 materials, furniture and lighting candidates with individual download links and adoption notes are listed in [ASSET-SHORTLIST.md](ASSET-SHORTLIST.md). The 12 selected assets are bundled at 1K under `public/assets/cc0/`, with source URLs and hashes in its manifest. Editor selection UI integration is still pending.
+CC0 materials, furniture and lighting with individual download links and adoption notes are listed in [ASSET-SHORTLIST.md](ASSET-SHORTLIST.md). The 12 assets are bundled at 1K under `public/assets/cc0/`, with source URLs and hashes in its manifest.
+
+Muse can call the read-only `search_design_assets` tool in chat, space design generation and the booth specialist. Booth proposals retain their bounds, height, collision validation and user approval steps. Drafting can query the local catalog, review a candidate, then submit a proposal with optional `modelAssetId` or `materialAssetId` on each installation. The review panel names its selected assets; only **변경 적용** applies them. IDs survive project export/import and local persistence. Unknown IDs, mismatched furniture/light kinds and model-plus-material combinations are rejected. Old plans without asset IDs retain their schematic/exhibition appearance.
+
+After Apply, 3D lazily loads bundled glTFs or PBR maps. Models retain their authored materials and fit uniformly inside the installation's existing collision envelope; model bounds in the catalog are file measurements, not surveyed product dimensions. Each instance has an isolated transform and skeleton with shared cached geometry/textures. A failed asset shows a labelled schematic fallback rather than losing the workspace. Materials currently cover schematic installation surfaces such as partitions, not the existing floor/walls/ceiling. Light models remain visual fixtures, not a calibrated lighting simulation. Try “다운로드한 의자와 테이블로 라운지를 만들고 목재 가벽과 펜던트 조명을 배치해줘”.
 
 Simple view's **Design space** opens three layers: Spaces (non-solid purpose zones), Elements (physical installations), and Height & ceiling. Booths are optional spaces; legacy booth/lounging solid objects remain importable. Zones may be marked available for later company/team assignment, without adding registration workflows.
 
@@ -167,3 +171,5 @@ lines for interpretation. Invalid/failed classification never defaults to a muta
 Design/analysis still require explicit Apply, and stale proposals cannot be applied.
 The existing analysis shortcut remains available; the main Send action routes automatically.
 Meta supports `toolChoice: "auto"`; routing accepts exactly one validated tool result.
+
+The managed Compose environment uses `APP_ORIGIN=http://web.redpact.test:3000` for its declared browser hostname. Outside loopback, project/settings storage accepts only this explicitly configured origin and still rejects cross-origin and cross-site browser requests. Leave `APP_ORIGIN` unset for ordinary localhost development; it is a trusted local deployment setting, not authentication for public hosting.

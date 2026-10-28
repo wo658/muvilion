@@ -633,5 +633,9 @@
   "Meet Muvi (new tab)": "뮤비 만나기 (새 탭)",
   "Show Muvi": "뮤비 표시",
   "Resume Muvi": "뮤비 산책 재생",
-  "Pause Muvi": "뮤비 산책 정지"
+  "Pause Muvi": "뮤비 산책 정지",
+  "Proposed assets": "제안에 사용한 에셋",
+  "Assets used": "사용 에셋",
+  "Basic shapes": "기본 도형",
+  "Asset unavailable · basic shape": "에셋 로드 실패 · 기본 형상"
 }

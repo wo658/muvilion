@@ -71,4 +71,16 @@ describe("local Meta key settings", () => {
     expect((await POST(new Request("http://localhost:3000/api/settings/meta-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{" }))).status).toBe(400);
     expect(keyStatus()).toMatchObject({ stored: false, source: "none" });
   });
+  it("accepts only the explicitly configured deployment origin and retains cross-site protection", async () => {
+    vi.stubEnv("APP_ORIGIN", "http://web.redpact.test:3000");
+    const configured = (headers = {}) => new Request("http://localhost:3000/api/settings/meta-key", { headers: { host: "web.redpact.test:3000", origin: "http://web.redpact.test:3000", "sec-fetch-site": "same-origin", ...headers } });
+    expect((await GET(configured())).status).toBe(200);
+    expect((await GET(new Request("http://0.0.0.0:3000/api/settings/meta-key", { headers: { host: "web.redpact.test:3000", origin: "http://web.redpact.test:3000" } }))).status).toBe(200);
+    expect((await GET(new Request("http://0.0.0.0:3000/api/settings/meta-key", { headers: { host: "evil.test:3000" } }))).status).toBe(403);
+    expect((await GET(new Request("http://web.redpact.test:3000/api/settings/meta-key"))).status).toBe(200);
+    for (const headers of [{ origin: "http://evil.test" }, { host: "evil.test:3000" }, { host: "web.redpact.test:4000" }, { "sec-fetch-site": "cross-site" }])
+      expect((await GET(configured(headers))).status).toBe(403);
+    vi.stubEnv("APP_ORIGIN", "http://web.redpact.test:3000/unexpected-path");
+    expect((await GET(configured())).status).toBe(403);
+  });
 });
