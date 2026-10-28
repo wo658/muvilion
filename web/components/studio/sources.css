@@ -12,7 +12,7 @@
 .ps-source-list [data-slot=field-label] { font-size:11px; }
 .ps-source-form { padding:12px; border:1px solid var(--hairline); border-radius:12px; }
 .ps-source-dialog { margin:auto; width:min(850px,94vw); max-height:90dvh; padding:24px; border:1px solid var(--hairline); border-radius:16px; color:var(--ink); background:var(--surface); overflow:auto; }
-.ps-source-dialog::backdrop { background:rgb(0 0 0 / .35); }
+.ps-source-dialog::backdrop { background:var(--overlay); }
 .ps-source-dialog h2 { font-size:18px; font-weight:600; overflow-wrap:anywhere; }
 .ps-source-dialog img { width:100%; object-fit:contain; margin:16px 0; }
 .ps-source-preview-content { display:flex; flex-direction:column; gap:16px; padding-top:16px; }
@@ -20,7 +20,7 @@
 .ps-source-preview-content p,.ps-source-preview-content figcaption { font-size:12px; color:var(--muted); }
 
 .ps-source-manager { margin:auto; width:min(780px,94vw); max-height:88dvh; border:1px solid var(--hairline); border-radius:20px; background:var(--surface); color:var(--ink); overflow:auto; }
-.ps-source-manager::backdrop { background:rgb(0 0 0 / .3); }
+.ps-source-manager::backdrop { background:var(--overlay); }
 .ps-source-manager>header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--hairline); }
 .ps-source-manager>header h2 { font-size:18px; font-weight:600; }
 .ps-source-manager .ps-source-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
