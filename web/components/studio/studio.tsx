@@ -4,7 +4,6 @@ import type { PricingContext } from "@/lib/booths/pricing";
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { AppSettings } from "../app-settings";
@@ -17,10 +16,12 @@ import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
 import { SourcesPanel } from "./sources-panel";
 import { SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
-import { ProjectWorkspace, type ProjectControls } from "./project-workspace";
+import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-workspace";
+import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
-import { SettingsIcon } from "lucide-react";
+import { ChevronDownIcon, MessageCircleIcon, SettingsIcon } from "lucide-react";
+import Image from "next/image";
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
@@ -33,11 +34,6 @@ type Point = {
     x: number;
     y: number;
 };
-function Mark({ small = false }: {
-    small?: boolean;
-}) {
-    return <svg width={small ? 25 : 44} height={small ? 25 : 44} viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M5 29V13L18 6l13 7v16M5 13l13 7 13-7M18 20v15M11 16v16M25 16v16" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>;
-}
 export function Studio() {
     return <ProjectWorkspace editor={StudioEditor}/>;
 }
@@ -279,14 +275,14 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const selectCanvas = editingBooth ? setBoothSelection : setSelected;
     const visibleDocument = !spaceMode && focusBooth && boothDocument ? boothDocument : !spaceMode && publicProject && publicProject.id === publishedId ? publicProject.space : document;
     return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
-    <div className="ps-topbar">
-      <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label={t("muvilion home")}><Mark small/></Link>
-      <div className="ps-topbar-actions">
+    {controls.sidebar && createPortal(<>
+      <RailButton icon={<SettingsIcon/>} label={t("Settings")} onClick={() => setSettings("general")}/>
+    </>, controls.sidebar)}
+    <div className="ps-design-mode-bar">
         <Segmented options={[{ id: "space", label: "공간 디자이너" }, { id: "booth", label: "부스 디자이너" }]} value={designRole} onChange={role => { setDesignRole(role); setChatOpen(true); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label="디자인 모드"/>
-        <Button variant="ghost" className="ps-icon-button" aria-label={t("Settings")} title={t("Settings")} onClick={() => setSettings("general")}><SettingsIcon/></Button>
-      </div>
     </div>
     <AppSettings section={settings} onSectionChange={setSettings} sections={spaceMode ? [
+
       { id: "sources", label: t("Sources"), content: <>
         <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
@@ -346,14 +342,19 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       <aside id="muse-panel" className="ps-right-panel" data-collapsed={document && !chatOpen ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
         <div hidden={!spaceMode} className="ps-role-panel">
           {document ? <details className="ps-booth-pricing"><summary>부스 가격 · 신청 관리</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>부스 디자인 예시로 시작</Button></div>}
-          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
-          {document && <Button className="m-2 self-end" variant="ghost" onClick={() => setChatOpen(false)}>{t("Minimize Muse")}</Button>}
           {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">Muse · 부스 디자이너</h2><p className="mt-3 text-sm text-muted">아직 공개된 부스가 없어요. 공간 디자이너 모드에서 Muse와 가격을 정하고 부스를 공개하면, 여기서 추천받고 바로 신청할 수 있어요.</p><Button className="mt-4" onClick={() => setDesignRole("space")}>공간 디자이너로 돌아가기</Button></section>}
         </div>
+        {document && <div className="ps-muse-controls"><Button variant="primary" className="ps-icon-button ps-ink-button" aria-controls="muse-panel" aria-expanded={true} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} onClick={() => setChatOpen(false)}><ChevronDownIcon/></Button></div>}
+
       </aside>
-      {document && !chatOpen && <button type="button" className="ps-muse-launcher" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><span className="ps-muse-orb" aria-hidden="true"/><span><strong>Muse</strong><small>{selection ? selection.label : t("Talk to Muse")}</small></span></button>}
+      {document && !chatOpen && <div className="ps-muse-launcher">
+        <Image src="/mascot/muvi-face.svg" alt="" width={36} height={36}/>
+        <span>{selection ? selection.label : t("Need help with this space?")}</span>
+        <Button variant="primary" className="ps-ink-button" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><MessageCircleIcon/>{t("Talk to Muse")}</Button>
+      </div>}
     </div>
     {spaceMode && document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 

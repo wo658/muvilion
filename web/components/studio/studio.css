@@ -19,7 +19,7 @@
 .ps-simple-view .ps-center{box-shadow:0 24px 60px -40px var(--shadow-color)}
 .ps-simple-view .ps-right-panel{grid-column:auto;max-height:none}
 .ps-simple-view .ps-right-panel>section.ps-conversation{height:100%;min-height:0;flex:1;overflow:hidden}
-.ps-simple-view .ps-right-panel>section>header,.ps-simple-view .ps-right-panel>section>form{flex-shrink:0}
+.ps-simple-view .ps-right-panel>section>form{flex-shrink:0}
 .ps-simple-view .ps-right-panel [aria-live]{min-height:90px}
 .ps-simple-view .ps-canvas-area{min-height:0;background-image:none;background-color:var(--sunken)}
 .ps-simple-view .ps-canvas-toolbar{background:var(--surface);padding:0 18px}
@@ -77,12 +77,9 @@
 /* Muse conversation: quiet chrome, tools on demand. */
 .ps-center[hidden]{display:none}
 .ps-conversation{display:flex;flex:1;flex-direction:column;height:100%;min-height:0;background:var(--surface)}
-.ps-conversation>header{border:0;padding:20px 24px;flex-shrink:0}
 .ps-conversation-feed{display:flex;flex:1;flex-direction:column;gap:20px;min-height:100px;overflow-y:auto;padding:24px;overscroll-behavior:contain}
-.ps-conversation-tools{padding:12px 24px;max-height:40%;overflow-y:auto;flex-shrink:0}
 .ps-greeting{margin:auto 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:28px;padding:32px 0}
 .ps-greeting h1{font-size:clamp(23px,2.4vw,32px);line-height:1.45;font-weight:500;letter-spacing:-.04em;text-wrap:balance}
-.ps-muse-orb{width:62px;height:62px;flex-shrink:0;border-radius:50%;background:radial-gradient(circle at 30% 25%,var(--accent-soft),var(--muse-glow) 52%,var(--accent) 85%)}
 .ps-suggestions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .ps-conversation>form{margin:0 20px 20px;flex-shrink:0}
 .ps-chat-composer [data-slot="input-group-control"]:focus-visible{outline:none}
@@ -90,8 +87,7 @@
 .ps-simple-view .ps-center{box-shadow:none}
 .ps-conversation-only .ps-workspace{display:flex;justify-content:center}
 .ps-conversation-only .ps-right-panel{width:min(800px,100%);border:0;background:transparent}
-.ps-conversation-only .ps-conversation,.ps-conversation-only .ps-conversation>header{background:transparent}
-.ps-conversation-only .ps-conversation>header{display:none}
+.ps-conversation-only .ps-conversation{background:transparent}
 .ps-simple-summary:empty{display:none}
 .ps-simple-summary{font-size:12px;padding:0 4px 16px}
 .ps-detail-view .ps-workspace{grid-template-columns:240px minmax(0,1fr) minmax(340px,.85fr)}
@@ -110,35 +106,55 @@
  .ps-greeting{gap:20px}
 }
 
-/* Slim top bar: brand, project switcher, booths and settings. API key, sources and export live in settings. */
-.ps-topbar{display:flex;align-items:center;gap:8px;padding:10px 24px;flex-shrink:0}
-.ps-topbar .ps-brand{color:var(--accent);flex-shrink:0}
-.ps-topbar>div[aria-label]{flex:1;flex-wrap:nowrap;padding:0;min-width:0}
-.ps-topbar>div[aria-label] input{max-width:220px}
-.ps-topbar>div[aria-label] [role=status]{color:var(--muted);font-size:12px;white-space:nowrap}
-.ps-topbar-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
-@media(max-width:799px){.ps-topbar{padding:10px 16px;flex-wrap:wrap;justify-content:space-between}.ps-topbar>div[aria-label]{order:3;flex-basis:100%;flex-wrap:wrap}.ps-topbar>div[aria-label]>select,.ps-topbar>div[aria-label]>input{flex:1 1 140px;max-width:none}}
-
-/* Muse dock: with a plan open the chat floats over the canvas and can collapse into a launcher. */
+/* Muse dock (after the ElevenLabs agent widget): with a plan open, a floating sheet over the canvas
+   with a separate control card below it; minimized, it becomes a small launcher card. */
 .ps-has-plan.ps-simple-view .ps-workspace{grid-template-columns:minmax(0,1fr)}
 .ps-has-plan.ps-detail-view .ps-workspace{grid-template-columns:240px minmax(0,1fr)}
-.ps-has-plan .ps-right-panel{position:fixed;right:24px;bottom:24px;z-index:40;width:min(400px,calc(100vw - 32px));height:min(680px,calc(100dvh - 96px));max-height:none;min-height:0;border:1px solid var(--hairline);border-radius:20px;overflow:hidden;box-shadow:0 24px 64px -24px var(--shadow-color);transform-origin:bottom right;transition:opacity .18s ease,transform .18s ease}
-.ps-has-plan .ps-right-panel>section.ps-conversation{height:100%;min-height:0}
+.ps-has-plan .ps-right-panel{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;flex-direction:column;align-items:flex-end;gap:8px;width:min(400px,calc(100vw - 32px));height:min(700px,calc(100dvh - 48px));max-height:none;min-height:0;border:0;border-radius:0;background:transparent;overflow:visible;transform-origin:bottom right;transition:opacity .18s ease,transform .18s ease}
+.ps-has-plan .ps-right-panel>section.ps-conversation{width:100%;flex:1;height:auto;min-height:0;border:1px solid var(--hairline);border-radius:20px;overflow:hidden;box-shadow:0 24px 64px -24px var(--shadow-color)}
 .ps-has-plan .ps-right-panel[data-collapsed]{opacity:0;transform:scale(.92) translateY(12px);pointer-events:none;visibility:hidden;transition:opacity .18s ease,transform .18s ease,visibility 0s .18s}
-.ps-has-plan .ps-conversation>header{padding:14px 16px 14px 20px}
-.ps-has-plan .ps-greeting{gap:18px;padding:16px 0}
-.ps-has-plan .ps-greeting h1{font-size:20px}
-.ps-has-plan .ps-greeting .ps-muse-orb{width:44px;height:44px}
-.ps-muse-launcher{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;gap:12px;max-width:min(320px,calc(100vw - 32px));padding:8px 20px 8px 8px;border:1px solid var(--hairline);border-radius:999px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;box-shadow:0 16px 40px -20px var(--shadow-color);transition:transform .15s ease}
-.ps-muse-launcher:hover{transform:translateY(-2px)}
-.ps-muse-launcher:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.ps-muse-launcher .ps-muse-orb{width:40px;height:40px}
-.ps-muse-launcher>span:last-child{display:flex;flex-direction:column;min-width:0}
-.ps-muse-launcher strong{font-size:13px;font-weight:600}
-.ps-muse-launcher small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:799px){.ps-has-plan .ps-right-panel{right:8px;left:8px;bottom:8px;width:auto;height:min(620px,calc(100dvh - 80px))}.ps-muse-launcher{right:16px;bottom:16px}.ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}}
-@media(prefers-reduced-motion:reduce){.ps-has-plan .ps-right-panel,.ps-muse-launcher{transition:none}}
+.ps-has-plan .ps-right-panel>.ps-muse-controls{flex:none;min-height:0;display:flex;padding:8px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface);box-shadow:0 16px 40px -20px var(--shadow-color)}
+.ps-ink-button{background:var(--ink)!important;color:var(--surface)!important;border-color:var(--ink)!important}
+.ps-ink-button:hover:not(:disabled){opacity:.88}
+.ps-muse-launcher{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:8px 8px 8px 10px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:0 16px 40px -20px var(--shadow-color)}
+.ps-muse-launcher>span{min-width:0;max-width:200px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ps-muse-launcher button{border-radius:10px}
+@media(max-width:799px){.ps-has-plan .ps-right-panel{right:8px;left:8px;bottom:8px;width:auto;height:min(660px,calc(100dvh - 72px))}.ps-muse-launcher{right:16px;bottom:16px}.ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}}
+@media(prefers-reduced-motion:reduce){.ps-has-plan .ps-right-panel{transition:none}}
 .ps-icon-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0!important}.ps-icon-button svg{width:18px;height:18px}
+
+/* Muse conversation: avatar and status pill float over the feed; Muse replies are plain text,
+   your messages are ink bubbles. */
+.ps-conversation{position:relative}
+.ps-conversation-head{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:8px;height:64px;padding:0 16px;background:linear-gradient(var(--surface) 55%,transparent);pointer-events:none}
+.ps-conversation-head>*{pointer-events:auto}
+.ps-muse-status{padding:6px 12px;border-radius:999px;background:var(--sunken);font-size:13px;font-weight:400;color:var(--ink-soft);white-space:nowrap}
+.ps-conversation-feed{gap:24px;padding:72px 16px 16px}
+.ps-conversation-only .ps-conversation-head{display:none}
+.ps-conversation-only .ps-conversation-feed{padding-top:24px}
+.ps-msg-muse{padding-right:32px;font-size:14px;line-height:1.65;color:var(--ink)}
+.ps-msg-muse p,.ps-msg-user p{white-space:pre-wrap;overflow-wrap:anywhere}
+.ps-msg-muse p+p{margin-top:12px}
+.ps-msg-user{align-self:flex-end;max-width:calc(100% - 64px);padding:10px 12px;border-radius:16px;background:var(--ink);color:var(--surface);font-size:14px;line-height:1.55}
+.ps-muse-thinking{font-size:13px;color:var(--muted);animation:ps-pulse 1.4s ease-in-out infinite}
+@keyframes ps-pulse{50%{opacity:.45}}
+.ps-muse-intro{display:flex;flex-direction:column;gap:12px}
+.ps-quick-replies{display:flex;flex-wrap:wrap;gap:6px}
+.ps-quick-replies button{padding:7px 12px;border:1px solid var(--hairline-strong);border-radius:999px;font-size:13px;color:var(--ink-soft);text-align:left;cursor:pointer}
+.ps-quick-replies button:hover:not(:disabled){border-color:var(--ink);color:var(--ink)}
+.ps-quick-replies button:disabled{opacity:.5;cursor:default}
+.ps-quick-replies button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ps-conversation-tools{display:flex;flex-direction:column;gap:10px;max-height:none;padding:0;overflow:visible}
+.ps-proposal{padding:14px;border:1px solid var(--hairline);border-radius:14px;background:var(--sunken)}
+.ps-conversation>form{margin:0 12px 12px}
+.ps-chat-composer [data-slot=input-group]{border:1.5px solid var(--hairline-strong);border-radius:14px;box-shadow:none;background:var(--surface)}
+.ps-chat-composer [data-slot=input-group]:focus-within{border-color:var(--ink);box-shadow:none}
+.ps-chat-composer [data-slot=input-group-control]{font-size:14px}
+.ps-chat-composer [data-slot=input-group-addon] button{border-radius:10px}
+.ps-send{background:var(--ink)!important;color:var(--surface)!important}
+.ps-send:disabled{background:var(--hairline-strong)!important;opacity:1}
+.ps-muse-selection{margin:0 12px 8px;border:1px solid var(--hairline);border-radius:14px}
+@media(prefers-reduced-motion:reduce){.ps-muse-thinking{animation:none}}
 /* Role changes preserve the canvas and both conversations. */
 .ps-role-panel { display:flex; flex-direction:column; min-height:0; height:100%; overflow-y:auto; }
 .ps-role-panel[hidden], .ps-sidebar[hidden] { display:none!important; }
@@ -146,3 +162,9 @@
 .ps-booth-pricing { flex-shrink:0; border-bottom:1px solid var(--hairline); max-height:55vh; overflow-y:auto; }
 .ps-booth-pricing > summary { cursor:pointer; padding:16px 20px; font-weight:600; }
 @media(max-width:760px) { .ps-header { height:auto; min-height:68px; flex-wrap:wrap; padding:16px; } .ps-header-actions { flex-wrap:wrap; gap:12px; } }
+
+
+.ps-design-mode-bar { display:flex; justify-content:flex-end; padding:10px 24px; flex-shrink:0; }
+.ps-design-mode-bar { justify-content:flex-start; }
+.ps-has-plan .ps-right-panel { height:min(700px,calc(100dvh - 96px)); }
+.ps-has-plan .ps-right-panel > .ps-role-panel { width:100%; flex:1; height:auto; min-height:0; border:1px solid var(--hairline); border-radius:20px; background:var(--surface); overflow-y:auto; box-shadow:0 24px 64px -24px var(--shadow-color); }
