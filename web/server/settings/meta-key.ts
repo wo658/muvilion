@@ -24,7 +24,7 @@ export function changeKey(input: unknown, env: Env = process.env): MetaKeyStatus
   return keyStatus(env);
 }
 
-/** No-login settings are available only through the local app, not cross-origin websites. */
+/** No-login storage is available through loopback or an explicitly configured app origin. */
 export function localSettingsRequest(req: Request): boolean {
   const url = new URL(req.url);
   const host = req.headers.get("host") ?? url.host;
@@ -32,7 +32,16 @@ export function localSettingsRequest(req: Request): boolean {
   let publicUrl: URL;
   try { publicUrl = new URL(`${url.protocol}//${host}`); } catch { return false; }
   const loopback = ["localhost", "127.0.0.1", "[::1]"];
-  if (!loopback.includes(url.hostname) || !loopback.includes(publicUrl.hostname)) return false;
+  let configuredOrigin: string | undefined;
+  try {
+    const configured = process.env.APP_ORIGIN?.trim().replace(/\/$/, "");
+    if (configured && new URL(configured).origin === configured && /^https?:\/\//.test(configured)) configuredOrigin = configured;
+  } catch { /* Invalid configuration never broadens access. */ }
+  // Next builds the internal URL from its bind address when started with --hostname 0.0.0.0.
+  const configuredBind = Boolean(configuredOrigin) && publicUrl.origin === configuredOrigin && url.hostname === "0.0.0.0" && url.protocol === publicUrl.protocol && url.port === publicUrl.port;
+  const internalAllowed = loopback.includes(url.hostname) || url.origin === configuredOrigin || configuredBind;
+  const publicAllowed = loopback.includes(publicUrl.hostname) || publicUrl.origin === configuredOrigin;
+  if (!internalAllowed || !publicAllowed) return false;
   if (publicUrl.host !== host || publicUrl.username || publicUrl.password) return false;
   const origin = req.headers.get("origin");
   if (origin && origin !== publicUrl.origin) return false;
