@@ -20,6 +20,19 @@ const document = {
 const request = (body: unknown) => new Request("http://localhost/test", { method: "POST", body: JSON.stringify(body) });
 beforeEach(() => { vi.clearAllMocks(); calls.stream.mockReturnValue({ stream: {} }); });
 describe("source-aware Muse routes", () => {
+  it.each(["en", "ko"])("passes the %s preference to Muse without rewriting history", async locale => {
+    const messages = [{ role: "user", parts: [{ type: "text", text: "Keep my original words" }] }];
+    const response = await chat(request({ locale, messages }));
+    expect(response.status).toBe(200);
+    const input = calls.stream.mock.calls[0][0];
+    expect(input.instructions).toContain(locale === "ko" ? "in Korean" : "in English");
+    expect(input.messages.at(-1).content).toBe("Keep my original words");
+  });
+  it("rejects unsupported UI languages before calling Muse", async () => {
+    const response = await chat(request({ locale: "fr", messages: [{ role: "user", parts: [{ type: "text", text: "Hi" }] }] }));
+    expect(response.status).toBe(400);
+    expect(calls.stream).not.toHaveBeenCalled();
+  });
   it("passes only selected sources into chat model content", async () => {
     const response = await chat(request({ sources: [source("chosen", true), source("excluded", false)], messages: [{ role: "user", parts: [{ type: "text", text: "Summarize my brief" }] }] }));
     expect(response.status).toBe(200);

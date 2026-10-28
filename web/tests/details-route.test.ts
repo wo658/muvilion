@@ -8,11 +8,13 @@ describe("studio routes", () => {
   it("redirects old review-console bookmarks to the studio", () => {
     expect(() => DetailsPage()).toThrow("NEXT_REDIRECT");
   });
-  it("starts with real drawing input and preserves the chat experience", () => {
+  it("starts with a conversation and keeps drawing input in sources", () => {
     const html = renderToStaticMarkup(createElement(Page));
-    expect(html).toContain("Upload a floor plan");
-    expect(html).toContain("Analyze with Muse");
-    expect(html).toContain("Real-world scale");
+    expect(html).toContain("어떤 공간을 만들고 싶으세요?");
+    expect(html).toContain("자료 추가");
+    expect(html).toContain('accept=".pdf,.png,.jpg,.jpeg,.dxf"');
+    expect(html).toContain('aria-label="설정"');
+    expect(html).not.toContain("From a floor plan");
     expect(html).not.toContain("Watch recorded run");
   });
 });
