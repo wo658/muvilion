@@ -242,7 +242,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="ps-conversation-head">
         <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><MuviAvatar size={32}/></Link>
-        <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : t("Muse · Space designer")}</h2>
+        {busy && <h2 className="ps-muse-status">{t("Muse is replying…")}</h2>}
 
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 

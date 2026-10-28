@@ -8,7 +8,10 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - With a drawing, share the workspace between conversation and canvas. Put conversation first on narrow screens.
 - No top bar. Brand, projects, booths and settings live in one sidebar that collapses to an icon rail (collapsed by default; icons only on narrow screens).
 - With a drawing, Muse is a full-height right sidebar (like the ElevenLabs agent panel) that collapses to a round launcher at the bottom right (like Channel Talk): avatar and status pill over the feed, plain-text replies, ink user bubbles and a bordered composer. On phones it is a bottom sheet.
-- Keep sources and application settings in dialogs. Reveal preparation under Drawing settings; Muse starts analysis from chat requests.
+- The drawing workspace is 3D. There is no 2D/3D switch: the 2D plan appears only while a setup tool needs it (Drawing settings, crop, scale, floor outline, entrance, wall drawing) and returns to 3D when the tool closes.
+- Project-level tools live in the workspace header: Sources (original drawing and references) and Booth pricing · applications each open a dialog. App Settings holds only app-wide and project file sections (General, API key, Project); do not add source management back to it.
+- Muse's header shows only the avatar, plus a status pill while Muse is replying; no role label. The 3D view has no floating legend or Muvi caption.
+- Reveal preparation under Drawing settings; Muse starts analysis from chat requests.
 - Remove marketing subtitles, decorative workflow steps, duplicate status copy and implementation details. Preserve actionable errors, scale warnings, review coverage and explicit proposal approval.
 - Send is conversational. Draft a layout creates a reviewable proposal; Apply changes commits it. Never imply chat itself performed an edit.
 
