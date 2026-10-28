@@ -80,3 +80,19 @@ attribution behavior built into the tool.
   Keep optional external assets out of the default example path until this is resolved.
 - Put public setup and example documentation in tracked locations; the root README and
   `docs/` remain private under the workflow above.
+
+## Muvi mascot
+
+- Muvi is the muvilion mascot. Use the canonical assets in `web/public/mascot/`
+  for the website, chat avatars/launcher and icons. Keep its rounded M silhouette,
+  periwinkle body, dark eyes and peach cheeks consistent across 2D and 3D.
+- The 3D drawing viewer includes optional decorative Muvi roaming. For now this is
+  an illustrative animation only: do not connect it to wall collision, pathfinding,
+  physical scale, occupancy/simulation, AI actions or design validation.
+- Muvi must not become a `PlanDocument` object or enter project persistence, exports,
+  undo history or engine requests. Viewing dimensions may frame its demonstration
+  path; its position and controls remain ephemeral browser state.
+- Preserve pause/hide controls, reduced-motion and hidden-page behavior. Mascot
+  failures must not break the drawing viewer or intercept drawing selection.
+- Reuse the shared 3D model renderer and GLB; do not create competing character
+  implementations. See `web/docs/muvi.md` for assets and rebuild commands.

@@ -1,6 +1,8 @@
 "use client";
+import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import type { PublicBoothProject } from "@/lib/booths/schema";
 import type { PricingContext } from "@/lib/booths/pricing";
+
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
 import dynamic from "next/dynamic";
@@ -23,7 +25,7 @@ import { Switch } from "../ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { EllipsisIcon, SettingsIcon } from "lucide-react";
 
-import Image from "next/image";
+
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
@@ -37,6 +39,7 @@ type Point = {
     x: number;
     y: number;
 };
+
 export function Studio() {
     return <ProjectWorkspace editor={StudioEditor}/>;
 }
@@ -287,6 +290,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     {!document && <div className="ps-design-mode-bar">{roleToggle}</div>}
     <AppSettings section={settings} onSectionChange={setSettings} sections={spaceMode ? [
 
+
       { id: "sources", label: t("Sources"), content: <>
         <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
@@ -359,7 +363,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {spaceMode && details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
-        {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><Image src="/mascot/muvi-face.svg" alt="" width={40} height={40}/></button>}
+        {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {document ? <details className="ps-booth-pricing"><summary>부스 가격 · 신청 관리</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>부스 디자인 예시로 시작</Button></div>}
           <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
@@ -369,7 +373,9 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
           {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">Muse · 부스 디자이너</h2><p className="mt-3 text-sm text-muted">아직 공개된 부스가 없어요. 주최 모드에서 Muse와 가격을 정하고 부스를 공개하면, 여기서 추천받고 바로 신청할 수 있어요.</p><Button className="mt-4" onClick={() => setDesignRole("space")}>주최 모드로 돌아가기</Button></section>}
         </div>
 
+
       </aside>
+
     </div>
     {spaceMode && document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 

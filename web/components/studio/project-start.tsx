@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui";
 import type { SampleDrawing } from "@/lib/projects/schema";
@@ -30,6 +32,7 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
   };
   const message = problem || error;
   return <section className="pw-start" aria-labelledby="pw-start-title" aria-busy={busy || undefined}>
+    <Link href="/muvi" target="_blank" rel="noopener noreferrer" className="mx-auto" aria-label={locale === "ko" ? "뮤비 만나기 (새 탭)" : "Meet Muvi (new tab)"}><MuviAvatar size={88}/></Link>
     <h1 id="pw-start-title">{t("How would you like to start?")}</h1>
     <p className="pw-start-lead">{t("Bring a floor plan and design the space with Muse.")}</p>
     {notice && <p className="pw-start-notice" role="status">{localizeMessage(locale, notice)}</p>}
