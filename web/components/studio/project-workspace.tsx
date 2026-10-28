@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ComponentType, type ReactNode } from "react";
+import { CircleAlertIcon, FolderIcon, PanelLeftIcon, PlusIcon } from "lucide-react";
 import { Button } from "../ui";
 import { Input } from "../ui/input";
 import { ProjectState, ProjectExport, emptyProject, type Project, type ProjectSummary } from "@/lib/projects/schema";
@@ -18,7 +19,13 @@ export type ProjectControls = {
   import: (raw: string) => Promise<void>;
   export: () => Promise<void>;
   navigate: (href: string) => void;
+  /** Sidebar slot for editor actions; render `RailButton`s into it with a portal. */
+  sidebar: HTMLElement | null;
 };
+/** Sidebar item: icon always, label only while the rail is expanded. */
+export function RailButton({ icon, label, ...props }: { icon: ReactNode; label: string } & Omit<ComponentProps<"button">, "children">) {
+  return <button type="button" className="pw-rail-button" aria-label={label} title={label} {...props}>{icon}<span className="pw-label">{label}</span></button>;
+}
 function download(value: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: "application/json" }));
   const a = document.createElement("a"); a.href = url; a.download = "muvilion-project.json"; a.click();
@@ -36,7 +43,8 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [attempt, setAttempt] = useState(0);
   const initial = useRef<Promise<Project | null> | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -107,9 +115,11 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const start = <ProjectStart busy={switching} error={starting ? error : ""} notice={notice}
     onDrawing={file => void startWithDrawing(file)} onSample={file => void open(() => createSampleProject(file))}
     onBlank={() => void open(() => createProject("Untitled project"))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
+  function navigate(href: string) { void flush().then(() => window.location.assign(href)).catch(() => {}); }
   const controls: ProjectControls | null = project && {
     change: state => { if (session.current?.project.id === project.id) changed(state); },
-    navigate: href => { void flush().then(() => window.location.assign(href)).catch(() => {}); },
+    navigate,
+    sidebar: slot,
     upload: file => uploadOriginal(project.id, file),
     import: async raw => {
       const parsed = JSON.parse(raw);
@@ -137,21 +147,26 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   return <div className="pw-shell" data-collapsed={collapsed || undefined}>
     <nav className="pw-projects" aria-label={t("Local projects")}>
       <div className="pw-projects-head">
-        {!collapsed && <h2>{t("Projects")}</h2>}
-        <Button variant="ghost" aria-expanded={!collapsed} aria-label={collapsed ? t("Show projects") : t("Hide projects")} onClick={() => setCollapsed(value => !value)}>{collapsed ? "»" : "«"}</Button>
+        <button type="button" className="pw-rail-button pw-toggle" aria-expanded={!collapsed} aria-label={collapsed ? t("Show projects") : t("Hide projects")} title={collapsed ? t("Show projects") : t("Hide projects")} onClick={() => setCollapsed(value => !value)}><PanelLeftIcon/></button>
       </div>
-      {!collapsed && <>
-        <Button className="pw-new" disabled={switching || starting} onClick={() => void newProject()}>{t("New project")}</Button>
-        <ul className="pw-list">{projects.map(item => <li key={item.id}>
-          {item.id === project?.id && !starting
-            ? <Input aria-label={t("Project name")} aria-current="page" value={name} maxLength={100} onBlur={() => { if (!name.trim()) setName(session.current!.name); }} onChange={event => { setName(event.target.value); if (event.target.value.trim()) changed(session.current!.state, event.target.value.trim()); }} />
-            : <button type="button" disabled={switching} onClick={() => void switchProject(item.id)}>{item.name}</button>}
-        </li>)}</ul>
-        <div className="pw-status">
+      <RailButton icon={<PlusIcon/>} label={t("New project")} disabled={switching || starting} onClick={() => void newProject()}/>
+      {collapsed
+        ? <RailButton icon={<FolderIcon/>} label={t("Projects")} aria-expanded={false} onClick={() => setCollapsed(false)}/>
+        : <>
+          <h2 className="pw-heading">{t("Projects")}</h2>
+          <ul className="pw-list">{projects.map(item => <li key={item.id}>
+            {item.id === project?.id && !starting
+              ? <Input aria-label={t("Project name")} aria-current="page" value={name} maxLength={100} onBlur={() => { if (!name.trim()) setName(session.current!.name); }} onChange={event => { setName(event.target.value); if (event.target.value.trim()) changed(session.current!.state, event.target.value.trim()); }} />
+              : <button type="button" disabled={switching} onClick={() => void switchProject(item.id)}>{item.name}</button>}
+          </li>)}</ul>
+        </>}
+      <div ref={setSlot} className="pw-actions"/>
+      {collapsed
+        ? error && <RailButton icon={<CircleAlertIcon/>} label={localizeMessage(locale, error)} className="pw-rail-button pw-rail-alert" onClick={() => setCollapsed(false)}/>
+        : <div className="pw-status">
           <span role="status">{localizeMessage(locale, status)}</span>
           {error && <><span role="alert">{localizeMessage(locale, error)}</span><Button onClick={() => { if (session.current) session.current.failure = null; void flush().catch(() => {}); }}>{t("Retry save")}</Button></>}
-        </div>
-      </>}
+        </div>}
     </nav>
     <div className="pw-editor" inert={switching || undefined}>{starting || !project ? start : <Editor key={project.id} project={project} controls={controls!}/>}</div>
   </div>;

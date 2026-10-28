@@ -23,7 +23,7 @@ dimensions frame an approximate loop; it intentionally does not follow floor
 boundaries, avoid walls, or represent a measured person or real navigation. It has
 no connection to engine calculations, AI actions or saved layout objects.
 
-Use `MuviAvatar` for navigation, chat headers, assistant messages and the chat
+Use `MuviAvatar` for the start screen, chat headers and the chat
 launcher. Run `pnpm build:muvi-icons` to regenerate the 16/32/48px favicon and the
 180px Apple icon from the same SVG. The old default favicon is replaced as well.
 
