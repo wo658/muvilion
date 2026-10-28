@@ -28,7 +28,7 @@ export function SceneCamera({document,view,revision,selected}:{document:PlanDocu
    const distance=(Math.hypot(w,h,d)/2+1)/Math.sin(halfFov);
    void controls.setLookAt(cx+distance*0.5,z+h/2+distance*Math.SQRT1_2,cz+distance*0.5,cx,z+h/2,cz,animate);return;
   }
-  void controls.setLookAt(...pose.eye,...pose.target,animate);
+  void controls.setLookAt(...pose.eye,...pose.target,view==='interior'?false:animate);
  // Do not reset the camera on ordinary edits or selection changes. Buttons request a new view.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[view,revision,width,depth]);
