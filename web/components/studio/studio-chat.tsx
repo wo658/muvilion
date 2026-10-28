@@ -143,7 +143,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                         auditSummary = t("Long wall checks {completed}/{total} · failed {failed}. {count} walls retained. Unchecked walls remain unknown.", { ...audit.progress, count: wallCount });
                         auditPartial = audit.progress.completed < audit.progress.total;
                         if (audit.errors.length)
-                            setInterpretError(`${audit.errors[0]} ${t("Unchecked long walls remain unknown.")}`);
+                            setInterpretError(`${localizeMessage(locale, audit.errors[0])} ${t("Unchecked long walls remain unknown.")}`);
                     }
                     setProposal({ sources, document: audited, summary: `${abortController.signal.aborted ? t("Analysis stopped. ") : ""}${coverage} ${auditSummary} ${t("{count} short lines preserved. Review before applying.", { count: planned.deferredCount })} ${completed < total || auditPartial ? t("Partial suggestions.") : ""}`, base, mode });
                 }
@@ -151,7 +151,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     setNotice(`${outcome.cancelled ? t("Analysis stopped. ") : ""}${coverage} ${t("No suggestions were applied.")}`);
                 }
                 if (outcome.errors.length)
-                    setInterpretError(`${outcome.errors[0]} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
+                    setInterpretError(`${localizeMessage(locale, outcome.errors[0])} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
                 const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale, document: base, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
@@ -236,11 +236,11 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const changed = proposal?.document.lines.filter((line, i) => line.kind !== proposal.base.lines[i]?.kind).length ?? 0;
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     const tools = interpreting || progress || interpretError || proposal || notice;
-    const suggestions = [t("Widen the path from the entrance to the stage"), "부스 크기와 위치를 보고 가격을 함께 책정해줘"];
+    const suggestions = [t("Widen the path from the entrance to the stage"), t("Price the booths based on their size and location")];
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="ps-conversation-head">
-        <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={locale === "ko" ? "뮤비 3D 만나기 (새 탭)" : "Meet Muvi in 3D (new tab)"}><Image src="/mascot/muvi-face.svg" alt="" width={32} height={32}/></Link>
-        <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : "Muse · 공간 디자이너"}</h2>
+        <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><Image src="/mascot/muvi-face.svg" alt="" width={32} height={32}/></Link>
+        <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : t("Muse · Space designer")}</h2>
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 
       </header>
