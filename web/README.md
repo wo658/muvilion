@@ -85,3 +85,7 @@ The centre workspace offers 2D editing with an optional original-drawing overlay
 The default 3D cutaway caps source-wall display at 1.1 m to reveal the interior while retaining every classified wall segment and real gap. Switch off cutaway or enter Explore to see full wall heights. Stored geometry and navigation checks always retain physical dimensions. Existing walls are neutral grey; planned partitions are blue with a dark top edge. Selected AI-authored partitions are labelled as AI proposals; older objects with no recorded provenance are only labelled planned partitions.
 
 Use **입구 표시** in 2D to place an entrance marker, then edit its name or direction in Design space. Markers persist in exports and appear in both views and Muse context. These are user annotations, not automatically verified doors; they do not cut openings in wall geometry. No source gaps are automatically filled or wall lines discarded for presentation.
+
+### 2D presentation principle
+
+The default 2D editor is a human-readable space diagram, not a technical drawing viewer: retain essential walls, entrances, zones and object footprints; use a muted floor and furniture symbols; show labels only where they fit or on selection. Source linework, dimensions and images are available through Original drawing, and appear during geometry-review tools. An unclassified plan falls back to its source instead of pretending to have a reconstructed structure. Schematic presentation never changes geometry, wall openings, object IDs, coordinates or validation inputs.

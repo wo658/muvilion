@@ -48,7 +48,7 @@ export function Studio() {
     const [sourcesReady, setSourcesReady] = useState(false);
     const [sourceError, setSourceError] = useState<string | null>(null);
     const [markingEntrance, setMarkingEntrance] = useState(false);
-    const [showOriginal, setShowOriginal] = useState(true);
+    const [showOriginal, setShowOriginal] = useState(false);
     const saveQueue = useRef(Promise.resolve());
     useEffect(() => {
         let alive = true;
