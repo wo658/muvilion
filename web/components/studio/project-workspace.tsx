@@ -1,25 +1,22 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Button } from "../ui";
 import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
 import { ProjectState, ProjectExport, emptyProject, type Project, type ProjectSummary } from "@/lib/projects/schema";
 import { createProject, exportProject, listProjects, loadProject, uploadOriginal } from "@/lib/projects/client";
 import { ProjectSession } from "@/lib/projects/session";
-import { readLegacySources, clearLegacySources } from "@/lib/projects/legacy";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 
 import { useI18n } from "@/lib/i18n/provider";
 import { localizeMessage } from "@/lib/i18n/messages";
+import "./project-workspace.css";
 
-const LEGACY_PLAN = "pavilion.plan-studio.v1";
 export type ProjectControls = {
   change: (state: ProjectState) => void;
   upload: (file: File) => Promise<string>;
   import: (raw: string) => Promise<void>;
   export: () => Promise<void>;
   navigate: (href: string) => void;
-  toolbar: ReactNode;
 };
 function download(value: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: "application/json" }));
@@ -38,7 +35,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [attempt, setAttempt] = useState(0);
   const initial = useRef<Promise<Project> | null>(null);
-  const skipLegacy = useRef(false);
+  const [collapsed, setCollapsed] = useState(false);
   function activate(next: Project) {
     session.current = new ProjectSession(next, undefined, summary => setProjects(items => [summary, ...items.filter(item => item.id !== summary.id)]));
     setProject(next); setName(next.name); setStatus("Saved to SQLite"); setError("");
@@ -48,26 +45,16 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
     let alive = true;
     // Keep one initialization promise under StrictMode so first open cannot create duplicates.
     initial.current ??= (async () => {
-      const raw = skipLegacy.current ? null : localStorage.getItem(LEGACY_PLAN);
-      const sources = skipLegacy.current ? null : await readLegacySources();
-      let recovered: Project | null = null;
-      if (raw || sources) {
-        const state = { ...emptyProject(), document: raw ? PlanDocumentSchema.parse(JSON.parse(raw)) : null, sources: sources ?? emptyProject().sources };
-        recovered = await createProject("Recovered browser project", state, true);
-        // A failed cleanup is safe: the server deduplicates this exact migration payload.
-        await clearLegacySources(); localStorage.removeItem(LEGACY_PLAN);
-      }
       const items = await listProjects();
       const id = new URL(window.location.href).searchParams.get("project");
       if (id) return loadProject(id);
-      if (recovered) return recovered;
       if (items.length) return loadProject(items[0].id);
       return createProject("Untitled project");
     })();
     void initial.current.then(async next => {
       const items = await listProjects();
       if (alive) { setProjects(items); activate(next); }
-    }).catch(error => { if (alive) { setError(error.message); setStatus("Could not open the project. Browser data has not been replaced."); initial.current = null; } });
+    }).catch(error => { if (alive) { setError(error.message); setStatus("Could not open the project."); initial.current = null; } });
     return () => { alive = false; };
   }, [attempt]);
   useEffect(() => {
@@ -92,7 +79,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
     catch (error) { setError(error instanceof Error ? error.message : "Could not open project."); }
     finally { setSwitching(false); }
   }
-  if (!project) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button><Button onClick={() => { skipLegacy.current = true; initial.current = null; const url = new URL(window.location.href); url.searchParams.delete("project"); window.history.replaceState(null, "", url); setAttempt(value => value + 1); }}>{t("Open SQLite projects without browser import")}</Button></>}</main>;
+  if (!project) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button><Button onClick={() => { initial.current = null; const url = new URL(window.location.href); url.searchParams.delete("project"); window.history.replaceState(null, "", url); setAttempt(value => value + 1); }}>{t("Open the latest project")}</Button></>}</main>;
   const controls: ProjectControls = {
     change: state => { if (session.current?.project.id === project.id) changed(state); },
     navigate: href => { void flush().then(() => window.location.assign(href)).catch(() => {}); },
@@ -102,7 +89,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       const bundle = parsed.projectVersion === 2 ? ProjectExport.parse(parsed) : null;
       const state = bundle?.state ?? (parsed.projectVersion === 1 ? ProjectState.parse(parsed) : { ...emptyProject(), document: PlanDocumentSchema.parse(parsed) });
       await flush();
-      const imported = await createProject(bundle?.name ?? "Imported project", state, false, bundle?.assets ?? []);
+      const imported = await createProject(bundle?.name ?? "Imported project", state, bundle?.assets ?? []);
       await flush(); activate(imported); setProjects(await listProjects());
     },
     export: async () => {
@@ -119,13 +106,26 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       }
       download({ ...bundle, name: current.name, state: current.state, assets: bundle.assets.filter(file => ids.includes(file.id)) });
     },
-    toolbar: <div className="flex flex-wrap items-center gap-2 p-2" aria-label={t("Local projects")}>
-      <NativeSelect aria-label={t("Open project")} value={project.id} disabled={switching} onChange={event => void switchProject(event.target.value)}>{projects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect>
-      <Input aria-label={t("Project name")} value={name} maxLength={100} onBlur={() => { if (!name.trim()) setName(session.current!.name); }} onChange={event => { setName(event.target.value); if (event.target.value.trim()) changed(session.current!.state, event.target.value.trim()); }} />
-      <Button disabled={switching} onClick={() => void switchProject()}>{t("New project")}</Button>
-      <span role="status">{localizeMessage(locale, status)}</span>
-      {error && <><span role="alert">{localizeMessage(locale, error)}</span><Button onClick={() => { if (session.current) session.current.failure = null; void flush().catch(() => {}); }}>{t("Retry save")}</Button></>}
-    </div>,
   };
-  return <div inert={switching || undefined}><Editor key={project.id} project={project} controls={controls}/></div>;
+  return <div className="pw-shell" data-collapsed={collapsed || undefined}>
+    <nav className="pw-projects" aria-label={t("Local projects")}>
+      <div className="pw-projects-head">
+        {!collapsed && <h2>{t("Projects")}</h2>}
+        <Button variant="ghost" aria-expanded={!collapsed} aria-label={collapsed ? t("Show projects") : t("Hide projects")} onClick={() => setCollapsed(value => !value)}>{collapsed ? "»" : "«"}</Button>
+      </div>
+      {!collapsed && <>
+        <Button className="pw-new" disabled={switching} onClick={() => void switchProject()}>{t("New project")}</Button>
+        <ul className="pw-list">{projects.map(item => <li key={item.id}>
+          {item.id === project.id
+            ? <Input aria-label={t("Project name")} aria-current="page" value={name} maxLength={100} onBlur={() => { if (!name.trim()) setName(session.current!.name); }} onChange={event => { setName(event.target.value); if (event.target.value.trim()) changed(session.current!.state, event.target.value.trim()); }} />
+            : <button type="button" disabled={switching} onClick={() => void switchProject(item.id)}>{item.name}</button>}
+        </li>)}</ul>
+        <div className="pw-status">
+          <span role="status">{localizeMessage(locale, status)}</span>
+          {error && <><span role="alert">{localizeMessage(locale, error)}</span><Button onClick={() => { if (session.current) session.current.failure = null; void flush().catch(() => {}); }}>{t("Retry save")}</Button></>}
+        </div>
+      </>}
+    </nav>
+    <div className="pw-editor" inert={switching || undefined}><Editor key={project.id} project={project} controls={controls}/></div>
+  </div>;
 }
