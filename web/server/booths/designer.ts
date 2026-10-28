@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getModel } from "@/server/agent/model";
 import { BoothBoundsSchema, BoothObjectsSchema, boothHandoff, createBoothDocument, createBoothReviewSession, type BoothBounds } from "@/lib/booths/design";
 import type { PlanDocument } from "@/lib/plans/schema";
+import { assetTools, ASSET_INSTRUCTIONS } from "@/server/plans/asset-tools";
 
 export class BoothDesignerError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -43,12 +44,13 @@ export async function designBooth(input: BoothDesignInput) {
   const specialist = new ToolLoopAgent({
     id: "muse-booth-designer",
     model: handle.model,
-    instructions: DESIGNER_INSTRUCTIONS,
+    instructions: `${DESIGNER_INSTRUCTIONS}\n${ASSET_INSTRUCTIONS}`,
     temperature: 0.2,
     maxRetries: 1,
     maxOutputTokens: 6000,
     stopWhen: [isStepCount(6), () => review.result() !== null],
     tools: {
+      ...assetTools,
       validate_booth_design: tool({
         description: "Check a complete proposed installation list against this booth's immutable bounds, height and collision rules. Returns repair feedback.",
         inputSchema: CandidateSchema,

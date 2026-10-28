@@ -6,7 +6,7 @@ Downloaded 2026-10-28: six ambientCG PBR materials and six Poly Haven models at 
 
 Next.js serves this directory at `/assets/cc0/`. A model entrypoint is `/assets/cc0/models/modern_arm_chair_01/modern_arm_chair_01_1k.gltf`; retain its sibling BIN file and textures directory. Load model entrypoints from the manifest. Material JPG paths are listed under each material's files. No GLB conversion, mesh simplification or image recompression was performed.
 
-Only Color, NormalGL, Roughness, Metalness and AmbientOcclusion JPGs present in the material archives are retained. Original ZIPs, Blender scenes, displacement, NormalDX and preview images are omitted to avoid duplicate storage. This is a static asset inventory, not a user-facing example catalog. The editor does not yet expose these assets in its controls, and no rendering or lighting simulation is claimed.
+Only Color, NormalGL, Roughness, Metalness and AmbientOcclusion JPGs present in the material archives are retained. Original ZIPs, Blender scenes, displacement, NormalDX and preview images are omitted to avoid duplicate storage. This is a static asset inventory, not a user-facing example catalog. Muse's `search_design_assets` tool uses the typed shared catalog in `lib/assets/catalog.ts`; proposals reference IDs and render after user Apply. The inventory does not claim calibrated lighting simulation.
 
 ## Provenance and license
 

@@ -296,5 +296,9 @@
   "Open an exported JSON bundle as a new project. The current project is kept.": "내보낸 JSON 묶음을 새 프로젝트로 엽니다. 현재 프로젝트는 그대로 유지됩니다.",
   "Minimize Muse": "Muse 접기",
   "Talk to Muse": "Muse와 대화하기",
-  "Muse is replying…": "Muse가 답하는 중…"
+  "Muse is replying…": "Muse가 답하는 중…",
+  "Proposed assets": "제안에 사용한 에셋",
+  "Assets used": "사용 에셋",
+  "Basic shapes": "기본 도형",
+  "Asset unavailable · basic shape": "에셋 로드 실패 · 기본 형상"
 }

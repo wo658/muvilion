@@ -16,6 +16,20 @@ const toolResult = (name: string, input: unknown) => ({
 
 beforeEach(() => mocked.getModel.mockReset());
 describe("Muse booth subagent", () => {
+  it("looks up bundled assets before validating and submitting the selected model", async () => {
+    const chair = { ...object, modelAssetId: "modern_arm_chair_01" as const };
+    const model = new MockLanguageModelV4({ doGenerate: [
+      toolResult("delegate_booth_design", {}),
+      toolResult("search_design_assets", { query: "chair", category: "furniture" }),
+      toolResult("validate_booth_design", { objects: [chair] }),
+      toolResult("submit_design", { objects: [chair], summary: "암체어 배치", buildNotes: [] }),
+    ] });
+    mocked.getModel.mockReturnValue({ model, hasKey: true });
+    const result = await designBooth({ booth: bounds, company: "Acme", brief: "암체어 배치" });
+    expect(JSON.stringify(model.doGenerateCalls[2].prompt)).toContain("gltf-scene-bounds");
+    expect(result.document.objects?.[0].modelAssetId).toBe(chair.modelAssetId);
+    expect(model.doGenerateCalls.every(call => call.toolChoice?.type === "auto")).toBe(true);
+  });
   it("delegates, observes failed validation, repairs and submits within isolated context", async () => {
     const model = new MockLanguageModelV4({ doGenerate: [
       toolResult("delegate_booth_design", {}),

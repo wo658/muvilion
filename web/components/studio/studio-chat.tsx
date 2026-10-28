@@ -7,7 +7,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { ArrowUpIcon, CheckIcon, ChevronDownIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, generateId } from "ai";
 import { useEffect, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans/regions";
@@ -16,6 +16,7 @@ import { emptySources, type SourceLibrary } from "@/lib/sources/schema";
 import { selectedReferences } from "@/lib/sources/files";
 import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
 import Image from "next/image";
+import { getModelAsset, getMaterialAsset } from "@/lib/assets/catalog";
 type Proposal = {
     artifacts?: DesignArtifact[];
     sources: SourceLibrary;
@@ -209,8 +210,8 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 await sendMessage({ text: message }, { body: { locale, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
             } else {
                 setMessages(previous => [...previous,
-                    { id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: message }] },
-                    { id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: decision.message }] },
+                    { id: generateId(), role: "user", parts: [{ type: "text", text: message }] },
+                    { id: generateId(), role: "assistant", parts: [{ type: "text", text: decision.message }] },
                 ]);
                 if (decision.intent === "design" || decision.intent === "interpret") {
                     await interpret(decision.intent, decision.brief);
@@ -250,6 +251,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             </figure>)}
           </div></details>}
           <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? t("{zones} zones · {objects} installations. Applying replaces the current design.", { zones: proposal.document.zones?.length ?? 0, objects: proposal.document.objects?.length ?? 0 }) : t("{count} line changes. Coordinates and dimensions stay unchanged.", { count: changed })}</p>
+          {proposal.mode === "design" && <p className="mt-2 text-xs" aria-label={t("Proposed assets")}>{t("Assets used")}: {[...new Set((proposal.document.objects ?? []).flatMap(object => [getModelAsset(object.modelAssetId)?.name, getMaterialAsset(object.materialAssetId)?.name].filter((name): name is string => Boolean(name))))].join(", ") || t("Basic shapes")}</p>}
           {stale && <p className="mt-2 text-xs text-amber">{t("The drawing or sources changed. Generate a new proposal before applying.")}</p>}
           <div className="mt-3 flex gap-2"><Button type="button" size="sm" disabled={Boolean(stale)} variant="default" onClick={() => { if (!stale) {
             onDocumentChange(proposal.document);

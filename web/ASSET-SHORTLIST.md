@@ -1,6 +1,6 @@
 # 공간 디자인용 CC0 에셋 선정 목록
 
-확인일 및 다운로드일: 2026-10-28. 선정한 12종의 **1K 실제 파일을 `public/assets/cc0/`에 포함**했다. 재질은 웹용 JPG 맵을 추출했고 모델은 glTF + BIN + 참조 텍스처를 함께 저장했다. 아래 2K 링크는 고해상도 원본을 추가로 받을 때 사용한다. 로컬 파일 목록·출처·체크섬은 [manifest.json](public/assets/cc0/manifest.json), 사용 방법과 검증 범위는 [에셋 안내](public/assets/cc0/README.md)에 기록했다. 편집기 선택 UI 연결과 실제 장면 렌더링 검증은 아직 수행하지 않았다.
+확인일 및 다운로드일: 2026-10-28. 선정한 12종의 **1K 실제 파일을 `public/assets/cc0/`에 포함**했다. 재질은 웹용 JPG 맵을 추출했고 모델은 glTF + BIN + 참조 텍스처를 함께 저장했다. 아래 2K 링크는 고해상도 원본을 추가로 받을 때 사용한다. 로컬 파일 목록·출처·체크섬은 [manifest.json](public/assets/cc0/manifest.json), 사용 방법과 검증 범위는 [에셋 안내](public/assets/cc0/README.md)에 기록했다. Muse의 `search_design_assets` 도구로 검색해 디자인 제안에 포함할 수 있다. 사용자가 적용하면 3D 장면에서 모델과 재질을 불러온다. 실제 Muse 응답과 장면 렌더링을 확인했으며, 별도의 수동 에셋 선택 UI는 제공하지 않는다.
 
 ## 재질 — ambientCG 6종
 

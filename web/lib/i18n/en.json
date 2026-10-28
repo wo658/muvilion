@@ -296,5 +296,9 @@
   "Open an exported JSON bundle as a new project. The current project is kept.": "Open an exported JSON bundle as a new project. The current project is kept.",
   "Minimize Muse": "Minimize Muse",
   "Talk to Muse": "Talk to Muse",
-  "Muse is replying…": "Muse is replying…"
+  "Muse is replying…": "Muse is replying…",
+  "Proposed assets": "Proposed assets",
+  "Assets used": "Assets used",
+  "Basic shapes": "Basic shapes",
+  "Asset unavailable · basic shape": "Asset unavailable · basic shape"
 }
