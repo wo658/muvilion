@@ -69,3 +69,13 @@ Engine checks: `uv run pytest`, `uv run ruff check .`. Regenerate engine OpenAPI
 Choose **Meta / Muse · exhibition concept** for the curated Fort Mason demo: 76 installations across keynote seating, AI demo stations, a lounge and circulation. Original procedural graphics reference the official sources in `fixtures/meta-muse-sources.json`; no third-party photos are redistributed. This is an independent concept, not a reconstruction of a Meta event.
 
 Regenerate local DemoData from the reviewed floor plan with `node --import tsx scripts/build-meta-showcase.mts /absolute/path/to/DemoData` from web. The generator checks the plan schema and design warnings before writing. The optional `visualStyle` and per-object `appearance` preserve old imports and keep the same bounds for selection, editing and collision checks; furniture collision remains conservative bounding boxes. Ceiling height remains an estimated 6 m, lighting is illustrative, and venue reconstruction uncertainty remains unchanged.
+
+## Project sources
+
+The header Sources button opens a separate material manager storing concept images (PNG/JPG/WebP), brand URL bookmarks with notes, and planning documents (PDF/TXT/Markdown). The current drawing is a separate active source. New references default to unselected; toggles control references included in the next Muse discussion or design draft. Workspace geometry remains available as a spatial constraint. Drawing analysis explicitly reviews the active drawing. URL bodies are not fetched.
+
+Images are resized locally. Planning PDFs are rendered and text-extracted through the existing Python extraction service, with every page included (up to 12 pages, 20 MB per upload). Scanned PDFs provide page images even when no text is extractable. DOCX/PPTX are not supported; export these to PDF first. The library permits 12 references and a 10 MB serialized content budget.
+
+Sources and selection state are saved in browser IndexedDB for this local workspace; replacing the active drawing retains the library. Export project downloads a versioned JSON envelope with the plan, source previews/text/notes and selection state. Import project restores it, including source-only projects. Legacy plan JSON remains importable. Original binary files are not archived; keep originals separately. Browser storage is local, not a server backup.
+
+The centre workspace offers 2D editing with an optional original-drawing overlay and 3D space. Source previews open independently from the workspace. Muse does not apply source-driven changes until the existing proposal review/Apply step. Changing sources invalidates an outstanding proposal.

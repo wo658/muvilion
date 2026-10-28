@@ -8,13 +8,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans/regions";
 import { runRegionalBatches, globalWallAuditBatches, applyGlobalWallAudit, type RegionalProgress } from "@/lib/plans/regional-client";
+import { emptySources, type SourceLibrary } from "@/lib/sources/schema";
+import { selectedReferences } from "@/lib/sources/files";
 type Proposal = {
+    sources: SourceLibrary;
     document: PlanDocument;
     summary: string;
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, simple = false }: {
+export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources() }: {
+    sources?: SourceLibrary;
     simple?: boolean;
     document: PlanDocument | null;
     onDocumentChange: (document: PlanDocument) => void;
@@ -23,6 +27,7 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
         api: "/api/plans/chat",
         prepareSendMessagesRequest: ({ messages, body }) => ({ body: {
                 document: body?.document ?? null,
+                sources: body?.sources ?? [],
                 messages: messages.slice(-24).map((message) => ({ role: message.role, parts: message.parts.filter((part) => part.type === "text").map((part) => ({ type: "text", text: part.text })) })),
             } }),
     }));
@@ -40,7 +45,9 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
     const [reviewPhase, setReviewPhase] = useState<"regions" | "walls">("regions");
     const regions = useMemo(() => document ? planRegions(document, minPixels) : null, [document, minPixels]);
     const feedContainer = useRef<HTMLDivElement | null>(null);
-    const busy = status === "submitted" || status === "streaming";
+    const [preparing, setPreparing] = useState(false);
+    const preparingRef = useRef(false);
+    const busy = preparing || status === "submitted" || status === "streaming";
     const unknownCount = document?.lines.filter((line) => line.kind === "unknown").length ?? 0;
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
     useEffect(() => { if (messages.length && feedContainer.current)
@@ -118,7 +125,7 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
                         if (audit.errors.length)
                             setInterpretError(`${audit.errors[0]} Unchecked long wall candidates remain unknown.`);
                     }
-                    setProposal({ document: audited, summary: `${abortController.signal.aborted ? "Analysis stopped. " : ""}${coverage} ${auditSummary} ${planned.deferredCount} short lines were preserved without analysis. Review ${completed < total || auditPartial ? "these partial suggestions" : "the suggestions"} before applying.`, base, mode });
+                    setProposal({ sources, document: audited, summary: `${abortController.signal.aborted ? "Analysis stopped. " : ""}${coverage} ${auditSummary} ${planned.deferredCount} short lines were preserved without analysis. Review ${completed < total || auditPartial ? "these partial suggestions" : "the suggestions"} before applying.`, base, mode });
                 }
                 else {
                     setNotice(`${outcome.cancelled ? "Analysis stopped. " : ""}${coverage} No suggestions were applied.`);
@@ -127,13 +134,13 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
                     setInterpretError(`${outcome.errors[0]} ${outcome.results.length ? "Successful regions are retained for review." : "No regions could be reviewed."}`);
             }
             else {
-                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ document: base, brief: input.trim() }), signal: abortController.signal });
+                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ document: base, drawingSelected: sources.drawingSelected, brief: input.trim(), sources: await selectedReferences(sources, document) }), signal: abortController.signal });
                 const body = await response.json();
                 if (!response.ok)
                     throw new Error(body.error ?? "Muse could not draft a layout.");
                 const result = PlanDocumentSchema.parse(body.document);
                 if (mounted.current)
-                    setProposal({ document: result, summary: typeof body.summary === "string" ? body.summary : "Review the proposed changes.", base, mode });
+                    setProposal({ sources, document: result, summary: typeof body.summary === "string" ? body.summary : "Review the proposed changes.", base, mode });
             }
         }
         catch (err) {
@@ -150,20 +157,24 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
                 setInterpreting(false);
         }
     }
-    function send(text: string) {
-        if (!text.trim() || busy)
+    async function send(text: string) {
+        if (!text.trim() || busy || preparingRef.current)
             return;
+        preparingRef.current = true; setPreparing(true);
         clearError();
         setInput("");
-        void sendMessage({ text: text.trim() }, { body: { document: document ? { ...document, preview: undefined } : null } });
+        try { await sendMessage({ text: text.trim() }, { body: { document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: await selectedReferences(sources, document) } });
+        } catch { setInput(text); setNotice("Sources could not be prepared. Check the selected images and retry."); }
+        finally { preparingRef.current = false; setPreparing(false); }
     }
     const changed = proposal?.document.lines.filter((line, i) => line.kind !== proposal.base.lines[i]?.kind).length ?? 0;
-    const stale = proposal && proposal.base !== document;
+    const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     return (<section className="flex h-full min-h-[420px] flex-col bg-surface" aria-label="Muse drawing assistant">
       <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
         <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2><p className="text-[11px] text-muted">Your drawing partner</p></div></div>
         <span className="rounded-full border border-hairline px-2 py-1 text-[10px] text-muted">Meta AI</span>
       </header>
+      <p className="px-5 py-2 text-xs text-muted">{sources.items.filter(item => item.selected).length + Number(Boolean(document && sources.drawingSelected))} sources selected</p>
       <div className="border-b border-hairline p-4">
         <details open={!simple || interpreting}><summary className="cursor-pointer text-xs text-muted">Drawing tools</summary><div className="mt-3">
         <Button type="button" onClick={() => void interpret()} disabled={!document || !unknownCount || !regions?.batches.length || interpreting || busy} variant="primary" className="w-full">{interpreting ? progress ? `${reviewPhase === "walls" ? "Checking long wall context" : "Reviewing regions"} · ${progress.completed}/${progress.total}` : "Preparing your proposal…" : "Analyze with Muse"}</Button>
@@ -184,7 +195,7 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
         {proposal && <div className="mt-3 rounded-lg border border-hairline bg-sunken p-3">
           <p className="text-xs leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
           <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? `${proposal.document.zones?.length ?? 0} space zones and ${proposal.document.objects?.length ?? 0} installations proposed. Applying replaces this design; source walls, scale and ceiling conditions stay unchanged.` : `${changed} line classifications suggested. Coordinates and dimensions stay unchanged.`}</p>
-          {stale && <p className="mt-2 text-xs text-amber">The drawing changed. Run analysis again before applying.</p>}
+          {stale && <p className="mt-2 text-xs text-amber">The drawing or sources changed. Generate a new proposal before applying.</p>}
           <div className="mt-3 flex gap-2"><Button disabled={Boolean(stale)} variant="primary" onClick={() => { if (!stale) {
             onDocumentChange(proposal.document);
             setProposal(null);

@@ -6,13 +6,14 @@ type Point = {
     x: number;
     y: number;
 };
-export function PlanCanvas({ document, selected, onSelect, sourceOnly, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint }: {
+export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = true, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint }: {
     floorDraft?: Point[] | null;
     onBoundaryPoint?: (point: Point) => void;
     document: PlanDocument;
     selected: string | null;
     onSelect: (id: string | null) => void;
     sourceOnly: boolean;
+    showOriginal?: boolean;
     drawing: boolean;
     onDraw: (a: Point, b: Point) => void;
     measurement: [
@@ -72,7 +73,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, drawing, 
         setCursor(point(e)); }} onKeyDown={(e) => { if (e.key === "Escape")
         setStart(null); }} tabIndex={drawing ? 0 : -1}>
       <rect width={width} height={height} fill="white"/>
-      <image href={document.preview} width={width} height={height} opacity={sourceOnly ? 1 : 0.5}/>
+      {showOriginal && <image href={document.preview} width={width} height={height} opacity={sourceOnly ? 1 : 0.5}/>}
       {!sourceOnly && <g pointerEvents="none">
         <path d={paths.unknown} fill="none" stroke="#8596a5" strokeWidth={0.6} vectorEffect="non-scaling-stroke"/>
         <path d={paths.dimension} fill="none" stroke="#aa7933" strokeWidth={1.1} vectorEffect="non-scaling-stroke"/>
