@@ -2,6 +2,7 @@
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 
+import { createPortal } from "react-dom";
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
 import { SceneLabel } from "./scene-label";
 import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
@@ -28,7 +29,8 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   render() { return this.state.failed ? <SceneUnavailable/> : this.props.children; }
 }
 
-export default function SceneView({ document, wallHeight, selected, onSelect }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void }) {
+/** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
+export default function SceneView({ document, wallHeight, selected, onSelect, toolbar }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null }) {
   const { t } = useI18n();
   const exhibition = document.visualStyle === "exhibition";
   const width = document.widthMeters ?? 10;
@@ -60,7 +62,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     document.floorBoundary.forEach((p, i) => { if (i === 0) shape.moveTo(p.x * width - width / 2, depth / 2 - p.y * depth); else shape.lineTo(p.x * width - width / 2, depth / 2 - p.y * depth); });
     shape.closePath(); return shape;
   }, [document.floorBoundary, width, depth]);
-  return <SceneBoundary><div className="ps-scene-tools">
+  const tools = <div className="ps-scene-tools">
     <ToggleGroup aria-label={t("Camera view")} value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
       <ToggleGroupItem value="overview">{t("Overview")}</ToggleGroupItem><ToggleGroupItem value="top">{t("Top")}</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?t("Review scale and floor boundary; a clear interior viewpoint is required."):t("Click the floor to move; drag to look around")}>{t("Explore")}</ToggleGroupItem>
     </ToggleGroup>
@@ -73,7 +75,8 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
       <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
     </FieldGroup></PopoverContent></Popover>
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View help and model information")}/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Viewing the space")}</PopoverTitle><p>{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.")}</p><p>{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p><p>{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p></PopoverContent></Popover>
-  </div><div className="ps-venue-legend" aria-label={t("Space legend")}><span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  </div>;
+  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}<div className="ps-venue-legend" aria-label={t("Space legend")}><span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
     {exhibition && <hemisphereLight args={["#e6f1ff","#c6b69b",1.4]}/>}

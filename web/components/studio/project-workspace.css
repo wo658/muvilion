@@ -56,3 +56,4 @@
 .pw-samples button:hover:not(:disabled){background:var(--sunken)}
 .pw-start-links{display:flex;justify-content:center;gap:8px}
 @media(max-width:640px){.pw-start-options{grid-template-columns:1fr}}
+.pw-projects{padding-top:14px}
