@@ -9,12 +9,17 @@ import { cropPlan } from "@/lib/plans/crop";
 import { Badge, Button, Segmented } from "../ui";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
+import { SourcesPanel } from "./sources-panel";
+import { emptySources, SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
+import { readSources, writeSources } from "@/lib/sources/storage";
+import { Switch } from "../ui/switch";
 import { DesignPanel } from "./design-panel";
 import "./studio.css";
 import "./spatial-design.css";
+import "./sources.css";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: () => <div className="ps-canvas-message">Opening the 3D workspace…</div> });
 const STORAGE = "pavilion.plan-studio.v1";
-type Mode = "source" | "plan" | "scene";
+type Mode = "plan" | "scene";
 type Point = {
     x: number;
     y: number;
@@ -31,12 +36,33 @@ function EmptyPlan({ onUpload, onDemo, busy }: {
 }) {
     return <div className="ps-empty">
     <div className="ps-empty-drawing" aria-hidden="true"><svg viewBox="0 0 420 230" fill="none"><path d="M65 177L210 94l145 83-145 83z" fill="#e9eff7" transform="translate(0 -45)"/><g stroke="#a2b7ca" strokeWidth="1.3"><path d="M65 132V72l145-83 145 83v60M65 72l145 83 145-83M210 155v60" transform="translate(0 25)"/><path d="M112 184v-58l48-28 49 28v59M257 185v-58l49-28"/><path d="M161 98v57l48 28M257 127l49 28v57"/></g><path d="M65 157l145 83 145-83M210 155v85" stroke="#0064e0" strokeWidth="2"/><circle cx="210" cy="155" r="4" fill="#0064e0"/></svg><span className="ps-drawing-label">A space, waiting to take shape.</span></div>
-    <span className="eyebrow">YOUR NEXT SPACE STARTS HERE</span><h1>From a floor plan<br />to a place of possibility.</h1><p>Bring your drawing. Find its structure.<br />Shape the space together with Muse.</p>
+    <span className="eyebrow">YOUR NEXT SPACE STARTS HERE</span><h1>From a floor plan<br />to your next space.</h1><p>Bring your drawing. Find its structure.<br />Shape the space together with Muse.</p>
     <div className="ps-empty-actions"><Button variant="primary" onClick={onUpload} disabled={busy}>Upload a floor plan <span aria-hidden="true">↗</span></Button><Button variant="ghost" onClick={onDemo} disabled={busy}>Explore Fort Mason <span aria-hidden="true">→</span></Button></div>
     <div className="ps-format-note">PDF, PNG, JPG or DXF <span>·</span> Up to 20 MB</div>
   </div>;
 }
 export function Studio() {
+    const sourceManager = useRef<HTMLDialogElement>(null);
+    const [sources, setSources] = useState<SourceLibrary>(emptySources);
+    const sourcesRef = useRef(sources);
+    const [sourcesReady, setSourcesReady] = useState(false);
+    const [sourceError, setSourceError] = useState<string | null>(null);
+    const [showOriginal, setShowOriginal] = useState(true);
+    const saveQueue = useRef(Promise.resolve());
+    useEffect(() => {
+        let alive = true;
+        readSources().then(saved => { if (alive && saved) { sourcesRef.current = saved; setSources(saved); } })
+            .catch(() => { if (alive) setSourceError("Saved sources could not be loaded. Import a project backup to recover them."); })
+            .finally(() => { if (alive) setSourcesReady(true); });
+        return () => { alive = false; };
+    }, []);
+    const changeSources = (update: (current: SourceLibrary) => SourceLibrary) => {
+        try {
+            const next = SourceLibrarySchema.parse(update(sourcesRef.current));
+            sourcesRef.current = next; setSources(next); setSourceError(null);
+            saveQueue.current = saveQueue.current.then(() => writeSources(next)).catch(() => setSourceError("Sources could not be saved in this browser. Export project to keep a backup."));
+        } catch (error) { setSourceError(error instanceof Error ? error.message : "Could not update sources."); }
+    };
     const [document, setDocument] = useState<PlanDocument | null>(null);
     const [details, setDetails] = useState(false);
     const [designOpen, setDesignOpen] = useState(false);
@@ -64,7 +90,7 @@ export function Studio() {
     const input = useRef<HTMLInputElement>(null);
     const restoreInput = useRef<HTMLInputElement>(null);
     const request = useRef<AbortController | null>(null);
-    const current = useRef(document);
+    const planRef = useRef(document);
     useEffect(() => {
         return () => request.current?.abort();
     }, []);
@@ -78,15 +104,15 @@ export function Studio() {
         }
     }, []);
     const change = useCallback((next: PlanDocument) => {
-        const previous = current.current;
+        const previous = planRef.current;
         if (previous)
             setHistory((items) => [...items.slice(-19), previous]);
-        current.current = next;
+        planRef.current = next;
         setDocument(next);
         save(next);
     }, [save]);
     const openDocument = (next: PlanDocument) => {
-        current.current = next;
+        planRef.current = next;
         setDocument(next);
         setFloorDraft(null);
         setHistory([]);
@@ -205,25 +231,30 @@ export function Studio() {
         if (!previous)
             return;
         setHistory((items) => items.slice(0, -1));
-        current.current = previous;
+        planRef.current = previous;
         setDocument(previous);
         save(previous);
         setWidth(previous.widthMeters?.toString() ?? "");
         setHeight(previous.heightMeters?.toString() ?? "");
     };
     const exportPlan = () => {
-        if (!document)
-            return;
-        const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
+        const url = URL.createObjectURL(new Blob([JSON.stringify({ projectVersion: 1, document, sources: sourcesRef.current }, null, 2)], { type: "application/json" }));
         const a = window.document.createElement("a");
         a.href = url;
-        a.download = "muvilion-plan.json";
+        a.download = "muvilion-project.json";
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
     const restore = (raw: string) => {
         try {
-            openDocument(PlanDocumentSchema.parse(JSON.parse(raw)));
+            const parsed = JSON.parse(raw);
+            if (parsed.projectVersion === 1) {
+                const library = SourceLibrarySchema.parse(parsed.sources);
+                const plan = parsed.document === null ? null : PlanDocumentSchema.parse(parsed.document);
+                if (plan) openDocument(plan);
+                else { planRef.current = null; setDocument(null); setHistory([]); setChatKey(k => k + 1); localStorage.removeItem(STORAGE); }
+                changeSources(() => library);
+            } else openDocument(PlanDocumentSchema.parse(parsed));
             setSourceFile(null);
             setError(null);
         }
@@ -302,9 +333,10 @@ export function Studio() {
       <Link href="/" className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
       <NativeSelect className="ps-venue-picker" aria-label="Example drawing" value="" disabled={busy} onChange={(e) => openExample(e.target.value)}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : "Choose an example"}</option><option value="fort-mason-showcase">Meta / Muse · exhibition concept</option><option value="fort-mason-spatial">Fort Mason · space design demo</option><option value="fort-mason-reviewed">Fort Mason · reviewed space</option><option value="fort-mason">Fort Mason · source drawing</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">COEX Hall A · detailed plan</option></NativeSelect>
       <div className="ps-header-actions">
+        <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>Sources · {sources.items.length + Number(Boolean(document))}</Button>
         <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails((value) => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{details ? "← Simple view" : "Details"}</Button>
         {document && <Button variant="ghost" aria-expanded={designOpen} aria-controls="space-designer" onClick={() => setDesignOpen(v => !v)}>Design space</Button>}
-        {document && <Button variant="ghost" onClick={exportPlan} disabled={busy}>Export plan</Button>}
+        <Button variant="ghost" onClick={exportPlan} disabled={busy || !sourcesReady}>Export project</Button>
         <Button variant="primary" onClick={() => input.current?.click()} disabled={busy}>{document ? "Replace drawing" : "Upload a floor plan"}</Button>
       </div>
     </header>
@@ -314,8 +346,16 @@ export function Studio() {
         restore(await file.text());
     else if (file)
         setError("Plan file must be smaller than 32 MB."); e.target.value = ""; }}/>
+    <dialog ref={sourceManager} className="ps-source-manager" aria-labelledby="sources-manager-title">
+      <header><h2 id="sources-manager-title">Sources</h2><Button onClick={() => sourceManager.current?.close()} aria-label="Close Sources">Close</Button></header>
+        <SourcesPanel library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { sourceManager.current?.close(); input.current?.click(); }}/>
+        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{sourceError}</p>}
+        <div className="ps-section"><Button disabled={!sourcesReady} onClick={() => restoreInput.current?.click()}>Import project</Button></div>
+
+    </dialog>
     <div className="ps-workspace">
-      <aside id="drawing-details" className="ps-sidebar" hidden={!details}>
+      <aside className="ps-sidebar" hidden={!details}>
+        <div id="drawing-details" className="ps-drawing-controls" hidden={!details}>
         <section className="ps-section"><div className="ps-section-heading"><h2>Project source</h2><span className="ps-step-icon">↗</span></div>
           <Button disabled={busy} onClick={() => input.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (!busy && e.dataTransfer.files[0])
         void extract(e.dataTransfer.files[0]); }}><span className="ps-file-icon">＋</span><strong>{document ? "Replace drawing" : "Upload a floor plan"}</strong><span>Drop a file or browse</span><small>PDF · PNG · JPG · DXF</small></Button>
@@ -352,15 +392,17 @@ export function Studio() {
 
         <section className="ps-section ps-elements"><div className="ps-section-heading"><h2>Drawing elements</h2><span className="ps-small-muted">{document?.lines.length ?? 0}</span></div><div className="ps-element-row"><span><i className="ps-dot wall"/> Wall lines</span><strong>{wallCount}</strong></div><div className="ps-element-row"><span><i className="ps-dot unknown"/> Unclassified</span><strong>{unknownCount}</strong></div><div className="ps-element-row"><span><i className="ps-dot dimension"/> Dimension lines</span><strong>{document?.lines.filter((line) => line.kind === "dimension").length ?? 0}</strong></div><p className="ps-help">Select a line to review its role. Muse can help classify the drawing.</p>{document && document.lines.length > 0 && <label className="ps-field">Inspect element<Input aria-label="Find drawing element" placeholder="Filter by ID or kind" value={lineQuery} onChange={e => setLineQuery(e.target.value)}/><NativeSelect value={selected ?? ""} onChange={(e) => setSelected(e.target.value || null)}><option value="">Choose a line</option>{[...(selectedLine ? [selectedLine] : []), ...document.lines.filter(line => line.id !== selected && `${line.id} ${line.kind}`.includes(lineQuery)).slice(0, 199)].map((line) => <option key={line.id} value={line.id}>{line.id} · {line.kind}</option>)}</NativeSelect><small>Up to 200 matches. Filter by ID or click the plan to inspect any line.</small></label>}</section>
         <div className="ps-sidebar-footer"><span className="ps-status-dot"/> {document ? "Working on your drawing" : "Ready for your drawing"}</div>
+        </div>
       </aside>
       <section className="ps-center" aria-label="Drawing workspace">
-        <div className="ps-canvas-toolbar"><div className="ps-canvas-title"><span className="eyebrow">{document ? "DRAWING WORKSPACE" : "NEW PROJECT"}</span><strong>{document ? document.source.name.replace(/\.[^.]+$/, "") : "Untitled space"}</strong></div><Segmented<Mode> options={[{ id: "source", label: "Source" }, { id: "plan", label: "2D plan" }, { id: "scene", label: "3D space" }]} value={mode} onChange={(next) => { setMode(next); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label="Workspace view"/></div>
+        <div className="ps-canvas-toolbar"><div className="ps-canvas-title"><span className="eyebrow">{document ? "DRAWING WORKSPACE" : "NEW PROJECT"}</span><strong>{document ? document.source.name.replace(/\.[^.]+$/, "") : "Untitled space"}</strong></div><Segmented<Mode> options={[{ id: "plan", label: "2D 편집" }, { id: "scene", label: "3D 공간" }]} value={mode} onChange={(next) => { setMode(next); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label="Workspace view"/></div>
+        {mode === "plan" && document && <label className="ps-original-toggle"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>원본 도면 겹쳐보기</label>}
         {error && <div className="ps-alert" role="alert"><span>{error}</span><Button onClick={() => setError(null)} aria-label="Dismiss error">×</Button></div>}
         {notice && <div className="ps-notice" role="status">{notice}</div>}
         <div className="ps-canvas-area">
           {document ? mode === "scene" ? <><SceneView document={document} wallHeight={wallHeight} selected={selected} onSelect={(id) => { setSelected(id); if (document?.objects?.some(o => o.id === id) || document?.zones?.some(z => z.id === id))
         setDesignOpen(true); }}/>{details && <div className="ps-scene-note">{calibrated ? "Scale confirmed" : "Illustrative scale · confirm dimensions"} · ceiling {document.ceiling ? `${document.ceiling.height} m (${document.ceiling.status})` : "not set"} · wall thickness inferred</div>}{wallCount === 0 && <div className="ps-scene-empty">Classify wall lines in 2D or ask Muse to review your drawing.</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={document} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={(id) => { setSelected(id); if (document?.objects?.some(o => o.id === id) || document?.zones?.some(z => z.id === id))
-        setDesignOpen(true); }} sourceOnly={mode === "source"} drawing={drawing || calibrating || cropping} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : <EmptyPlan onUpload={() => input.current?.click()} onDemo={() => void loadDemo("fort-mason")} busy={busy}/>}
+        setDesignOpen(true); }} sourceOnly={false} showOriginal={showOriginal} drawing={drawing || calibrating || cropping} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : <EmptyPlan onUpload={() => input.current?.click()} onDemo={() => void loadDemo("fort-mason")} busy={busy}/>}
           {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? "Cropping your space" : "Reading your drawing"}</strong><span>{cropping ? "Keeping geometry inside the selected area." : "Extracting geometry and preparing the source preview."}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>Cancel</Button>}</div>}
         </div>
         <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || mode !== "plan" || busy || (document.lines.length >= 100000)} onClick={() => { setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? "Finish drawing" : "+ Draw wall"}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>↶ Undo</Button></div><span>{floorDraft ? "Click the interior corners, then Use floor outline" : cropping ? "Click opposite corners of the space to keep" : calibrating ? "Click two points along a known dimension" : drawing ? "Click two endpoints · Esc cancels the segment" : mode === "scene" ? "Drag to orbit · scroll to zoom" : document ? "Click a line to inspect" : "Start with a drawing or explore the demo"}</span></div>
@@ -371,7 +413,7 @@ export function Studio() {
         {details && selectedLine && document && <section className="ps-inspector"><div className="ps-section-heading"><h2>Selected element</h2><Button onClick={() => setSelected(null)} aria-label="Close element inspector">×</Button></div><span className="ps-small-muted">{selectedLine.id} · {selectedLine.origin}</span><div className="ps-classify">{(["wall", "dimension", "unknown"] as const).map((kind) => <Button key={kind} aria-pressed={selectedLine.kind === kind} onClick={() => classify(kind)}>{kind === "unknown" ? "Unclassified" : kind === "wall" ? "Wall" : "Dimension"}</Button>)}</div><div className="ps-endpoints"><span>Start <b>{selectedLine.a.x.toFixed(3)}, {selectedLine.a.y.toFixed(3)}</b></span><span>End <b>{selectedLine.b.x.toFixed(3)}, {selectedLine.b.y.toFixed(3)}</b></span></div><Button variant="danger" onClick={() => { change({ ...document, lines: document.lines.filter((line) => line.id !== selected) }); setSelected(null); }}>Remove line</Button></section>}
         {details && mode === "scene" && document && <section className="ps-inspector"><label className="ps-field">Preview wall height <div className="ps-height-control"><Input type="number" min="0.5" max="30" step="0.1" value={wallHeight} onChange={(e) => { const n = Number(e.target.value); if (n >= 0.5 && n <= 30)
         change({ ...document, wallHeight: n }); }}/><span>m</span></div></label><p className="ps-help">Wall height is saved with this space. Verify it against supplied measurements.</p></section>}
-        <StudioChat key={chatKey} document={document} onDocumentChange={change} simple={!details}/>
+        <StudioChat key={chatKey} sources={sources} document={document} onDocumentChange={change} simple={!details}/>
       </aside>
     </div>
     {!details && (!document || !calibrated) && <div className="ps-simple-summary"><p>{!document ? "Bring a floor plan. Shape your space with Muse." : !calibrated ? "Your drawing is ready. Confirm a known distance before planning your layout." : `${document.objects?.length ?? 0} objects in your concept · Scale confirmed`}</p>{document && <Button variant="ghost" onClick={() => calibrated ? setDesignOpen(true) : setDetails(true)}>{calibrated ? "Design your space →" : "Review drawing & scale →"}</Button>}{!document && <Button onClick={() => restoreInput.current?.click()}>Open saved plan</Button>}</div>}

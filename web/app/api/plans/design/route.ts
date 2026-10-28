@@ -4,8 +4,10 @@ import { getModel } from "@/lib/agent/model";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { applyDesignProposal, DESIGN_INSTRUCTIONS, PlanDesignProposal, planChatContext } from "@/lib/plans/muse";
 
+import { SourceRequestSchema, sourceContent, SOURCE_INSTRUCTIONS } from "@/lib/sources/schema";
+
 export const maxDuration = 90;
-const DesignRequest = z.object({ document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
+const DesignRequest = z.object({ sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
 
 export async function POST(req: Request) {
   const raw = await req.text();
@@ -21,8 +23,8 @@ export async function POST(req: Request) {
   try {
     const result = await generateText({
       model: model.model,
-      instructions: DESIGN_INSTRUCTIONS,
-      prompt: JSON.stringify({ brief, context: planChatContext(document), wallLines: document.lines.filter(line => line.kind === "wall") }),
+      instructions: DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS,
+      messages: [{ role: "user", content: [{ type: "text", text: JSON.stringify({ brief, context: planChatContext({ ...document, texts: parsed.data.drawingSelected ? document.texts : [] }), wallLines: document.lines.filter(line => line.kind === "wall") }) }, ...sourceContent(parsed.data.sources)] }],
       tools: { submit_design: tool({ description: "Submit editable space zones, physical installations with heights, and assumptions for user review. Existing source and ceiling conditions remain unchanged.", inputSchema: PlanDesignProposal }) },
       toolChoice: "auto",
       temperature: 0.2, maxRetries: 1, timeout: 75_000, abortSignal: req.signal,

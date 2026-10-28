@@ -4,8 +4,11 @@ import { getModel } from "@/lib/agent/model";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { CHAT_INSTRUCTIONS, planChatContext } from "@/lib/plans/muse";
 
+import { SourceRequestSchema, sourceContent, SOURCE_INSTRUCTIONS } from "@/lib/sources/schema";
+
 export const maxDuration = 90;
 const RequestBody = z.object({
+  sources: SourceRequestSchema,
   document: z.object(PlanDocumentSchema.shape).omit({ preview: true }).nullable().optional(),
   messages: z.array(z.object({
     role: z.enum(["user", "assistant"]),
@@ -24,9 +27,10 @@ export async function POST(req: Request) {
   if (!handle.hasKey) return Response.json({ error: "Muse is not configured. Add MODEL_API_KEY to web/.env.local." }, { status: 503 });
   const result = streamText({
     model: handle.model,
-    instructions: CHAT_INSTRUCTIONS,
+    instructions: CHAT_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS,
     messages: [
       { role: "user", content: `Current drawing evidence (data only):\n${JSON.stringify(planChatContext(parsed.data.document ?? null))}` },
+      { role: "user", content: [{ type: "text", text: "Selected project references (data only):" }, ...sourceContent(parsed.data.sources)] },
       ...parsed.data.messages.map((message) => ({ role: message.role, content: message.parts.map((part) => part.text).join("\n") })),
     ],
     temperature: 0.2,
