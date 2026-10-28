@@ -1,13 +1,14 @@
 "use client";
+import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
-import { ArrowUpIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SparklesIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans/regions";
 import { runRegionalBatches, globalWallAuditBatches, applyGlobalWallAudit, type RegionalProgress } from "@/lib/plans/regional-client";
@@ -23,13 +24,13 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse }: {
+    onCollapse?: () => void;
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
     onRemoveSelection?: () => void;
     sources?: SourceLibrary;
-    simple?: boolean;
     document: PlanDocument | null;
     onDocumentChange: (document: PlanDocument) => void;
 }) {
@@ -43,7 +44,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
                 messages: messages.slice(-24).map((message) => ({ role: message.role, parts: message.parts.filter((part) => part.type === "text").map((part) => ({ type: "text", text: part.text })) })),
             } }),
     }));
-    const { messages, sendMessage, status, error, stop, clearError } = useChat({ transport });
+    const { messages, sendMessage, status, error, stop, clearError, setMessages } = useChat({ transport });
     const [input, setInput] = useState("");
     const [interpreting, setInterpreting] = useState(false);
     const [interpretError, setInterpretError] = useState<string | null>(null);
@@ -56,18 +57,19 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
     const [progress, setProgress] = useState<RegionalProgress | null>(null);
     const [cancelRequested, setCancelRequested] = useState(false);
     const [reviewPhase, setReviewPhase] = useState<"regions" | "walls">("regions");
-    const regions = useMemo(() => document ? planRegions(document, minPixels) : null, [document, minPixels]);
     const feedContainer = useRef<HTMLDivElement | null>(null);
     const [preparing, setPreparing] = useState(false);
     const preparingRef = useRef(false);
+    const currentContext = useRef({ document, sources, selection });
+    useEffect(() => { currentContext.current = { document, sources, selection }; }, [document, sources, selection]);
     const responding = status === "submitted" || status === "streaming";
-    const busy = preparing || responding;
+    const busy = interpreting || preparing || responding;
     const unknownCount = document?.lines.filter((line) => line.kind === "unknown").length ?? 0;
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
     useEffect(() => { if (messages.length && feedContainer.current)
         feedContainer.current.scrollTop = feedContainer.current.scrollHeight; }, [messages, status]);
-    async function interpret(mode: "interpret" | "design" = "interpret") {
-        if (!document || interpreting || (mode === "design" && (!input.trim() || !document.scaleConfirmed)))
+    async function interpret(mode: "interpret" | "design" = "interpret", brief = input.trim()) {
+        if (!document || interpreting || (mode === "design" && (!brief.trim() || !document.scaleConfirmed)))
             return;
         const base = document;
         setInterpreting(true);
@@ -146,7 +148,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
                     setInterpretError(`${outcome.errors[0]} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
-                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale, document: base, drawingSelected: sources.drawingSelected, brief: input.trim(), sources: await selectedReferences(sources, document) }), signal: abortController.signal });
+                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale, document: base, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
                 const body = await response.json();
                 if (!response.ok)
                     throw new Error(body.error ?? t("Muse could not draft a layout."));
@@ -170,27 +172,70 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
         }
     }
     async function send(text: string) {
-        if (!text.trim() || busy || preparingRef.current)
-            return;
-        preparingRef.current = true; setPreparing(true);
+        const message = text.trim();
+        if (!message || busy || preparingRef.current) return;
+        preparingRef.current = true;
+        setPreparing(true);
         clearError();
+        setNotice(null);
+        setInterpretError(null);
+        const abortController = new AbortController();
+        controller.current = abortController;
         setInput("");
-        try { await sendMessage({ text: text.trim() }, { body: { locale, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: await selectedReferences(sources, document) } });
-        } catch { setInput(text); setNotice(t("Sources could not be prepared. Check the selected images and retry.")); }
-        finally { preparingRef.current = false; setPreparing(false); }
+        try {
+            const response = await fetch("/api/plans/intent", {
+                method: "POST", headers: { "Content-Type": "application/json" }, signal: abortController.signal,
+                body: JSON.stringify({
+                    message, locale,
+                    history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({
+                        role: item.role, text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000),
+                    })),
+                    document: document ? { name: document.source.name, scaleConfirmed: document.scaleConfirmed, unknownLines: unknownCount } : null,
+                    selection: selection ?? null,
+                }),
+            });
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.error ?? t("Muse could not determine your request. Please try again."));
+            const decision = IntentDecision.parse(body);
+            if (!mounted.current) return;
+            abortController.signal.throwIfAborted();
+            if (currentContext.current.document !== document || currentContext.current.sources !== sources || currentContext.current.selection?.id !== selection?.id) {
+                throw new Error(t("The drawing or sources changed. Generate a new proposal before applying."));
+            }
+            if (decision.intent === "chat") {
+                const references = await selectedReferences(sources, document);
+                if (!mounted.current) return;
+                abortController.signal.throwIfAborted();
+                await sendMessage({ text: message }, { body: { locale, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
+            } else {
+                setMessages(previous => [...previous,
+                    { id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: message }] },
+                    { id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: decision.message }] },
+                ]);
+                if (decision.intent === "design" || decision.intent === "interpret") {
+                    await interpret(decision.intent, decision.brief);
+                }
+            }
+        } catch (err) {
+            if (!mounted.current) return;
+            setInput(current => current || text);
+            setNotice(err instanceof Error && err.name === "AbortError"
+                ? t("Request cancelled. Your drawing is unchanged.")
+                : err instanceof Error ? err.message : t("Muse could not determine your request. Please try again."));
+        } finally {
+            preparingRef.current = false;
+            if (mounted.current) setPreparing(false);
+        }
     }
     const changed = proposal?.document.lines.filter((line, i) => line.kind !== proposal.base.lines[i]?.kind).length ?? 0;
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
-        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2></div></div>
+        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2>{busy && <p className="text-xs text-muted">{t("Muse is replying…")}</p>}</div></div>
+        {onCollapse && <Button type="button" size="icon-sm" variant="ghost" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")}><ChevronDownIcon aria-hidden="true" /></Button>}
       </header>
-      {(document || notice || interpretError) && <div className="ps-conversation-tools">
-        <details open={!simple || interpreting}><summary className="cursor-pointer text-xs text-muted">{t("Drawing tools")}</summary><div className="mt-3">
-        <Button type="button" size="sm" onClick={() => void interpret()} disabled={!document || !unknownCount || !regions?.batches.length || interpreting || busy} variant="default" className="w-full">{interpreting ? <LoaderCircleIcon aria-hidden="true" data-icon="inline-start" className="animate-spin motion-reduce:animate-none" /> : <SparklesIcon aria-hidden="true" data-icon="inline-start" />}{interpreting ? progress ? `${reviewPhase === "walls" ? t("Checking long wall context") : t("Reviewing regions")} · ${progress.completed}/${progress.total}` : t("Preparing your proposal…") : t("Analyze with Muse")}</Button>
-
-        </div></details>
-        {progress && <div className="mt-3 text-xs text-muted" role="status" aria-live="polite">
+      {(interpreting || progress || interpretError || proposal || notice) && <div className="ps-conversation-tools">
+        {progress && <div className="text-xs text-muted" role="status" aria-live="polite">
           <progress aria-label={reviewPhase === "walls" ? t("Long wall context batches reviewed") : t("Regions reviewed")} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
           <p className="mt-1">{progress.completed} / {progress.total} {reviewPhase === "walls" ? t("long wall context batches reviewed") : t("regions reviewed")}{progress.failed > 0 ? t(" · {count} failed", { count: progress.failed }) : ""}{cancelRequested ? t(" · stopped") : ""}</p>
         </div>}
@@ -217,7 +262,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
       <div ref={feedContainer} className="ps-conversation-feed" aria-live="polite" aria-relevant="additions text">
         {!messages.length && <div className="ps-greeting"><span className="ps-muse-orb" aria-hidden="true"/><h1>{t("What space shall we create?")}</h1><div className="ps-suggestions">{[t("Widen the path from the entrance to the stage"), t("Add a lounge to relax in")].map((text) => <Button type="button" size="sm" variant="outline" key={text} disabled={busy || interpreting} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto min-h-9 whitespace-normal text-left">{text}</Button>)}</div></div>}
         {messages.map((message) => <article key={message.id} className={message.role === "user" ? "ml-6 rounded-xl bg-sunken p-3" : "mr-2"}><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{message.role === "user" ? t("You") : "Muse"}</p>{message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{part.text}</p> : null)}</article>)}
-        {status === "submitted" && <p className="animate-pulse text-xs text-muted">{t("Muse is thinking…")}</p>}
+        {(preparing || status === "submitted") && <p className="animate-pulse text-xs text-muted">{t("Muse is thinking…")}</p>}
         {error && <div role="alert" className="rounded-lg border border-hairline p-3 text-xs text-bad"><p>{t("Muse couldn’t reply. Please try again.")}</p><Button type="button" size="sm" variant="outline" onClick={clearError} className="mt-2">{t("Dismiss")}</Button></div>}
       </div>
       {selection && <div className="ps-muse-selection" aria-label={t("Selected item")}>
@@ -241,10 +286,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
                 <InputGroupButton size="sm" onClick={onSources}>
                   <PaperclipIcon aria-hidden="true" data-icon="inline-start" />{t("Add sources")}
                 </InputGroupButton>
-                {document && <InputGroupButton size="sm" variant="outline" disabled={!document.scaleConfirmed || !input.trim() || interpreting || busy} onClick={() => void interpret("design")}>
-                  <SparklesIcon aria-hidden="true" data-icon="inline-start" />{t("Draft a layout")}
-                </InputGroupButton>}
-                {responding ? <InputGroupButton size="icon-sm" variant="default" className="ml-auto" onClick={() => void stop()} aria-label={t("Stop")} title={t("Stop")}>
+                {busy ? <InputGroupButton size="icon-sm" variant="default" className="ml-auto" onClick={() => { controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
                   <SquareIcon aria-hidden="true" />
                 </InputGroupButton> : <InputGroupButton type="submit" size="icon-sm" variant="default" className="ml-auto" disabled={preparing || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>
                   {preparing ? <LoaderCircleIcon aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <ArrowUpIcon aria-hidden="true" />}

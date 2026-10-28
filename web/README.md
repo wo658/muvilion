@@ -151,3 +151,18 @@ Projects, assets and app-level credentials share this database. `server/database
 the connection and schema; `server/projects` owns transactional project persistence.
 Project endpoints use the same local-only request guard as settings. To copy the complete
 database, stop the app first; use project export when sharing a project without credentials.
+
+## Unified message routing
+
+The composer sends the message, recent conversation, selected item, and a compact drawing
+summary to `/api/plans/intent`. `server/plans/intent.ts` uses the configured model to choose
+chat, design, interpretation, or clarification. The browser dispatches the existing
+workflow; regional analysis/cropping continues to run in the browser. Design requests
+use the shared Designer Muse tool loop. Intent classification itself selects one workflow
+and does not create a background job. Each ordinary message adds one classification model call.
+
+The intent layer checks drawing availability, confirmed scale for design, and unknown
+lines for interpretation. Invalid/failed classification never defaults to a mutation.
+Design/analysis still require explicit Apply, and stale proposals cannot be applied.
+The existing analysis shortcut remains available; the main Send action routes automatically.
+Meta supports `toolChoice: "auto"`; routing accepts exactly one validated tool result.
