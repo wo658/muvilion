@@ -297,5 +297,7 @@
   "Retry opening projects": "Retry opening projects",
   "Open SQLite projects without browser import": "Open SQLite projects without browser import",
   "Local projects": "Local projects",
-  "Could not open the project. Browser data has not been replaced.": "Could not open the project. Browser data has not been replaced."
+  "Could not open the project. Browser data has not been replaced.": "Could not open the project. Browser data has not been replaced.",
+  "Request cancelled. Your drawing is unchanged.": "Request cancelled. Your drawing is unchanged.",
+  "Muse could not determine your request. Please try again.": "Muse could not determine your request. Please try again."
 }
