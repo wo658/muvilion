@@ -199,3 +199,16 @@
 .ps-has-plan .ps-scene-tools{top:12px;left:auto;right:12px;justify-content:flex-end}
 .ps-toolbar-divider{width:1px;align-self:stretch;margin:4px 2px;background:var(--hairline)}
 .ps-icon-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0!important}.ps-icon-button svg{width:18px;height:18px}
+/* Canva-style top bar: one straight floating strip across the canvas. Every header in the
+   editor (project rail, canvas bar, Muse head) shares the same 32px centre line. */
+.ps-studio.ps-has-plan .ps-canvas-toolbar{left:12px;right:12px;height:40px;padding:0 4px;gap:4px;border-radius:10px}
+.ps-canvas-toolbar [data-slot=toggle-group-item],.ps-canvas-toolbar [data-slot=button]{height:32px}
+.ps-canvas-toolbar .ps-toolbar-divider{margin:8px 4px}
+.ps-toolbar-end{display:flex;align-items:center;gap:4px;margin-left:auto;min-width:0}
+.ps-toolbar-end .ps-scene-tools{position:static;display:contents}
+.ps-has-plan .ps-alert,.ps-has-plan .ps-notice{top:60px}
+.ps-has-plan .ps-simple-summary{top:60px}
+.ps-has-plan .ps-design-drawer{top:60px}
+.ps-panel-head{display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 16px;flex-shrink:0}
+.ps-booth-pricing>summary{padding:22px 20px;line-height:20px}
+.ps-canvas-toolbar .ps-icon-button{width:32px;height:32px}
