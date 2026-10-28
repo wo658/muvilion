@@ -1,8 +1,16 @@
 "use client";
 
-import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { Component, useMemo, useState, type ReactNode } from "react";
+import { Canvas } from "@react-three/fiber";
+import { SceneCamera } from "./scene-camera";
+import { interiorPose, type CameraView } from "@/lib/plans/camera";
+import { Button } from "../ui/button";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { Popover, PopoverTrigger, PopoverContent, PopoverTitle } from "../ui/popover";
+import { NativeSelect } from "../ui/native-select";
+import { Field, FieldGroup, FieldLabel } from "../ui/field";
+import { Switch } from "../ui/switch";
+import { LayersIcon, InfoIcon, FocusIcon, RotateCcwIcon } from "lucide-react";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { deriveWalls } from "@/lib/plans/walls";
 import { DoubleSide, Shape } from "three";
@@ -14,34 +22,45 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   render() { return this.state.failed ? <div className="ps-canvas-message"><h3>3D is unavailable in this browser</h3><p>Your plan is safe. Continue editing in 2D.</p></div> : this.props.children; }
 }
 
-function OverviewCamera({ span }: { span: number }) {
-  const { camera, invalidate } = useThree();
-  useEffect(() => { camera.position.set(span * 0.75, span * 0.8, span * 0.9); camera.lookAt(0, 0, 0); invalidate(); }, [camera, invalidate, span]);
-  return null;
-}
-
 export default function SceneView({ document, wallHeight, selected, onSelect }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void }) {
   const width = document.widthMeters ?? 10;
   const depth = document.heightMeters ?? width * document.source.height / document.source.width;
   const span = Math.max(width, depth);
   const cameraOptions = useMemo(() => ({ position: [span * 0.75, span * 0.8, span * 0.9] as [number, number, number], fov: 40, near: 0.05, far: span * 20 }), [span]);
   const walls = useMemo(() => deriveWalls(document, { pairParallelEdges: true }), [document]);
-  const [ceilingPreference, setCeilingPreference] = useState(false);
+  const [ceilingMode, setCeilingMode] = useState("hidden");
+  const [view,setView]=useState<CameraView>("overview");
+  const [cameraRevision,setCameraRevision]=useState(0);
+  const inside=useMemo(()=>interiorPose(document),[document]);
+  const selectedItem=document.objects?.some(o=>o.id===selected)||document.zones?.some(z=>z.id===selected);
+  const changeView=(next:CameraView)=>{setView(next);setCameraRevision(n=>n+1);if(next==="interior"&&document.ceiling)setCeilingMode("solid");};
   const [showStructure, setShowStructure] = useState(true);
   const [showOverhead, setShowOverhead] = useState(true);
-  const showCeiling = ceilingPreference;
+  const showCeiling = ceilingMode !== "hidden";
   const floorShape = useMemo(() => {
     if (!document.floorBoundary?.length) return null;
     const shape = new Shape();
     document.floorBoundary.forEach((p, i) => { if (i === 0) shape.moveTo(p.x * width - width / 2, depth / 2 - p.y * depth); else shape.lineTo(p.x * width - width / 2, depth / 2 - p.y * depth); });
     shape.closePath(); return shape;
   }, [document.floorBoundary, width, depth]);
-  return <SceneBoundary><div className="ps-orbit-hint">Drag to rotate · scroll to zoom</div><div className="ps-wall-summary" style={{position:"absolute",top:130,left:18,zIndex:1,background:"#ffffffdf",padding:"8px 10px",borderRadius:5,fontSize:11,pointerEvents:"none"}}>{document.lines.filter(line=>line.kind==="wall").length} wall lines → {walls.length} wall sections · {walls.filter(wall=>wall.thicknessSource==="inferred-parallel-edges").length} paired edges</div><div className="ps-scene-layers" role="group" aria-label="3D display layers"><label><input type="checkbox" checked={showCeiling} disabled={!document.ceiling || !floorShape} onChange={e=>setCeilingPreference(e.target.checked)}/>Ceiling</label><label><input type="checkbox" checked={showStructure} onChange={e=>setShowStructure(e.target.checked)}/>Beams / structure</label><label><input type="checkbox" checked={showOverhead} onChange={e=>setShowOverhead(e.target.checked)}/>Lights / hanging elements</label><span className="ps-layer-note">{document.ceiling ? `Level ceiling ${document.ceiling.height} m · ${document.ceiling.status}` : "Ceiling height not set"} · Visibility only; design checks stay active.</span></div><span className="sr-only">Wall height {wallHeight} m is provisional. Thickness is inferred from paired edges where possible; otherwise 0.16 m is provisional.</span><Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  return <SceneBoundary><div className="ps-scene-tools">
+    <ToggleGroup aria-label="Camera view" value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
+      <ToggleGroupItem value="overview">Overview</ToggleGroupItem><ToggleGroupItem value="top">Top</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?"Review scale and floor boundary; a clear interior viewpoint is required.":"Look around from a fixed point under the ceiling"}>Inside</ToggleGroupItem>
+    </ToggleGroup>
+    <Button variant="outline" size="icon-sm" aria-label="Focus selected area or element" title="Focus selection" disabled={!selectedItem} onClick={()=>changeView("selection")}><FocusIcon/></Button>
+    <Button variant="outline" size="icon-sm" aria-label="Reset camera" title="Reset camera" onClick={()=>changeView(view)}><RotateCcwIcon/></Button>
+    <Popover><PopoverTrigger render={<Button variant="outline" size="icon-sm" aria-label="Display layers" title="Display layers"/>}><LayersIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>Display layers</PopoverTitle><FieldGroup>
+      <Field><FieldLabel htmlFor="ceiling-display">Ceiling</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">Hidden</option><option value="solid">Solid</option><option value="transparent">Transparent</option></NativeSelect></Field>
+      <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">Beams / structure</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
+      <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">Lights / hanging elements</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
+    </FieldGroup></PopoverContent></Popover>
+    <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="View help and model information"/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>Viewing the space</PopoverTitle><p>{view==="interior"?"Drag to look around. Scroll to adjust zoom. This is a fixed viewpoint, not walking.":"Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus."}</p><p>{document.ceiling?`Ceiling ${document.ceiling.height} m · ${document.ceiling.status}`:"Ceiling height not set"}. Wall height {wallHeight} m is provisional.</p><p>{walls.length} wall sections from {document.lines.filter(l=>l.kind==="wall").length} source lines. Display settings never change the design or checks.</p></PopoverContent></Popover>
+  </div><Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={1.5} />
     <directionalLight position={[span / 3, span, span / 2]} intensity={2.4} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
     <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color="#ffffff" roughness={0.9} /></mesh>
-    {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85}/></mesh>}
+    {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
     {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={selected===zone.id?TOKENS.accent:"#7fb7b2"} transparent opacity={selected===zone.id?0.3:0.13} depthWrite={false} side={DoubleSide}/></mesh>)}
     {<gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />}
     {walls.map((line) => {
@@ -56,6 +75,6 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
       <mesh castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{e.stopPropagation();onSelect(object.id);}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>
     </group>)}
-    <OverviewCamera span={span} /><OrbitControls makeDefault minDistance={span * 0.1} maxDistance={span * 4} maxPolarAngle={Math.PI / 2.05} target={[0, 0, 0]} />
+    <SceneCamera document={document} view={view} revision={cameraRevision} selected={selected}/>
   </Canvas></SceneBoundary>;
 }

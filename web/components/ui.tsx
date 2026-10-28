@@ -2,6 +2,8 @@
 
 /** Small shared UI primitives in the architectural-model style (tokens: lib/ui/tokens.ts). */
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Button as ShadcnButton } from "./ui/button";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { ACTORS, type ActorId } from "@/lib/ui/actors";
 
 export function Card({
@@ -104,21 +106,9 @@ export function Kpi({ label, value, unit, foot, tone }: { label: string; value: 
 }
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-const VARIANT: Record<Variant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-hover border border-accent",
-  secondary: "bg-surface text-ink border border-hairline-strong hover:border-ink-soft",
-  ghost: "text-muted hover:text-ink border border-transparent",
-  danger: "text-bad border border-transparent hover:border-bad/40",
-};
-
 export function Button({ variant = "secondary", className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  return (
-    <button
-      type="button"
-      {...rest}
-      className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-[5px] px-3 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANT[variant]} ${className}`}
-    />
-  );
+  const variants = { primary: "default", secondary: "outline", ghost: "ghost", danger: "destructive" } as const;
+  return <ShadcnButton type="button" size="sm" variant={variants[variant]} className={className} {...rest} />;
 }
 
 export function Segmented<T extends string | number>({
@@ -134,25 +124,9 @@ export function Segmented<T extends string | number>({
   label: string;
   size?: "sm" | "md";
 }) {
-  return (
-    <span role="group" aria-label={label} className="inline-flex max-w-full rounded-[5px] border border-hairline bg-sunken p-0.5">
-      {options.map((o) => (
-        <button
-          key={String(o.id)}
-          type="button"
-          title={o.title}
-          disabled={o.disabled}
-          aria-pressed={value === o.id}
-          onClick={() => onChange(o.id)}
-          className={`whitespace-nowrap rounded-[3px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${size === "md" ? "px-2.5 py-1 text-[12.5px]" : "px-2 py-0.5 text-[11.5px]"} ${
-            value === o.id ? "bg-surface text-ink shadow-[0_0_0_1px_var(--hairline)]" : "text-muted hover:text-ink"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </span>
-  );
+  return <ToggleGroup aria-label={label} value={[String(value)]} onValueChange={values => { const option = options.find(o => String(o.id) === values[0]); if (option) onChange(option.id); }} size={size === "md" ? "default" : "sm"} variant="outline" spacing={0}>
+    {options.map(o => <ToggleGroupItem key={String(o.id)} value={String(o.id)} title={o.title} disabled={o.disabled}>{o.label}</ToggleGroupItem>)}
+  </ToggleGroup>;
 }
 
 export function Swatch({ children, label }: { children: ReactNode; label: string }) {

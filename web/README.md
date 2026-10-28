@@ -35,7 +35,9 @@ Simple view's **Design space** opens three layers: Spaces (non-solid purpose zon
 
 The same document drives 2D, 3D, Muse and export. Objects have height and optional elevation above floor; ceilings store a level underside height, finish and estimated/confirmed status. Existing wall extrusion height is persisted. Geometry checks cover reviewed floor boundaries, zone containment, vertical overlap, ceiling exceedance and circulation obstruction. A platform-mounted object's elevation is entered relative to the floor.
 
-3D has independent ceiling, beam/structure and overhead-element visibility toggles. These only affect rendering: hidden geometry remains in Muse context and collision checks. The 3D view uses orbit rotation and zoom; the ceiling defaults off and can be toggled explicitly. A reviewed floor polygon is required to render the ceiling.
+3D uses Drei CameraControls with Overview, Top, fixed-point Inside, focus selection, and reset. Inside requires reviewed scale, floor containment and headroom; drag looks around and scroll zooms without walking. Entering Inside shows the ceiling. The Layers popover offers hidden, solid or transparent ceiling plus independent structure and overhead visibility. These affect rendering only: hidden geometry remains in Muse context and collision checks. A reviewed floor polygon is required to render the ceiling.
+
+Studio controls use shadcn Base UI primitives mapped to Muse semantic colors. Analysis, model information and visibility settings are collapsed by default in Simple view. Camera transitions respect reduced-motion preferences. Third-party component attribution is in `licenses/shadcn-ui-MIT.txt`.
 
 Muse drafts zones and installations with explicit review/Apply, preserving source evidence, scale, floor boundary and ceiling review. This uses live model proposals with deterministic geometry checks; the legacy OR-Tools BoothSpec packing engine is not a general 3D design solver and is not invoked here. Ceiling surfaces are level and objects schematic; sloped roofs, detailed trusses, lighting simulation and structural/rigging verification are not implemented.
 
