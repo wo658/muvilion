@@ -15,7 +15,7 @@ const RequestBody = z.object({
 
 export async function POST(req: Request) {
   const raw = await req.text();
-  if (raw.length > 8 * 1024 * 1024) return Response.json({ error: "Conversation is too large." }, { status: 413 });
+  if (raw.length > 32 * 1024 * 1024) return Response.json({ error: "Conversation is too large." }, { status: 413 });
   let body: unknown;
   try { body = JSON.parse(raw); } catch { return Response.json({ error: "Invalid JSON." }, { status: 400 }); }
   const parsed = RequestBody.safeParse(body);

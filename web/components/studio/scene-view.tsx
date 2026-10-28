@@ -1,9 +1,10 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
+import { Component, useMemo, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { PlanDocument } from "@/lib/plans/schema";
+import { deriveWalls } from "@/lib/plans/walls";
 import { TOKENS } from "@/lib/ui/tokens";
 
 class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -16,20 +17,20 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
   const width = document.widthMeters ?? 10;
   const depth = document.heightMeters ?? width * document.source.height / document.source.width;
   const span = Math.max(width, depth);
-  const walls = document.lines.filter((line) => line.kind === "wall");
-  return <SceneBoundary><Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={{ position: [span * 0.75, span * 0.8, span * 0.9], fov: 40, near: 0.1, far: span * 20 }} dpr={[1, 1.5]}>
+  const walls = useMemo(() => deriveWalls(document, { pairParallelEdges: true }), [document]);
+  return <SceneBoundary><div className="ps-wall-summary" style={{position:"absolute",top:16,left:18,zIndex:1,background:"#ffffffdf",padding:"8px 10px",borderRadius:5,fontSize:11,pointerEvents:"none"}}>{document.lines.filter(line=>line.kind==="wall").length} wall lines → {walls.length} wall sections · {walls.filter(wall=>wall.thicknessSource==="inferred-parallel-edges").length} paired edges</div><span className="sr-only">Wall height {wallHeight} m is provisional. Thickness is inferred from paired edges where possible; otherwise 0.16 m is provisional.</span><Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={{ position: [span * 0.75, span * 0.8, span * 0.9], fov: 40, near: 0.1, far: span * 20 }} dpr={[1, 1.5]}>
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={1.5} />
     <directionalLight position={[span / 3, span, span / 2]} intensity={2.4} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
     <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}><planeGeometry args={[width, depth]} /><meshStandardMaterial color="#ffffff" roughness={0.9} /></mesh>
     <gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />
     {walls.map((line) => {
-      const ax = (line.a.x - 0.5) * width, az = (line.a.y - 0.5) * depth;
-      const bx = (line.b.x - 0.5) * width, bz = (line.b.y - 0.5) * depth;
+      const ax = line.a.x - width / 2, az = line.a.y - depth / 2;
+      const bx = line.b.x - width / 2, bz = line.b.y - depth / 2;
       const length = Math.hypot(bx - ax, bz - az);
       if (length < 0.001) return null;
-      return <mesh key={line.id} position={[(ax + bx) / 2, wallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onSelect(line.id); }}>
-        <boxGeometry args={[length, wallHeight, 0.16]} /><meshStandardMaterial color={selected === line.id ? TOKENS.accent : TOKENS.modelShade} roughness={0.8} />
+      return <mesh key={line.id} position={[(ax + bx) / 2, wallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onSelect(line.evidenceIds[0]); }}>
+        <boxGeometry args={[length, wallHeight, line.thickness]} /><meshStandardMaterial color={selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : TOKENS.modelShade} roughness={0.8} />
       </mesh>;
     })}
     {document.scaleConfirmed && (document.objects ?? []).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>

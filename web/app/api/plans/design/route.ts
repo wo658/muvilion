@@ -9,7 +9,7 @@ const DesignRequest = z.object({ document: PlanDocumentSchema, brief: z.string()
 
 export async function POST(req: Request) {
   const raw = await req.text();
-  if (raw.length > 14 * 1024 * 1024) return Response.json({ error: "Drawing request is too large." }, { status: 413 });
+  if (raw.length > 32 * 1024 * 1024) return Response.json({ error: "Drawing request is too large." }, { status: 413 });
   let body: unknown;
   try { body = JSON.parse(raw); } catch { return Response.json({ error: "Invalid JSON." }, { status: 400 }); }
   const parsed = DesignRequest.safeParse(body);
