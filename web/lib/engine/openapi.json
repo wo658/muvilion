@@ -69,6 +69,47 @@
         }
       }
     },
+    "/plans/extract": {
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Extract",
+        "operationId": "extract_plans_extract_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_extract_plans_extract_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanEvidence"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/queue": {
       "post": {
         "tags": [
@@ -261,6 +302,25 @@
           "xy"
         ],
         "title": "AgentTrack"
+      },
+      "Body_extract_plans_extract_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_extract_plans_extract_post"
       },
       "Booth": {
         "properties": {
@@ -740,6 +800,238 @@
           "polygon"
         ],
         "title": "Obstacle"
+      },
+      "PlanEvidence": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "source": {
+            "$ref": "#/components/schemas/PlanSource"
+          },
+          "preview": {
+            "type": "string",
+            "title": "Preview"
+          },
+          "widthMeters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Widthmeters"
+          },
+          "heightMeters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heightmeters"
+          },
+          "scaleConfirmed": {
+            "type": "boolean",
+            "const": false,
+            "title": "Scaleconfirmed",
+            "default": false
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/PlanLine"
+            },
+            "type": "array",
+            "maxItems": 1200,
+            "title": "Lines"
+          },
+          "texts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanText"
+            },
+            "type": "array",
+            "maxItems": 400,
+            "title": "Texts"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pdf-vector",
+              "opencv",
+              "dxf"
+            ],
+            "title": "Method"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "preview",
+          "lines",
+          "texts",
+          "warnings",
+          "method"
+        ],
+        "title": "PlanEvidence"
+      },
+      "PlanLine": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "a": {
+            "$ref": "#/components/schemas/PlanPoint"
+          },
+          "b": {
+            "$ref": "#/components/schemas/PlanPoint"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "wall",
+              "dimension"
+            ],
+            "title": "Kind",
+            "default": "unknown"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "vector",
+              "raster",
+              "cad"
+            ],
+            "title": "Origin"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "a",
+          "b",
+          "origin",
+          "confidence"
+        ],
+        "title": "PlanLine"
+      },
+      "PlanPoint": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "PlanPoint"
+      },
+      "PlanSource": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "image",
+              "dxf"
+            ],
+            "title": "Format"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "format",
+          "page",
+          "pages",
+          "width",
+          "height"
+        ],
+        "title": "PlanSource"
+      },
+      "PlanText": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "x": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "x",
+          "y"
+        ],
+        "title": "PlanText"
       },
       "Point": {
         "properties": {

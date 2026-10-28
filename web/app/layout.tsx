@@ -8,7 +8,7 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 
 export const metadata: Metadata = {
   title: "muvilion",
-  description: "Muse plans your event layout, tests it with virtual visitors and fixes what gets crowded.",
+  description: "Turn floor plans into editable spaces. Review drawing evidence and design with Muse.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
