@@ -1,0 +1,21 @@
+# Trixie supplies the glibc required by the locked ARM64 PySide6 wheel.
+FROM node:24-trixie-slim AS node
+FROM python:3.12-slim-trixie
+# JuPedSim has no Linux ARM64 wheel; build the locked version from source.
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake libgmp-dev libmpfr-dev libboost-dev && rm -rf /var/lib/apt/lists/*
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN node /usr/local/lib/node_modules/npm/bin/npm-cli.js install --global pnpm@11.2.2
+RUN pip install --no-cache-dir uv==0.11.16
+ENV UV_LINK_MODE=copy NEXT_TELEMETRY_DISABLED=1
+WORKDIR /workspace/engine
+COPY engine/pyproject.toml engine/uv.lock ./
+RUN uv sync --frozen --python 3.12 && uv cache clean
+WORKDIR /workspace/web
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+WORKDIR /workspace
+COPY engine/ engine/
+COPY web/ web/
+COPY fixtures/ fixtures/
+COPY scripts/redpact-unit.sh scripts/redpact-unit.sh

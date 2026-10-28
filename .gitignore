@@ -38,3 +38,7 @@ engine/.cache/
 # Local tooling state
 .pnpm-store/
 .claude/
+
+# Redpact local runtime and task-only browser scenarios
+.redpact/
+/ui-tests/worktree/
