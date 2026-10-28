@@ -4,6 +4,12 @@ vi.mock("@/server/agent/model", () => ({ getModel: () => ({ hasKey: true, model:
 vi.mock("ai", () => ({
   streamText: calls.stream,
   generateText: calls.generate,
+  ToolLoopAgent: class {
+    constructor(private options: unknown) {}
+    generate(input: unknown) { return calls.generate({ ...this.options as object, ...input as object }); }
+  },
+  isStepCount: () => () => false,
+  hasToolCall: () => () => false,
   tool: (input: unknown) => input,
   toUIMessageStream: () => new ReadableStream({ start(controller) { controller.close(); } }),
   createUIMessageStreamResponse: () => new Response("ok"),
@@ -27,7 +33,12 @@ describe("source-aware Muse routes", () => {
     expect(JSON.stringify(calls.stream.mock.calls[0][0].messages)).not.toContain("excluded content");
   });
   it("does not destroy drawing evidence when drafting with its reference deselected", async () => {
-    calls.generate.mockResolvedValue({ toolCalls: [{ toolName: "submit_design", input: { summary: "Concept", objects: [], assumptions: [] } }] });
+    calls.generate.mockImplementation(async options => {
+      const proposal = { summary: "Concept", objects: [], assumptions: [] };
+      await options.tools.review_design.execute(proposal);
+      options.prepareStep({ messages: options.messages, stepNumber: 1 });
+      return { toolCalls: [{ toolName: "submit_design", input: proposal }] };
+    });
     const response = await design(request({ document, drawingSelected: false, brief: "Keep open", sources: [source("chosen", true), source("excluded", false)] }));
     expect(response.status).toBe(200);
     const modelInput = JSON.stringify(calls.generate.mock.calls[0][0].messages);

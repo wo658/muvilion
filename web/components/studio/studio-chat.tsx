@@ -9,7 +9,10 @@ import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans
 import { runRegionalBatches, globalWallAuditBatches, applyGlobalWallAudit, type RegionalProgress } from "@/lib/plans/regional-client";
 import { emptySources, type SourceLibrary } from "@/lib/sources/schema";
 import { selectedReferences } from "@/lib/sources/files";
+import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
+import Image from "next/image";
 type Proposal = {
+    artifacts?: DesignArtifact[];
     sources: SourceLibrary;
     document: PlanDocument;
     summary: string;
@@ -143,7 +146,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
                     throw new Error(body.error ?? "Muse could not draft a layout.");
                 const result = PlanDocumentSchema.parse(body.document);
                 if (mounted.current)
-                    setProposal({ sources, document: result, summary: typeof body.summary === "string" ? body.summary : "Review the proposed changes.", base, mode });
+                    setProposal({ sources, document: result, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), summary: typeof body.summary === "string" ? body.summary : "Review the proposed changes.", base, mode });
             }
         }
         catch (err) {
@@ -189,6 +192,12 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
         {interpretError && <p role="alert" className="mt-3 text-xs leading-relaxed text-bad">{interpretError}</p>}
         {proposal && <div className="mt-3 rounded-lg border border-hairline bg-sunken p-3">
           <p className="text-xs leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
+          {!!proposal.artifacts?.length && <details className="mt-3"><summary className="cursor-pointer text-xs">디자인 검토 이미지 ({proposal.artifacts.length})</summary><div className="mt-2 flex flex-col gap-3">
+            {proposal.artifacts.map(artifact => <figure key={artifact.id}>
+              <Image src={artifact.image} alt={artifact.title} width={960} height={720} unoptimized className="h-auto w-full rounded" />
+              <figcaption className="mt-1 text-[11px] text-muted">{artifact.kind === "concept" ? "생성 시안 · 실제 배치와 다를 수 있음" : "배치 도식 · 재질과 조명은 생략"} · 검토 {artifact.revision}</figcaption>
+            </figure>)}
+          </div></details>}
           <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? `${proposal.document.zones?.length ?? 0} space zones and ${proposal.document.objects?.length ?? 0} installations proposed. Applying replaces this design; source walls, scale and ceiling conditions stay unchanged.` : `${changed} line classifications suggested. Coordinates and dimensions stay unchanged.`}</p>
           {stale && <p className="mt-2 text-xs text-amber">The drawing or sources changed. Generate a new proposal before applying.</p>}
           <div className="mt-3 flex gap-2"><Button disabled={Boolean(stale)} variant="primary" onClick={() => { if (!stale) {
