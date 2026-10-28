@@ -139,3 +139,10 @@
 @media(max-width:799px){.ps-has-plan .ps-right-panel{right:8px;left:8px;bottom:8px;width:auto;height:min(620px,calc(100dvh - 80px))}.ps-muse-launcher{right:16px;bottom:16px}.ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}}
 @media(prefers-reduced-motion:reduce){.ps-has-plan .ps-right-panel,.ps-muse-launcher{transition:none}}
 .ps-icon-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0!important}.ps-icon-button svg{width:18px;height:18px}
+/* Role changes preserve the canvas and both conversations. */
+.ps-role-panel { display:flex; flex-direction:column; min-height:0; height:100%; overflow-y:auto; }
+.ps-role-panel[hidden], .ps-sidebar[hidden] { display:none!important; }
+.ps-role-panel > .ps-conversation { flex:1; min-height:360px; height:auto; overflow:hidden; }
+.ps-booth-pricing { flex-shrink:0; border-bottom:1px solid var(--hairline); max-height:55vh; overflow-y:auto; }
+.ps-booth-pricing > summary { cursor:pointer; padding:16px 20px; font-weight:600; }
+@media(max-width:760px) { .ps-header { height:auto; min-height:68px; flex-wrap:wrap; padding:16px; } .ps-header-actions { flex-wrap:wrap; gap:12px; } }
