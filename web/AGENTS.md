@@ -14,8 +14,11 @@ The root `AGENTS.md` also applies here.
   on the server. Do not expose them through `NEXT_PUBLIC_*` variables.
 - Route Python requests through the common engine client. Preserve request cancellation,
   operation-specific timeouts, and response validation when migrating existing calls.
-- Existing implementations live in `lib/agent`, `lib/engine`, and some API routes. Migrate
-  by feature without creating a parallel implementation or changing behavior incidentally.
+- Model configuration lives in `server/agent`; drawing/model workflows in `server/plans`;
+  Python transport in `server/engine`; optional local examples in `server/examples`.
+  `lib/engine` retains shared contracts and mock computation, not HTTP transport.
+- Unit tests use a test-only `server-only` alias. Next.js compilation must also pass to
+  verify that server code is not imported into the client module graph.
 - Keep public HTTP request/response shapes and example behavior stable during structural
   moves. Run the relevant tests and the root workflow checks before merging.
 

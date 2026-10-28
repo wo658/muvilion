@@ -12,8 +12,14 @@ The root `AGENTS.md` also applies here.
   failures to HTTP errors at the router boundary.
 - Avoid blocking the async event loop with document extraction or CPU-heavy computation.
   Preserve the existing synchronous endpoint/threadpool execution boundaries.
-- Keep computations reproducible for the same inputs, excluding explicitly
-  documented timing fields. Preserve time/resource limits and bounded caches.
+- Preserve computation inputs, units, and resource limits. Parallel OR-Tools searches
+  may choose different equivalent layouts on a cache miss; do not promise bit-for-bit
+  reproducibility after cache expiry or eviction.
+- `app/layout/cache.py` stores disposable layout results on disk. Preserve TTL, count,
+  and byte limits, atomic writes, and best-effort I/O. Bump `CACHE_VERSION` when solver
+  semantics change; OR-Tools versions are already included in the key.
+- Cache limits are enforced per write in one process. Shared multi-process directories
+  can briefly exceed limits; do not describe them as strict cross-process quotas.
 - Application data must not rely on an in-memory cache surviving restart or being shared
   across worker processes. Cache misses must remain correct.
 

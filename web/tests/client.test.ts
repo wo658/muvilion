@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createHttpEngine, EngineError } from "@/lib/engine/client";
+import { createHttpEngine, EngineError } from "@/server/engine/client";
 
 const json = (body: unknown, status = 200) =>
   (async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
