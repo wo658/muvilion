@@ -4,10 +4,12 @@ import { matchProjects, monogram, recentProjects } from "@/lib/projects/rail";
 const project = (id: string, name: string, updatedAt: string) => ({ id, name, revision: 1, updatedAt });
 
 describe("project rail", () => {
-  it("builds distinct two-letter monograms", () => {
-    expect(monogram("KINTEX · 2홀")).toBe("K2");
-    expect(monogram("Moscone West · L1 전시홀")).toBe("M전");
-    expect(monogram("Untitled")).toBe("UN");
+  it("uses the first two English letters", () => {
+    expect(monogram("KINTEX · 2홀")).toBe("KI");
+    expect(monogram("Moscone West · L1 전시홀")).toBe("MO");
+    expect(monogram("3홀 lvcc")).toBe("LV");
+    expect(monogram("x 전시장")).toBe("X");
+    expect(monogram("  새 프로젝트")).toBe("새");
     expect(monogram("  ")).toBe("?");
   });
   it("keeps the open project among the recent tiles", () => {
