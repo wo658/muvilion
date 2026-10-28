@@ -103,3 +103,9 @@ transformations stay in `lib/`.
 Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
 in a worktree or packaged install); the default is `../DemoData` relative to the web
 working directory. Missing examples return 404 and users can upload their own drawings.
+
+### Chat controls
+
+Muse uses the current [AI Elements Prompt Input](https://ui.shadcn.com/docs/ai-elements/base/prompt-input) composition: shadcn Base UI Input Group with a textarea and action addon, and standard Buttons for suggestions and review actions. Source management remains the existing Sources workflow. Send becomes Stop during an active AI SDK response; source preparation disables Send until the request can start. Enter sends, Shift+Enter inserts a newline, and IME composition does not submit.
+
+Input Group was added from the official `base-nova` registry with the shadcn CLI on 2026-10-28. Its MIT license was verified against [shadcn-ui/ui LICENSE.md](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md); the existing notice in `licenses/shadcn-ui-MIT.txt` covers this component. Existing Button, Input and Textarea customizations are preserved.
