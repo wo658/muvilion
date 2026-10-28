@@ -3,6 +3,7 @@ import { isSimpleFootprint } from "./footprint";
 
 const PointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 export const DesignObjectSchema = z.object({
+  appearance: z.enum(["screen", "counter", "sofa", "table", "plant", "truss", "seat"]).optional(),
   id: z.string().min(1).max(100), kind: z.enum(["booth", "stage", "lounge", "partition", "furniture", "equipment", "light", "hanging-sign", "canopy", "beam"]), label: z.string().max(100),
   x: z.number().min(0).max(1), y: z.number().min(0).max(1),
   width: z.number().positive().max(100), depth: z.number().positive().max(100), height: z.number().positive().max(30),
@@ -30,6 +31,7 @@ export const PlanLineSchema = z.object({
 });
 export const PlanDocumentSchema = z.object({
   schemaVersion: z.literal(1),
+  visualStyle: z.enum(["schematic", "exhibition"]).optional(),
   source: z.object({ name: z.string().max(255), format: z.enum(["pdf", "image", "dxf"]),
     page: z.number().int().positive(), pages: z.number().int().positive(),
     width: z.number().positive(), height: z.number().positive(),

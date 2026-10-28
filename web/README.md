@@ -63,3 +63,9 @@ pnpm build
 ```
 
 Engine checks: `uv run pytest`, `uv run ruff check .`. Regenerate engine OpenAPI types with `pnpm gen:engine-types` after contract changes.
+
+### Meta / Muse exhibition concept
+
+Choose **Meta / Muse · exhibition concept** for the curated Fort Mason demo: 76 installations across keynote seating, AI demo stations, a lounge and circulation. Original procedural graphics reference the official sources in `fixtures/meta-muse-sources.json`; no third-party photos are redistributed. This is an independent concept, not a reconstruction of a Meta event.
+
+Regenerate local DemoData from the reviewed floor plan with `node --import tsx scripts/build-meta-showcase.mts /absolute/path/to/DemoData` from web. The generator checks the plan schema and design warnings before writing. The optional `visualStyle` and per-object `appearance` preserve old imports and keep the same bounds for selection, editing and collision checks; furniture collision remains conservative bounding boxes. Ceiling height remains an estimated 6 m, lighting is illustrative, and venue reconstruction uncertainty remains unchanged.

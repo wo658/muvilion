@@ -163,7 +163,7 @@ export function Studio() {
             }
         }
     };
-    const loadReviewedDemo = async (artifact: "reviewed" | "spatial" = "reviewed") => {
+    const loadReviewedDemo = async (artifact: "reviewed" | "spatial" | "showcase" = "reviewed") => {
         request.current?.abort();
         const controller = new AbortController();
         request.current = controller;
@@ -191,7 +191,9 @@ export function Studio() {
         }
     };
     const openExample = (value: string) => {
-        if (value === "fort-mason-spatial")
+        if (value === "fort-mason-showcase")
+            void loadReviewedDemo("showcase");
+        else if (value === "fort-mason-spatial")
             void loadReviewedDemo("spatial");
         else if (value === "fort-mason-reviewed")
             void loadReviewedDemo();
@@ -298,7 +300,7 @@ export function Studio() {
     return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"}`}>
     <header className="ps-header">
       <Link href="/" className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
-      <NativeSelect className="ps-venue-picker" aria-label="Example drawing" value="" disabled={busy} onChange={(e) => openExample(e.target.value)}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : "Choose an example"}</option><option value="fort-mason-spatial">Fort Mason · space design demo</option><option value="fort-mason-reviewed">Fort Mason · reviewed space</option><option value="fort-mason">Fort Mason · source drawing</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">COEX Hall A · detailed plan</option></NativeSelect>
+      <NativeSelect className="ps-venue-picker" aria-label="Example drawing" value="" disabled={busy} onChange={(e) => openExample(e.target.value)}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : "Choose an example"}</option><option value="fort-mason-showcase">Meta / Muse · exhibition concept</option><option value="fort-mason-spatial">Fort Mason · space design demo</option><option value="fort-mason-reviewed">Fort Mason · reviewed space</option><option value="fort-mason">Fort Mason · source drawing</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">COEX Hall A · detailed plan</option></NativeSelect>
       <div className="ps-header-actions">
         <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails((value) => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{details ? "← Simple view" : "Details"}</Button>
         {document && <Button variant="ghost" aria-expanded={designOpen} aria-controls="space-designer" onClick={() => setDesignOpen(v => !v)}>Design space</Button>}
