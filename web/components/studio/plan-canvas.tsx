@@ -1,12 +1,14 @@
 "use client";
 import { Button } from "../ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { deriveWalls } from "@/lib/plans/walls";
+import { VENUE_COLORS } from "@/lib/plans/overview";
 import type { PlanDocument } from "@/lib/plans/schema";
 type Point = {
     x: number;
     y: number;
 };
-export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = true, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint, onEntrancePoint }: {
+export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = false, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint, onEntrancePoint }: {
     onEntrancePoint?: (point: Point) => void;
     floorDraft?: Point[] | null;
     onBoundaryPoint?: (point: Point) => void;
@@ -27,6 +29,22 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
     const [start, setStart] = useState<Point | null>(null);
     const [cursor, setCursor] = useState<Point | null>(null);
     const width = document.source.width, height = document.source.height;
+    const viewport = useRef<HTMLDivElement>(null);
+    const [viewportSize, setViewportSize] = useState({ width: 600, height: 600 });
+    useEffect(() => {
+        const element = viewport.current;
+        if (!element) return;
+        const observer = new ResizeObserver(([entry]) => setViewportSize({ width: entry.contentRect.width, height: entry.contentRect.height }));
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
+    const walls = useMemo(() => deriveWalls(document, { pairParallelEdges: true }), [document]);
+    const reference = sourceOnly || showOriginal || drawing || Boolean(onBoundaryPoint) || walls.length === 0;
+    const scale = Math.max(.001, Math.min(viewportSize.width / width, viewportSize.height / height) * zoom);
+    const labelSize = 11 / scale;
+    const labelEdge = document.lines.reduce((edge, line) => line.kind === "wall" ? Math.max(edge, line.a.x * width, line.b.x * width) : edge, width * .6) + 14 / scale;
+    const metresWidth = document.widthMeters ?? 10;
+    const metresHeight = document.heightMeters ?? metresWidth * height / width;
     const paths = useMemo(() => {
         const paths = { unknown: "", wall: "", dimension: "" };
         for (const line of document.lines)
@@ -40,7 +58,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
         return { x: Math.max(0, Math.min(1, p.x / width)), y: Math.max(0, Math.min(1, p.y / height)) };
     };
     return <div className={`ps-plan ${drawing ? "is-drawing" : ""}`}>
-    <div className="ps-plan-scroll"><svg style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%`, minWidth: `${zoom * 100}%`, minHeight: `${zoom * 100}%` }} viewBox={`0 0 ${width} ${height}`} aria-label="Floor plan with extracted geometry" onPointerDown={(e) => {
+    <div className="ps-plan-scroll" ref={viewport}><svg style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%`, minWidth: `${zoom * 100}%`, minHeight: `${zoom * 100}%` }} viewBox={`0 0 ${width} ${height}`} aria-label={reference ? "Floor plan with extracted geometry" : "공간 배치도"} onPointerDown={(e) => {
             if (onEntrancePoint) { onEntrancePoint(point(e)); return; }
             if (onBoundaryPoint) {
                 onBoundaryPoint(point(e));
@@ -52,6 +70,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
                 const p = point(e), px = p.x * width, py = p.y * height;
                 let best: string | null = null, distance = 8 / (e.currentTarget.getScreenCTM()?.a ?? 1);
                 for (const line of document.lines) {
+                    if (!reference && line.kind !== "wall") continue;
                     const ax = line.a.x * width, ay = line.a.y * height, dx = (line.b.x - line.a.x) * width, dy = (line.b.y - line.a.y) * height;
                     const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)));
                     const d = Math.hypot(px - ax - t * dx, py - ay - t * dy);
@@ -74,35 +93,45 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
         }} onPointerMove={(e) => { if (drawing && start)
         setCursor(point(e)); }} onKeyDown={(e) => { if (e.key === "Escape")
         setStart(null); }} tabIndex={drawing ? 0 : -1}>
-      <rect width={width} height={height} fill="white"/>
-      {showOriginal && <image href={document.preview} width={width} height={height} opacity={sourceOnly ? 1 : 0.5}/>}
+      <rect width={width} height={height} fill={reference ? "white" : "#f4f5f4"}/>
+      {!reference && document.floorBoundary && <polygon points={document.floorBoundary.map(p => `${p.x * width},${p.y * height}`).join(" ")} fill="#fffdf8" stroke="#d3d7d8" strokeWidth={1} vectorEffect="non-scaling-stroke"/>}
+      {reference && <image href={document.preview} width={width} height={height} opacity={sourceOnly ? 1 : 0.5}/>}
       {!sourceOnly && <g pointerEvents="none">
-        <path d={paths.unknown} fill="none" stroke="#8596a5" strokeWidth={0.6} vectorEffect="non-scaling-stroke"/>
+        {reference && <><path d={paths.unknown} fill="none" stroke="#8596a5" strokeWidth={0.6} vectorEffect="non-scaling-stroke"/>
         <path d={paths.dimension} fill="none" stroke="#aa7933" strokeWidth={1.1} vectorEffect="non-scaling-stroke"/>
-        <path d={paths.wall} fill="none" stroke="#2f7a5b" strokeWidth={2.5} vectorEffect="non-scaling-stroke"/>
+        <path d={paths.wall} fill="none" stroke="#2f7a5b" strokeWidth={2.5} vectorEffect="non-scaling-stroke"/></>}
+        {!reference && walls.map(wall => <line key={wall.id} x1={wall.a.x / metresWidth * width} y1={wall.a.y / metresHeight * height} x2={wall.b.x / metresWidth * width} y2={wall.b.y / metresHeight * height} stroke={VENUE_COLORS.cap} strokeWidth={Math.max(3 / scale, wall.thickness / metresWidth * width)} strokeLinecap="butt"/>)}
         {selectedLine && <line x1={selectedLine.a.x * width} y1={selectedLine.a.y * height} x2={selectedLine.b.x * width} y2={selectedLine.b.y * height} stroke="#0064e0" strokeWidth={4} vectorEffect="non-scaling-stroke"/>}
       </g>}
       {!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.zones ?? []).map(zone => {
             const w = (zone.rotation === 90 ? zone.depth : zone.width) / document.widthMeters! * width, h = (zone.rotation === 90 ? zone.width : zone.depth) / document.heightMeters! * height;
-            return <g key={zone.id} transform={`translate(${zone.x * width} ${zone.y * height})`} onPointerDown={e => { if (!drawing && !onBoundaryPoint) {
-                e.stopPropagation();
-                onSelect(zone.id);
-            } }} style={{ cursor: "pointer" }}><rect x={-w / 2} y={-h / 2} width={w} height={h} fill="#72b5aa" fillOpacity={selected === zone.id ? 0.4 : 0.16} stroke={selected === zone.id ? "#0064e0" : "#438b80"} strokeDasharray="5 3" vectorEffect="non-scaling-stroke"/><text textAnchor="middle" dominantBaseline="central" fontSize={Math.max(6, Math.min(w / 8, 15))} fill="#25554f">{zone.label}</text></g>;
+            const fill = zone.purpose === "circulation" ? "#edf1ef" : zone.purpose === "lounge" ? "#e8e1d1" : zone.purpose === "stage" ? "#dce3ef" : "#e4efed";
+            return <g key={zone.id} transform={`translate(${zone.x * width} ${zone.y * height})`} onPointerDown={e => { if (!drawing && !onBoundaryPoint && !onEntrancePoint) { e.stopPropagation(); onSelect(zone.id); } }} style={{ cursor: "pointer" }}>
+              <title>{zone.label}</title><rect x={-w / 2} y={-h / 2} width={w} height={h} rx={Math.min(5 / scale, w / 10, h / 10)} fill={fill} fillOpacity={reference ? .25 : .85} stroke={selected === zone.id ? "#0064e0" : "#c5d1ce"} strokeWidth={selected === zone.id ? 2 : 1} strokeDasharray={zone.purpose === "circulation" ? "5 4" : undefined} vectorEffect="non-scaling-stroke"/>
+              {(zone.purpose !== "circulation" || selected === zone.id) && (w * scale > 120 && h * scale > 35 ? <text x={-w / 2 + 5 / scale} y={-h / 2 + 14 / scale} fontSize={labelSize} fill="#4d625d" paintOrder="stroke" stroke={fill} strokeWidth={3 / scale}>{zone.label.length > Math.floor(w * scale / 7) ? `${zone.label.slice(0, Math.max(4, Math.floor(w * scale / 7) - 1))}…` : zone.label}</text> : <g pointerEvents="none"><line x1={w / 2} x2={labelEdge - zone.x * width - 5 / scale} stroke="#a9b6b2" strokeWidth={1} vectorEffect="non-scaling-stroke"/><text x={labelEdge - zone.x * width} dominantBaseline="central" fontSize={labelSize} fill="#4d625d" paintOrder="stroke" stroke="#f4f5f4" strokeWidth={3 / scale}>{zone.label}</text></g>)}
+            </g>;
         })}
       {!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.objects ?? []).map((object) => {
             const w = (object.rotation === 90 ? object.depth : object.width) / document.widthMeters! * width, h = (object.rotation === 90 ? object.width : object.depth) / document.heightMeters! * height;
-            return <g key={object.id} transform={`translate(${object.x * width} ${object.y * height})`} onPointerDown={e => { if (!drawing && !onBoundaryPoint) {
-                e.stopPropagation();
-                onSelect(object.id);
-            } }} style={{ cursor: "pointer" }}><rect x={-w / 2} y={-h / 2} width={w} height={h} fill={object.color} fillOpacity={0.8} stroke={selected === object.id ? "#0064e0" : "white"} strokeWidth={selected === object.id ? 3 : 1} vectorEffect="non-scaling-stroke"/><text textAnchor="middle" dominantBaseline="central" fontSize={Math.max(6, Math.min(w / 6, 15))} fill="white">{object.label}</text></g>;
+            const partition = object.kind === "partition";
+            const overhead = ["beam", "light", "hanging-sign", "canopy"].includes(object.kind);
+            const plant = object.appearance === "plant";
+            const fill = partition ? VENUE_COLORS.partition : plant ? "#9db798" : object.kind === "stage" ? "#6d809d" : object.kind === "booth" ? "#dbe7ef" : object.appearance === "sofa" ? "#d7cbb5" : "#f1eade";
+            const labeled = selected === object.id || (!overhead && !partition && ["booth", "stage", "lounge"].includes(object.kind) && w * scale > 45 && h * scale > 24);
+            return <g key={object.id} transform={`translate(${object.x * width} ${object.y * height})`} onPointerDown={e => { if (!drawing && !onBoundaryPoint && !onEntrancePoint) { e.stopPropagation(); onSelect(object.id); } }} style={{ cursor: "pointer" }}>
+              <title>{object.label}{partition ? object.provenance === "ai" ? " · AI 제안 가벽" : " · 계획 가벽" : ""}</title>
+              <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={partition || overhead ? 0 : plant ? Math.min(w, h) / 2 : Math.min(w, h) * .12} fill={overhead ? "none" : fill} stroke={selected === object.id ? "#0064e0" : partition ? "#4489ba" : "#9eaaa9"} strokeDasharray={overhead ? "3 4" : undefined} strokeOpacity={overhead && selected !== object.id ? .35 : 1} strokeWidth={selected === object.id ? 3 : 1} vectorEffect="non-scaling-stroke"/>
+              {!overhead && !partition && !plant && (object.appearance === "sofa" || object.appearance === "seat" || object.kind === "booth") && <path d={`M${-w*.4},${h*.35}V${-h*.35}H${w*.4}V${h*.35}`} fill="none" stroke="#8a9a9d" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none"/>}
+              {labeled && <text textAnchor="middle" dominantBaseline="central" fontSize={labelSize} fill={object.kind === "stage" ? "white" : "#34444e"} paintOrder="stroke" stroke={fill} strokeWidth={2 / scale} pointerEvents="none">{selected === object.id ? object.label : object.label.length > Math.floor(w * scale / 7) ? `${object.label.slice(0, Math.max(3, Math.floor(w * scale / 7)-1))}…` : object.label}</text>}
+            </g>;
         })}
-      {(floorDraft ?? document.floorBoundary) && <g pointerEvents="none"><polygon points={(floorDraft ?? document.floorBoundary ?? []).map(p => `${p.x * width},${p.y * height}`).join(" ")} fill="#0064e0" fillOpacity={0.06} stroke="#0064e0" strokeWidth={2} strokeDasharray={floorDraft ? "6 4" : undefined} vectorEffect="non-scaling-stroke"/>{floorDraft?.map((p, i) => <circle key={i} cx={p.x * width} cy={p.y * height} r={4} fill="#0064e0"/>)}</g>}
+      {(floorDraft || reference && document.floorBoundary) && <g pointerEvents="none"><polygon points={(floorDraft ?? document.floorBoundary ?? []).map(p => `${p.x * width},${p.y * height}`).join(" ")} fill="#0064e0" fillOpacity={0.06} stroke="#0064e0" strokeWidth={2} strokeDasharray={floorDraft ? "6 4" : undefined} vectorEffect="non-scaling-stroke"/>{floorDraft?.map((p, i) => <circle key={i} cx={p.x * width} cy={p.y * height} r={4} fill="#0064e0"/>)}</g>}
       {(document.entrances ?? []).map(entrance => <g key={entrance.id} transform={`translate(${entrance.x * width} ${entrance.y * height})`} onPointerDown={event => { if (!drawing && !onBoundaryPoint && !onEntrancePoint) { event.stopPropagation(); onSelect(entrance.id); } }} style={{ cursor: "pointer" }}>
-        <circle r={Math.max(width / 100, 5)} fill="#17876f" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
-        <text y={-Math.max(width / 70, 10)} textAnchor="middle" fill="#17876f" stroke="white" strokeWidth={3} paintOrder="stroke" fontSize={Math.max(width / 70, 10)}>{entrance.label}</text>
+        <circle r={6 / scale} fill="#17876f" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
+        <text y={-12 / scale} textAnchor="middle" fill="#17876f" stroke="white" strokeWidth={3 / scale} paintOrder="stroke" fontSize={labelSize}>{entrance.label}</text>
       </g>)}
       {measurement && <g stroke="#aa7933" strokeWidth={3} fill="#aa7933"><line x1={measurement[0].x * width} y1={measurement[0].y * height} x2={measurement[1].x * width} y2={measurement[1].y * height} vectorEffect="non-scaling-stroke"/>{measurement.map((p, i) => <circle key={i} cx={p.x * width} cy={p.y * height} r={width / 150}/>)}</g>}
       {drawing && start && cursor && (rectangle ? <rect x={Math.min(start.x, cursor.x) * width} y={Math.min(start.y, cursor.y) * height} width={Math.abs(start.x - cursor.x) * width} height={Math.abs(start.y - cursor.y) * height} fill="#0064e0" fillOpacity={0.12} stroke="#0064e0" strokeWidth={2} strokeDasharray="6 4" vectorEffect="non-scaling-stroke"/> : <line x1={start.x * width} y1={start.y * height} x2={cursor.x * width} y2={cursor.y * height} stroke="#0064e0" strokeWidth={3} strokeDasharray="6 4" vectorEffect="non-scaling-stroke"/>)}
-    </svg></div><div className="ps-zoom" role="group" aria-label="Plan zoom"><Button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} disabled={zoom <= 1} aria-label="Zoom out">−</Button><span>{Math.round(zoom * 100)}%</span><Button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} disabled={zoom >= 4} aria-label="Zoom in">+</Button><Button onClick={() => setZoom(1)}>Fit</Button></div>
+    </svg></div>{!sourceOnly && walls.length === 0 && !showOriginal && <span className="ps-schematic-note">벽 확인 전 · 원본 표시</span>}<div className="ps-zoom" role="group" aria-label="Plan zoom"><Button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} disabled={zoom <= 1} aria-label="Zoom out">−</Button><span>{Math.round(zoom * 100)}%</span><Button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} disabled={zoom >= 4} aria-label="Zoom in">+</Button><Button onClick={() => setZoom(1)}>Fit</Button></div>
   </div>;
 }
