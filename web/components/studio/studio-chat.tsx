@@ -1,6 +1,5 @@
 "use client";
 import { Button } from "../ui";
-import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -17,7 +16,10 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources() }: {
+export function StudioChat({ document, onDocumentChange, simple = false, sources = emptySources(), selection, onClearSelection, onRemoveSelection }: {
+    selection?: { id: string; label: string } | null;
+    onClearSelection?: () => void;
+    onRemoveSelection?: () => void;
     sources?: SourceLibrary;
     simple?: boolean;
     document: PlanDocument | null;
@@ -39,7 +41,8 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
     const [notice, setNotice] = useState<string | null>(null);
     const controller = useRef<AbortController | null>(null);
     const mounted = useRef(true);
-    const [minPixels, setMinPixels] = useState(12);
+    const minPixels = 12;
+    const composer = useRef<HTMLTextAreaElement>(null);
     const [progress, setProgress] = useState<RegionalProgress | null>(null);
     const [cancelRequested, setCancelRequested] = useState(false);
     const [reviewPhase, setReviewPhase] = useState<"regions" | "walls">("regions");
@@ -69,7 +72,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
             if (mode === "interpret") {
                 const planned = planRegions(base, minPixels);
                 if (!planned.batches.length) {
-                    setNotice(`No lines meet the ${minPixels}px review threshold. Short details remain unchanged; lower the threshold to include them.`);
+                    setNotice("검토할 주요 선이 없어요. 도면의 짧은 세부 선은 그대로 유지됩니다.");
                     return;
                 }
                 const outcome = await runRegionalBatches(planned.batches, async (batch, signal) => {
@@ -171,20 +174,12 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     return (<section className="flex h-full min-h-[420px] flex-col bg-surface" aria-label="Muse drawing assistant">
       <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
-        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2><p className="text-[11px] text-muted">Your drawing partner</p></div></div>
-        <span className="rounded-full border border-hairline px-2 py-1 text-[10px] text-muted">Meta AI</span>
+        <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">✳</span><div><h2 className="text-sm font-semibold">Muse</h2><p className="text-[11px] text-muted">공간을 함께 만드는 파트너</p></div></div>
       </header>
-      <p className="px-5 py-2 text-xs text-muted">{sources.items.filter(item => item.selected).length + Number(Boolean(document && sources.drawingSelected))} sources selected</p>
       <div className="border-b border-hairline p-4">
         <details open={!simple || interpreting}><summary className="cursor-pointer text-xs text-muted">Drawing tools</summary><div className="mt-3">
         <Button type="button" onClick={() => void interpret()} disabled={!document || !unknownCount || !regions?.batches.length || interpreting || busy} variant="primary" className="w-full">{interpreting ? progress ? `${reviewPhase === "walls" ? "Checking long wall context" : "Reviewing regions"} · ${progress.completed}/${progress.total}` : "Preparing your proposal…" : "Analyze with Muse"}</Button>
         <p className="mt-2 text-[11px] leading-relaxed text-muted">{document ? simple ? "Let Muse help you understand the drawing. Review suggestions before applying." : `${regions?.candidateCount ?? 0} candidate lines across ${regions?.batches.length ?? 0} regions. Every region is reviewed; suggestions stay separate until you apply them.` : "Upload a drawing to start planning together."}</p>
-        <details className="mt-2 text-[11px] text-muted">
-          <summary className="cursor-pointer">Analysis detail</summary>
-          <label className="mt-2 flex items-center justify-between gap-2">Minimum line length (px)<Input aria-label="Minimum line length for Muse analysis" type="number" min={2} max={24} step={1} value={minPixels} disabled={interpreting} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 2 && value <= 24)
-        setMinPixels(value); }} className="w-16 rounded border border-hairline bg-bg px-2 py-1"/></label>
-          <p className="mt-1">{regions?.deferredCount ?? 0} short details remain in the drawing but are not sent for analysis. Lower this threshold to include more detail. Up to three regions run at once.</p>
-        </details>
         </div></details>
         {progress && <div className="mt-3 text-xs text-muted" role="status" aria-live="polite">
           <progress aria-label={reviewPhase === "walls" ? "Long wall context batches reviewed" : "Regions reviewed"} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
@@ -200,25 +195,31 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
             onDocumentChange(proposal.document);
             setProposal(null);
             setNotice("Proposal applied. Review the geometry against your source.");
-        } }}>Apply suggestions</Button><Button onClick={() => setProposal(null)}>Discard</Button></div>
+        } }}>변경 적용</Button><Button onClick={() => setProposal(null)}>취소</Button></div>
         </div>}
         {notice && <p role="status" className="mt-3 text-xs text-accent">{notice}</p>}
       </div>
       <div ref={feedContainer} className="flex-1 space-y-4 overflow-y-auto p-5" aria-live="polite" aria-relevant="additions text">
-        {!messages.length && <div><p className="text-sm leading-relaxed text-ink-soft">What would you like to create in this space?</p><div className="mt-4 flex flex-col items-start gap-2">{["Help me plan this space", "Suggest a ceiling design"].map((text) => <Button key={text} onClick={() => send(text)} className="h-auto whitespace-normal text-left">{text}</Button>)}</div></div>}
+        {!messages.length && <div><p className="text-sm leading-relaxed text-ink-soft">어떤 공간을 만들고 싶으세요?</p><div className="mt-4 flex flex-col items-start gap-2">{["입구에서 무대까지 동선을 넓혀줘", "쉴 수 있는 라운지를 배치해줘"].map((text) => <Button key={text} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto whitespace-normal text-left">{text}</Button>)}</div></div>}
         {messages.map((message) => <article key={message.id} className={message.role === "user" ? "ml-6 rounded-xl bg-sunken p-3" : "mr-2"}><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{message.role === "user" ? "You" : "Muse"}</p>{message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{part.text}</p> : null)}</article>)}
         {status === "submitted" && <p className="animate-pulse text-xs text-muted">Muse is thinking…</p>}
         {error && <div role="alert" className="rounded-lg border border-hairline p-3 text-xs text-bad"><p>Muse couldn’t reply. Check the API configuration and try again.</p><Button onClick={clearError} className="mt-2">Dismiss</Button></div>}
       </div>
+      {selection && <div className="ps-muse-selection" aria-label="선택한 대상">
+        <div><span>선택한 대상</span><strong>{selection.label}</strong></div>
+        <Button variant="ghost" disabled={!onRemoveSelection} onClick={onRemoveSelection}>삭제</Button>
+        <Button variant="ghost" onClick={onClearSelection} aria-label="선택 해제">×</Button>
+        <Button onClick={() => { setInput(value => { const target = `“${selection.label}”에 대해: `; return value.startsWith(target) ? value : `${target}\n${value}`; }); composer.current?.focus(); }}>이 대상으로 요청하기</Button>
+      </div>}
       <form className="border-t border-hairline p-4" onSubmit={(event) => { event.preventDefault(); send(input); }}>
         <label htmlFor="studio-muse-input" className="sr-only">Ask Muse about your drawing</label>
-        <Textarea id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder="Describe your space, zones, furnishings or overhead design…" className="w-full resize-none rounded-lg border border-hairline bg-bg p-3 text-sm outline-none focus:border-accent" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+        <Textarea ref={composer} id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder="원하는 배치나 변경을 말씀해 주세요…" className="w-full resize-none rounded-lg border border-hairline bg-bg p-3 text-sm outline-none focus:border-accent" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
         event.preventDefault();
         send(input);
     } }}/>
-        <Button type="button" disabled={!document?.scaleConfirmed || !input.trim() || interpreting || busy} onClick={() => void interpret("design")} className="mt-2 w-full">Draft layout with Muse</Button>
+        <Button type="button" disabled={!document?.scaleConfirmed || !input.trim() || interpreting || busy} onClick={() => void interpret("design")} className="mt-2 w-full">배치 제안 만들기</Button>
 
-        <div className="mt-2 flex items-center justify-between gap-2"><p className="text-[10px] text-muted">Draft to edit · Send to discuss</p>{busy ? <Button type="button" onClick={() => void stop()}>Stop</Button> : <Button type="submit" disabled={!input.trim()} variant="primary">Send ↗</Button>}</div>
+        <div className="mt-2 flex items-center justify-between gap-2"><p className="text-[10px] text-muted">제안을 확인하고 적용할 수 있어요</p>{busy ? <Button type="button" onClick={() => void stop()}>Stop</Button> : <Button type="submit" disabled={!input.trim()} variant="primary">대화하기 ↗</Button>}</div>
       </form>
     </section>);
 }
