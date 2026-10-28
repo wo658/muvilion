@@ -6,6 +6,7 @@ COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
 COPY fixtures/ /workspace/fixtures/
+COPY data/samples/ /workspace/data/samples/
 RUN pnpm build
 EXPOSE 3000
 CMD ["pnpm", "start", "--hostname", "0.0.0.0", "--port", "3000"]

@@ -15,4 +15,5 @@ WORKDIR /workspace
 COPY engine/ engine/
 COPY web/ web/
 COPY fixtures/ fixtures/
+COPY data/samples/ /workspace/data/samples/
 COPY scripts/redpact-unit.sh scripts/redpact-unit.sh
