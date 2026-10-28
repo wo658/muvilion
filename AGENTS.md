@@ -21,7 +21,8 @@ attribution behavior built into the tool.
 ## Repository layout
 
 - `engine/` — Python 3.12 FastAPI server (uv): document extraction, OR-Tools layout,
-  and Shapely validation. Stateless computation only.
+  and Shapely validation. No user/application state; computed layouts have an optional
+  bounded disk cache.
 - `web/` — Next.js app (pnpm): UI, model-assisted drawing workflows (Vercel AI SDK + Meta Model API),
   and the application API.
 - `fixtures/` — shared sample venue.
@@ -43,8 +44,9 @@ attribution behavior built into the tool.
 - Keep the existing Next.js + FastAPI architecture. Browser requests go through the
   Next.js API; Python is the internal computation service.
 - Next.js owns model calls, drawing workflow orchestration, responses, and serving examples.
-- Python owns document extraction (PDF/image/DXF), layout optimization, and geometry validation. Keep it free of model calls, UI state, and
-  persistent application state; bounded computation caches are allowed.
+- Python owns document extraction (PDF/image/DXF), layout optimization, and geometry
+  validation. Keep it free of model calls, UI state, and persistent application state.
+  Its optional disk cache is disposable derived data, not a source of truth.
 - Keep HTTP handlers thin: parse and validate requests, call a feature service, and map
   results/errors to HTTP responses. Put reusable work in feature modules.
 - Do not add a third server, durable job system, or database just to reorganize code.
@@ -52,9 +54,8 @@ attribution behavior built into the tool.
 
 ## Code organization and migration
 
-- `web/server/` is the target home for server-only feature modules: `agent/`, `plans/`,
-  `engine/`, and `examples/`. This is a migration direction, not a claim that these
-  directories already exist. Move code when changing the relevant feature; update imports
+- `web/server/` contains server-only feature modules: `agent/`, `plans/`,
+  `engine/`, and `examples/`. Keep new server work in these modules. Update imports
   and tests together, and do not keep competing implementations.
 - Keep browser code and shared pure functions/types separate from server modules.
   Follow `web/AGENTS.md` for the web boundary and `engine/AGENTS.md` for Python.

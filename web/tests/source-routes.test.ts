@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const calls = vi.hoisted(() => ({ stream: vi.fn(), generate: vi.fn() }));
-vi.mock("@/lib/agent/model", () => ({ getModel: () => ({ hasKey: true, model: {} }) }));
+vi.mock("@/server/agent/model", () => ({ getModel: () => ({ hasKey: true, model: {} }) }));
 vi.mock("ai", () => ({
   streamText: calls.stream,
   generateText: calls.generate,

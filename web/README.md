@@ -31,6 +31,8 @@ Extraction no longer truncates at 1,200 lines or 400 text items. The engine expl
 
 ## Space design and heights
 
+CC0 materials, furniture and lighting candidates with individual download links and adoption notes are listed in [ASSET-SHORTLIST.md](ASSET-SHORTLIST.md). The 12 selected assets are bundled at 1K under `public/assets/cc0/`, with source URLs and hashes in its manifest. Editor selection UI integration is still pending.
+
 Simple view's **Design space** opens three layers: Spaces (non-solid purpose zones), Elements (physical installations), and Height & ceiling. Booths are optional spaces; legacy booth/lounging solid objects remain importable. Zones may be marked available for later company/team assignment, without adding registration workflows.
 
 The same document drives 2D, 3D, Muse and export. Objects have height and optional elevation above floor; ceilings store a level underside height, finish and estimated/confirmed status. Existing wall extrusion height is persisted. Geometry checks cover reviewed floor boundaries, zone containment, vertical overlap, ceiling exceedance and circulation obstruction. A platform-mounted object's elevation is entered relative to the floor.
@@ -89,3 +91,15 @@ Use **입구 표시** in 2D to place an entrance marker, then edit its name or d
 ### 2D presentation principle
 
 The default 2D editor is a human-readable space diagram, not a technical drawing viewer: retain essential walls, entrances, zones and object footprints; use a muted floor and furniture symbols; show labels only where they fit or on selection. Source linework, dimensions and images are available through Original drawing, and appear during geometry-review tools. An unclassified plan falls back to its source instead of pretending to have a reconstructed structure. Schematic presentation never changes geometry, wall openings, object IDs, coordinates or validation inputs.
+
+## Server code
+
+`app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns
+model configuration; `server/plans` executes drawing workflows; `server/engine` is the
+single Python transport (including multipart extraction); `server/examples` loads local
+example assets. Runtime entry points import `server-only`. Shared schemas and pure
+transformations stay in `lib/`.
+
+Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
+in a worktree or packaged install); the default is `../DemoData` relative to the web
+working directory. Missing examples return 404 and users can upload their own drawings.

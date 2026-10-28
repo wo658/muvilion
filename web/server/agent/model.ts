@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Model provider configuration. Both providers speak the OpenAI chat-completions
  * protocol (function tools + streaming), so they share @ai-sdk/openai-compatible.
