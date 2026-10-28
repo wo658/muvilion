@@ -163,7 +163,6 @@
   "Choose a longer segment for reliable calibration.": "정확한 축척을 위해 더 긴 구간을 선택하세요.",
   "The resulting extent is too large. Check the segment and its distance.": "도면 크기가 너무 커요. 구간과 거리를 확인하세요.",
   "Trace at least three corners around the interior without crossing the outline.": "경계가 교차하지 않게 내부 모서리를 세 개 이상 선택하세요.",
-  "muvilion home": "muvilion 홈",
   "Plan file must be smaller than 32 MB.": "도면 파일은 32 MB보다 작아야 해요.",
   "Close Sources": "자료 닫기",
   "Import project": "프로젝트 가져오기",

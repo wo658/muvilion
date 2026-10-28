@@ -163,8 +163,6 @@
 .ps-booth-pricing > summary { cursor:pointer; padding:16px 20px; font-weight:600; }
 @media(max-width:760px) { .ps-header { height:auto; min-height:68px; flex-wrap:wrap; padding:16px; } .ps-header-actions { flex-wrap:wrap; gap:12px; } }
 
-
-.ps-design-mode-bar { display:flex; justify-content:flex-end; padding:10px 24px; flex-shrink:0; }
-.ps-design-mode-bar { justify-content:flex-start; }
+.ps-design-mode-bar { display:flex; justify-content:flex-start; padding:10px 24px; flex-shrink:0; }
 .ps-has-plan .ps-right-panel { height:min(700px,calc(100dvh - 96px)); }
 .ps-has-plan .ps-right-panel > .ps-role-panel { width:100%; flex:1; height:auto; min-height:0; border:1px solid var(--hairline); border-radius:20px; background:var(--surface); overflow-y:auto; box-shadow:0 24px 64px -24px var(--shadow-color); }
