@@ -19,7 +19,8 @@ import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-wo
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
-import { PanelRightOpenIcon, SettingsIcon, StoreIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { EllipsisIcon, PanelRightOpenIcon, SettingsIcon, StoreIcon } from "lucide-react";
 
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
@@ -317,8 +318,20 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         </div>
       </aside>
       <section className="ps-center" aria-label={t("Drawing workspace")} hidden={!document}>
-        <div className="ps-canvas-toolbar"><div className="ps-canvas-title"><span className="eyebrow">{document ? "DRAWING WORKSPACE" : "NEW PROJECT"}</span><strong>{document ? document.source.name.replace(/\.[^.]+$/, "") : t("Untitled space")}</strong></div>{document && <div className="ps-editor-actions"><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button><Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button></div>}<Segmented<Mode> options={[{ id: "plan", label: t("2D edit") }, { id: "scene", label: t("3D space") }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/></div>
-        {mode === "plan" && document && <div className="ps-original-toggle"><label className="flex items-center gap-2"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>{t("Original drawing")}</label><Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button></div>}
+        <div className="ps-canvas-toolbar">
+          <Segmented<Mode> options={[{ id: "plan", label: "2D" }, { id: "scene", label: "3D" }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/>
+          {document && <Popover>
+            <PopoverTrigger render={<Button variant="ghost" className="ps-icon-button" aria-label={t("More tools")} title={t("More tools")}/>}><EllipsisIcon/></PopoverTrigger>
+            <PopoverContent align="end" className="ps-tools-menu">
+              <Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button>
+              <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button>
+              {mode === "plan" && <>
+                <Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button>
+                <label className="flex items-center gap-2 px-2.5 py-1.5"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>{t("Original drawing")}</label>
+              </>}
+            </PopoverContent>
+          </Popover>}
+        </div>
         {error && <div className="ps-alert" role="alert"><span>{localizeMessage(locale, error)}</span><Button onClick={() => setError(null)} aria-label={t("Dismiss error")}>×</Button></div>}
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
@@ -338,7 +351,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </aside>
 
     </div>
-    {document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
+    {document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 
   </main>;
 }
