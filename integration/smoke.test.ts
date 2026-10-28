@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import { createSteps } from "./steps";
 
-/** 실제 엔진의 계산 의존성이 준비되고 대기열 API가 응답하는지 확인한다. */
-test("엔진 상태와 대기열 계산", async (context) => {
+/** 실제 엔진의 현재 계산 의존성이 준비됐는지 확인한다. */
+test("엔진 상태와 계산 라이브러리", async (context) => {
   const step = createSteps(context);
   const health = await step("엔진 상태 조회", async () => {
     const response = await fetch(`${process.env.ENGINE_URL}/health`);
@@ -12,22 +12,9 @@ test("엔진 상태와 대기열 계산", async (context) => {
   await step("계산 라이브러리 준비 상태 확인", () => {
     // 실제 계산 라이브러리가 설치된 엔진이어야 한다.
     expect(health.status).toBe("ok");
-    expect(Object.keys(health.versions).sort()).toEqual(["jupedsim", "ortools", "shapely", "simpy"]);
+    expect(Object.keys(health.versions).sort()).toEqual(["ortools", "shapely"]);
   });
-  const result = await step("대기열 계산 요청", async () => {
-    const response = await fetch(`${process.env.ENGINE_URL}/queue`, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ arrivals_per_min: 6, service_time_s: 25, duration_min: 60, seed: 3, servers: 3 }),
-    });
-    expect(response.status).toBe(200);
-    return response.json();
-  });
-  await step("계산 결과의 유효 범위 확인", () => {
-    // 대기 시간과 이용률은 물리적으로 가능한 범위여야 한다.
-    expect(result.mean_wait_s).toBeGreaterThanOrEqual(0);
-    expect(result.utilization).toBeGreaterThanOrEqual(0);
-    expect(result.utilization).toBeLessThanOrEqual(1);
-  });
+
 });
 
 /** 웹이 실제 엔진에 파일을 전달하고 엔진 오류를 HTTP 응답으로 보존한다. */

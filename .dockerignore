@@ -14,3 +14,7 @@
 DemoData
 .claude
 .pnpm-store
+**/*.sqlite
+**/*.sqlite-*
+web/data
+web/.data

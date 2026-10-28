@@ -7,12 +7,12 @@ test("스튜디오 시작과 Sources 열기 및 닫기", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "From a floor plan to your next space." })).toBeVisible();
   });
   await test.step("Sources 대화상자 열기", async () => {
-    await page.getByRole("button", { name: /^Sources ·/ }).click();
-    await expect(page.getByRole("dialog", { name: "Sources" })).toBeVisible();
+    await page.getByRole("button", { name: "자료", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "자료" })).toBeVisible();
   });
   await test.step("Sources 대화상자 닫기", async () => {
     await page.getByRole("button", { name: "Close Sources", exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Sources" })).not.toBeVisible();
+    await expect(page.getByRole("dialog", { name: "자료" })).not.toBeVisible();
     await expect(page.getByRole("heading", { name: "From a floor plan to your next space." })).toBeVisible();
   });
 });
