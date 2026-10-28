@@ -19,7 +19,8 @@ import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-wo
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
-import { ChevronDownIcon, MessageCircleIcon, SettingsIcon, StoreIcon } from "lucide-react";
+import { PanelRightOpenIcon, SettingsIcon, StoreIcon } from "lucide-react";
+
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
@@ -262,7 +263,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setFloorDraft(null);
     };
     const calibrated = document?.scaleConfirmed && document.widthMeters && document.heightMeters;
-    return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
+    const museCollapsed = Boolean(document) && !chatOpen;
+    return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
     {controls.sidebar && createPortal(<>
       <RailButton icon={<StoreIcon/>} label="외부 참가 부스" onClick={() => { setBoothsOpen(true); boothManager.current?.showModal(); }}/>
       <RailButton icon={<SettingsIcon/>} label={t("Settings")} onClick={() => setSettings("general")}/>
@@ -327,15 +329,13 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
         {details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
-      <aside id="muse-panel" className="ps-right-panel" data-collapsed={document && !chatOpen ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
-        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection}/>
-        {document && <div className="ps-muse-controls"><Button variant="primary" className="ps-icon-button ps-ink-button" aria-controls="muse-panel" aria-expanded={true} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} onClick={() => setChatOpen(false)}><ChevronDownIcon/></Button></div>}
+      <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
+        {museCollapsed && <div className="ps-muse-rail">
+          <RailButton icon={<PanelRightOpenIcon/>} label={t("Talk to Muse")} aria-expanded={false} aria-controls="muse-panel" onClick={() => setChatOpen(true)}/>
+          <button type="button" className="ps-muse-rail-avatar" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={32}/></button>
+        </div>}
+        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
       </aside>
-      {document && !chatOpen && <div className="ps-muse-launcher">
-        <MuviAvatar size={36}/>
-        <span>{selection ? selection.label : t("Need help with this space?")}</span>
-        <Button variant="primary" className="ps-ink-button" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><MessageCircleIcon/>{t("Talk to Muse")}</Button>
-      </div>}
 
     </div>
     {document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}

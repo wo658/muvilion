@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
-import { ArrowUpIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowUpIcon, PanelRightCloseIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState } from "react";
@@ -27,7 +27,8 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse }: {
+    onCollapse?: () => void;
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
@@ -237,6 +238,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
       <header className="ps-conversation-head">
         <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={locale === "ko" ? "뮤비 3D 만나기 (새 탭)" : "Meet Muvi in 3D (new tab)"}><MuviAvatar/></Link>
         <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : "Muse"}</h2>
+        {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 
       </header>
       <div ref={feedContainer} className="ps-conversation-feed" aria-live="polite" aria-relevant="additions text">
