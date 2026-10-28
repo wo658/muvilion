@@ -14,6 +14,7 @@ import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { boothRequest } from "./client";
 import "../studio/studio.css";
 import "../studio/spatial-design.css";
+import { TOKENS } from "@/lib/ui/tokens";
 const SceneView = dynamic(() => import("../studio/scene-view"), { ssr: false, loading: () => <p role="status">3D 공간을 준비하는 중…</p> });
 type Generation = { document: PlanDocument; summary: string; steps: { agent: string; tool: string; outcome: string }[]; handoff: { notes: string[] } };
 const kinds: { value: DesignObject["kind"]; label: string }[] = [{ value: "furniture", label: "가구" }, { value: "partition", label: "가벽" }, { value: "equipment", label: "전시 장비" }, { value: "light", label: "조명" }, { value: "hanging-sign", label: "행잉 사인" }];
@@ -53,7 +54,7 @@ export function BoothDesigner({ projectId, applicationId, token, organizerDocume
   function addObject(kind: DesignObject["kind"]) {
     if (!data || !document) return;
     const id = crypto.randomUUID();
-    changeObjects([...(document.objects ?? []), { id, kind, label: kinds.find(item => item.value === kind)?.label ?? kind, x: .5, y: .5, width: Math.min(1, data.booth.width / 2), depth: Math.min(.5, data.booth.depth / 2), height: Math.min(1, data.booth.maxHeight), elevation: 0, rotation: 0, color: "#89a9b6", provenance: "manual" }]); setSelected(id);
+    changeObjects([...(document.objects ?? []), { id, kind, label: kinds.find(item => item.value === kind)?.label ?? kind, x: .5, y: .5, width: Math.min(1, data.booth.width / 2), depth: Math.min(.5, data.booth.depth / 2), height: Math.min(1, data.booth.maxHeight), elevation: 0, rotation: 0, color: TOKENS.objectDefault, provenance: "manual" }]); setSelected(id);
   }
   async function generate(designBrief = brief) {
     if (!designBrief.trim() || locked) return;

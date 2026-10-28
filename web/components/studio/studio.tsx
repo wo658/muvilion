@@ -28,6 +28,7 @@ import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
 import "./sources.css";
+import { TOKENS } from "@/lib/ui/tokens";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: SceneLoading });
 const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: () => <p role="status">부스 관리 열기…</p> });
 const ParticipantPortal = dynamic(() => import("../booths/participant-portal").then(module => module.ParticipantPortal), { ssr: false });
@@ -325,7 +326,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
         {document && <section className="ps-section"><div className="ps-section-heading"><h2>{t("Space height")}</h2></div><p className="ps-help">{t("Enter a measured height. A drawing alone cannot confirm it.")}</p>
           <label className="ps-field">{t("Wall height (m)")}<Input type="number" min="0.5" max="30" step="0.1" value={wallHeight} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.5 && n <= 30) change({ ...document, wallHeight: n }); }}/></label>
-          {document.ceiling ? <><label className="ps-field">{t("Ceiling height (m)")}<Input type="number" min="0.1" max="30" step="0.1" value={document.ceiling.height} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.1 && n <= 30) change({ ...document, ceiling: { ...document.ceiling!, height: n, status: "estimated" } }); }}/></label><Button disabled={document.ceiling.status === "confirmed"} onClick={() => change({ ...document, ceiling: { ...document.ceiling!, status: "confirmed" } })}>{document.ceiling.status === "confirmed" ? t("Ceiling height confirmed") : t("Confirm measured ceiling height")}</Button></> : <Button disabled={!calibrated} onClick={() => change({ ...document, ceiling: { height: 4, status: "estimated", color: "#e2e5e7" } })}>{t("Set ceiling height")}</Button>}
+          {document.ceiling ? <><label className="ps-field">{t("Ceiling height (m)")}<Input type="number" min="0.1" max="30" step="0.1" value={document.ceiling.height} onChange={event => { const n = event.target.valueAsNumber; if (n >= 0.1 && n <= 30) change({ ...document, ceiling: { ...document.ceiling!, height: n, status: "estimated" } }); }}/></label><Button disabled={document.ceiling.status === "confirmed"} onClick={() => change({ ...document, ceiling: { ...document.ceiling!, status: "confirmed" } })}>{document.ceiling.status === "confirmed" ? t("Ceiling height confirmed") : t("Confirm measured ceiling height")}</Button></> : <Button disabled={!calibrated} onClick={() => change({ ...document, ceiling: { height: 4, status: "estimated", color: TOKENS.modelShade } })}>{t("Set ceiling height")}</Button>}
         </section>}
         </div>
       </aside>
