@@ -10,6 +10,7 @@ import { applyDesignProposal, PlanDesignProposal, planChatContext } from "@/lib/
 import { SourceRequestSchema } from "@/lib/sources/schema";
 import { sourceContent, SOURCE_INSTRUCTIONS } from "./sources";
 import { DESIGN_INSTRUCTIONS } from "./prompts";
+import { ASSET_INSTRUCTIONS } from "./asset-tools";
 import { PlanServiceError } from "./errors";
 
 export const DesignRequest = z.object({ locale: z.enum(["en", "ko"]).optional(), sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
@@ -28,7 +29,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
   let seenRevision = 0;
   const agent = new ToolLoopAgent({
     model: model.model,
-    instructions: DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + (input.locale ? `\nWrite user-facing replies, summaries and new labels in ${input.locale === "ko" ? "Korean" : "English"}. Preserve existing user content and identifiers.` : ""),
+    instructions: DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\n" + ASSET_INSTRUCTIONS + (input.locale ? `\nWrite user-facing replies, summaries and new labels in ${input.locale === "ko" ? "Korean" : "English"}. Preserve existing user content and identifiers.` : ""),
     tools: createDesignTools(context),
     stopWhen: [isStepCount(8), hasToolCall("submit_design")],
     toolCallConcurrency: 1,

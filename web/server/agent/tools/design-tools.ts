@@ -1,4 +1,5 @@
 import "server-only";
+import { assetTools } from "@/server/plans/asset-tools";
 import { tool } from "ai";
 import { z } from "zod";
 import { applyDesignProposal, PlanDesignProposal } from "@/lib/plans/muse";
@@ -10,8 +11,9 @@ import { generateConceptImage } from "./meta-image";
 
 const phases = ["initial", "revision"] as const;
 
-/** Add asset / 3D adapters to this catalog using the same request context and SDK tools. */
+/** Shared tools for initial design and revisions. */
 export const designToolRegistrations: readonly ToolRegistration<DesignToolContext>[] = [
+  { name: "search_design_assets", category: "asset", phases, create: () => assetTools.search_design_assets },
   {
     name: "review_design", category: "design", phases,
     create: context => tool({

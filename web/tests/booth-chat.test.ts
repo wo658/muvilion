@@ -8,7 +8,7 @@ import { BoothChatRequest, boothChatContext, chatBooth } from "@/server/booths/c
 import { createBoothProject, applyForBooth, reviewBoothApplication, updateBoothProject } from "@/server/booths/service";
 import { RequestBody, chatPlan } from "@/server/plans/chat";
 const mock = vi.hoisted(() => ({ stream: vi.fn((options: unknown) => ({ stream: {}, options })) }));
-vi.mock("ai", () => ({ streamText: mock.stream }));
+vi.mock("ai", async importOriginal => ({ ...await importOriginal<typeof import("ai")>(), streamText: mock.stream }));
 vi.mock("@/server/agent/model", () => ({ getModel: () => ({ hasKey: true, model: {} }) }));
 const messages = [{ role: "user" as const, parts: [{ type: "text" as const, text: "예산 100만원으로 부스 추천해줘" }] }];
 let folder: string, previous: string | undefined;

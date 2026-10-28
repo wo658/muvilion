@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/server/settings/store", () => ({ storedMetaKey: () => undefined }));
 const calls = vi.hoisted(() => ({ stream: vi.fn(), generate: vi.fn() }));
 vi.mock("@/server/agent/model", () => ({ getModel: () => ({ hasKey: true, model: {} }) }));
-vi.mock("ai", () => ({
+vi.mock("ai", async importOriginal => ({
+  ...await importOriginal<typeof import("ai")>(),
   streamText: calls.stream,
   generateText: calls.generate,
   ToolLoopAgent: class {

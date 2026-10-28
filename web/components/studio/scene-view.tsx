@@ -11,6 +11,7 @@ import { SceneLabel } from "./scene-label";
 import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
 import { ExhibitionObject } from "./exhibition-object";
+import { AssetObject } from "./asset-object";
 import { SceneCamera } from "./scene-camera";
 import { RoadView, EXPLORE_HINT } from "./road-view";
 import { interiorPose, navigationWorld, type CameraView } from "@/lib/plans/camera";
@@ -105,7 +106,13 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       </mesh>;
     })}
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
-      {object.kind === "partition" ? <group onClick={e => { if (view === "interior") return; e.stopPropagation(); onSelect(object.id); }}>
+      {object.modelAssetId || object.materialAssetId ? <group onClick={e => { if (view === "interior" && e.delta > 5) return; e.stopPropagation(); if (view !== "interior") onSelect(object.id); else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
+        <AssetObject object={object} selected={selected === object.id} />
+        {object.kind === "partition" && <>
+          <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
+          {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
+        </>}
+      </group> : object.kind === "partition" ? <group onClick={e => { if (view === "interior") return; e.stopPropagation(); onSelect(object.id); }}>
         <mesh userData={{navigationObstacle:true}} position={[0,object.height/2,0]} castShadow><boxGeometry args={[object.width,object.height,object.depth]}/><meshStandardMaterial color={selected === object.id ? TOKENS.accent : VENUE_COLORS.partition} roughness={0.85}/></mesh>
         <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
         {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}

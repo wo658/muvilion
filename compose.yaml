@@ -15,6 +15,7 @@ services:
       dockerfile: web/Dockerfile
     environment:
       ENGINE_URL: http://engine:8000
+      APP_ORIGIN: http://web.redpact.test:3000
     depends_on:
       engine:
         condition: service_healthy
