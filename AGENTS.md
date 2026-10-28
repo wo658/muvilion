@@ -37,7 +37,8 @@ attribution behavior built into the tool.
 - Before merging: engine `uv run pytest` and `uv run ruff check .`; web `pnpm test`,
   `pnpm typecheck`, `pnpm lint`.
 - Root `README.md` and `docs/` are private planning notes and are gitignored; do not commit them.
-- Never commit secrets. Keys live in `web/.env.local` (gitignored).
+- Never commit secrets. Keys live in `web/.env.local` or the local SQLite data directory
+  (`web/data/` by default), both gitignored. Never include keys in project exports.
 
 ## Server responsibilities
 

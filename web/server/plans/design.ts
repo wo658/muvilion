@@ -15,7 +15,7 @@ export const DesignRequest = z.object({ locale: z.enum(["en", "ko"]).optional(),
 export async function designPlan(input: z.infer<typeof DesignRequest>, signal: AbortSignal) {
   const { document, brief } = input;
   const model = getModel();
-  if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add MODEL_API_KEY to web/.env.local.", 503);
+  if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   const result = await generateText({
     model: model.model,
     instructions: DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + (input.locale ? `\nWrite user-facing replies, summaries and new labels in ${input.locale === "ko" ? "Korean" : "English"}. Preserve existing user content and identifiers.` : ""),
