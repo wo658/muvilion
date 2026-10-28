@@ -2,8 +2,10 @@
 import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
-import { Button } from "../ui";
-import { Textarea } from "../ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
+import { ArrowUpIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SparklesIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +14,10 @@ import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans
 import { runRegionalBatches, globalWallAuditBatches, applyGlobalWallAudit, type RegionalProgress } from "@/lib/plans/regional-client";
 import { emptySources, type SourceLibrary } from "@/lib/sources/schema";
 import { selectedReferences } from "@/lib/sources/files";
+import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
+import Image from "next/image";
 type Proposal = {
+    artifacts?: DesignArtifact[];
     sources: SourceLibrary;
     document: PlanDocument;
     summary: string;
@@ -58,7 +63,8 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
     const preparingRef = useRef(false);
     const currentContext = useRef({ document, sources, selection });
     useEffect(() => { currentContext.current = { document, sources, selection }; }, [document, sources, selection]);
-    const busy = interpreting || preparing || status === "submitted" || status === "streaming";
+    const responding = status === "submitted" || status === "streaming";
+    const busy = interpreting || preparing || responding;
     const unknownCount = document?.lines.filter((line) => line.kind === "unknown").length ?? 0;
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
     useEffect(() => { if (messages.length && feedContainer.current)
@@ -149,7 +155,7 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
                     throw new Error(body.error ?? t("Muse could not draft a layout."));
                 const result = PlanDocumentSchema.parse(body.document);
                 if (mounted.current)
-                    setProposal({ sources, document: result, summary: typeof body.summary === "string" ? body.summary : t("Review the proposed changes."), base, mode });
+                    setProposal({ sources, document: result, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), summary: typeof body.summary === "string" ? body.summary : t("Review the proposed changes."), base, mode });
             }
         }
         catch (err) {
@@ -230,48 +236,69 @@ export function StudioChat({ document, onDocumentChange, simple = false, sources
       </header>
       {(document || notice || interpretError) && <div className="ps-conversation-tools">
         <details open={!simple || interpreting}><summary className="cursor-pointer text-xs text-muted">{t("Drawing tools")}</summary><div className="mt-3">
-        <Button type="button" onClick={() => void interpret()} disabled={!document || !unknownCount || !regions?.batches.length || interpreting || busy} variant="primary" className="w-full">{interpreting ? progress ? `${reviewPhase === "walls" ? t("Checking long wall context") : t("Reviewing regions")} · ${progress.completed}/${progress.total}` : t("Preparing your proposal…") : t("Analyze with Muse")}</Button>
+        <Button type="button" size="sm" onClick={() => void interpret()} disabled={!document || !unknownCount || !regions?.batches.length || interpreting || busy} variant="default" className="w-full">{interpreting ? <LoaderCircleIcon aria-hidden="true" data-icon="inline-start" className="animate-spin motion-reduce:animate-none" /> : <SparklesIcon aria-hidden="true" data-icon="inline-start" />}{interpreting ? progress ? `${reviewPhase === "walls" ? t("Checking long wall context") : t("Reviewing regions")} · ${progress.completed}/${progress.total}` : t("Preparing your proposal…") : t("Analyze with Muse")}</Button>
 
         </div></details>
         {progress && <div className="mt-3 text-xs text-muted" role="status" aria-live="polite">
           <progress aria-label={reviewPhase === "walls" ? t("Long wall context batches reviewed") : t("Regions reviewed")} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
           <p className="mt-1">{progress.completed} / {progress.total} {reviewPhase === "walls" ? t("long wall context batches reviewed") : t("regions reviewed")}{progress.failed > 0 ? t(" · {count} failed", { count: progress.failed }) : ""}{cancelRequested ? t(" · stopped") : ""}</p>
         </div>}
-        {interpreting && <Button disabled={cancelRequested} className="mt-2" onClick={() => { setCancelRequested(true); controller.current?.abort(); }}>{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
+        {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="mt-2" onClick={() => { setCancelRequested(true); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
         {interpretError && <p role="alert" className="mt-3 text-xs leading-relaxed text-bad">{localizeMessage(locale, interpretError)}</p>}
         {proposal && <div className="mt-3 rounded-lg border border-hairline bg-sunken p-3">
           <p className="text-xs leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
+          {!!proposal.artifacts?.length && <details className="mt-3"><summary className="cursor-pointer text-xs">{t("Design review images ({count})", { count: proposal.artifacts.length })}</summary><div className="mt-2 flex flex-col gap-3">
+            {proposal.artifacts.map(artifact => <figure key={artifact.id}>
+              <Image src={artifact.image} alt={artifact.title} width={960} height={720} unoptimized className="h-auto w-full rounded" />
+              <figcaption className="mt-1 text-[11px] text-muted">{artifact.kind === "concept" ? t("Generated concept · may differ from actual layout") : t("Layout schematic · materials and lighting omitted")} · {t("Review {revision}", { revision: artifact.revision })}</figcaption>
+            </figure>)}
+          </div></details>}
           <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? t("{zones} zones · {objects} installations. Applying replaces the current design.", { zones: proposal.document.zones?.length ?? 0, objects: proposal.document.objects?.length ?? 0 }) : t("{count} line changes. Coordinates and dimensions stay unchanged.", { count: changed })}</p>
           {stale && <p className="mt-2 text-xs text-amber">{t("The drawing or sources changed. Generate a new proposal before applying.")}</p>}
-          <div className="mt-3 flex gap-2"><Button disabled={Boolean(stale)} variant="primary" onClick={() => { if (!stale) {
+          <div className="mt-3 flex gap-2"><Button type="button" size="sm" disabled={Boolean(stale)} variant="default" onClick={() => { if (!stale) {
             onDocumentChange(proposal.document);
             setProposal(null);
             setNotice(t("Proposal applied. Review the geometry against your source."));
-        } }}>{t("Apply changes")}</Button><Button onClick={() => setProposal(null)}>{t("Cancel")}</Button></div>
+        } }}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Apply changes")}</Button><Button type="button" size="sm" variant="outline" onClick={() => setProposal(null)}>{t("Cancel")}</Button></div>
         </div>}
         {notice && <p role="status" className="mt-3 text-xs text-accent">{localizeMessage(locale, notice)}</p>}
       </div>}
       <div ref={feedContainer} className="ps-conversation-feed" aria-live="polite" aria-relevant="additions text">
-        {!messages.length && <div className="ps-greeting"><span className="ps-muse-orb" aria-hidden="true"/><h1>{t("What space shall we create?")}</h1><div className="ps-suggestions">{[t("Widen the path from the entrance to the stage"), t("Add a lounge to relax in")].map((text) => <Button key={text} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto whitespace-normal text-left">{text}</Button>)}</div></div>}
+        {!messages.length && <div className="ps-greeting"><span className="ps-muse-orb" aria-hidden="true"/><h1>{t("What space shall we create?")}</h1><div className="ps-suggestions">{[t("Widen the path from the entrance to the stage"), t("Add a lounge to relax in")].map((text) => <Button type="button" size="sm" variant="outline" key={text} disabled={busy || interpreting} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto min-h-9 whitespace-normal text-left">{text}</Button>)}</div></div>}
         {messages.map((message) => <article key={message.id} className={message.role === "user" ? "ml-6 rounded-xl bg-sunken p-3" : "mr-2"}><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{message.role === "user" ? t("You") : "Muse"}</p>{message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{part.text}</p> : null)}</article>)}
         {(preparing || status === "submitted") && <p className="animate-pulse text-xs text-muted">{t("Muse is thinking…")}</p>}
-        {error && <div role="alert" className="rounded-lg border border-hairline p-3 text-xs text-bad"><p>{t("Muse couldn’t reply. Please try again.")}</p><Button onClick={clearError} className="mt-2">{t("Dismiss")}</Button></div>}
+        {error && <div role="alert" className="rounded-lg border border-hairline p-3 text-xs text-bad"><p>{t("Muse couldn’t reply. Please try again.")}</p><Button type="button" size="sm" variant="outline" onClick={clearError} className="mt-2">{t("Dismiss")}</Button></div>}
       </div>
       {selection && <div className="ps-muse-selection" aria-label={t("Selected item")}>
         <div><span>{t("Selected item")}</span><strong>{selection.label}</strong></div>
-        <Button variant="ghost" disabled={!onRemoveSelection} onClick={onRemoveSelection}>{t("Delete")}</Button>
-        <Button variant="ghost" onClick={onClearSelection} aria-label={t("Clear selection")}>×</Button>
-        <Button onClick={() => { setInput(value => { const target = t("About “{name}”: ", { name: selection.label }); return value.startsWith(target) ? value : `${target}\n${value}`; }); composer.current?.focus(); }}>{t("Ask about this")}</Button>
+        <Button type="button" size="sm" variant="ghost" disabled={!onRemoveSelection} onClick={onRemoveSelection}><Trash2Icon aria-hidden="true" data-icon="inline-start" />{t("Delete")}</Button>
+        <Button type="button" size="icon-sm" variant="ghost" onClick={onClearSelection} aria-label={t("Clear selection")} title={t("Clear selection")}><XIcon aria-hidden="true" /></Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => { setInput(value => { const target = t("About “{name}”: ", { name: selection.label }); return value.startsWith(target) ? value : `${target}\n${value}`; }); composer.current?.focus(); }}><MessageCircleIcon aria-hidden="true" data-icon="inline-start" />{t("Ask about this")}</Button>
       </div>}
-      <form className="border-t border-hairline p-4" onSubmit={(event) => { event.preventDefault(); send(input); }}>
-        <label htmlFor="studio-muse-input" className="sr-only">{t("Ask Muse about your drawing")}</label>
-        <Textarea ref={composer} id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder={t("Tell Muse what you have in mind…")} className="w-full resize-none rounded-lg border border-hairline bg-bg p-3 text-sm outline-none focus:border-accent" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-        event.preventDefault();
-        send(input);
-    } }}/>
-
-
-        <div className="mt-2 flex items-center justify-between gap-2"><Button type="button" variant="ghost" onClick={onSources}>{t("Add sources")}</Button>{busy ? <Button type="button" onClick={() => { controller.current?.abort(); void stop(); }}>{t("Stop")}</Button> : <Button type="submit" disabled={!input.trim()} variant="primary">{t("Send ↗")}</Button>}</div>
+      <form className="ps-chat-composer" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="studio-muse-input" className="sr-only">{t("Ask Muse about your drawing")}</FieldLabel>
+            <InputGroup>
+              <InputGroupTextarea ref={composer} id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={3} placeholder={t("Tell Muse what you have in mind…")} className="min-h-24 max-h-48" onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }} />
+              <InputGroupAddon align="block-end" className="flex-wrap">
+                <InputGroupButton size="sm" onClick={onSources}>
+                  <PaperclipIcon aria-hidden="true" data-icon="inline-start" />{t("Add sources")}
+                </InputGroupButton>
+                {busy ? <InputGroupButton size="icon-sm" variant="default" className="ml-auto" onClick={() => { controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
+                  <SquareIcon aria-hidden="true" />
+                </InputGroupButton> : <InputGroupButton type="submit" size="icon-sm" variant="default" className="ml-auto" disabled={preparing || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>
+                  {preparing ? <LoaderCircleIcon aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <ArrowUpIcon aria-hidden="true" />}
+                </InputGroupButton>}
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+        </FieldGroup>
       </form>
     </section>);
 }
