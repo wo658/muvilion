@@ -25,7 +25,7 @@ Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignor
 - Derived 3D walls merge collinear overlapping evidence and gaps up to 5 mm after scale confirmation. Conservative parallel pairs infer thickness; source IDs and geometry remain available. Door-size gaps and ambiguous edge triples remain separate. Heights stay provisional.
 - Muse also proposes booth/stage/lounge objects; geometry checks report overlap, wall intersections and bounds.
 - SVG review + React Three Fiber preview; JSON import/export and browser local storage.
-- Trace a simple interior floor polygon in Details after confirming scale. It defines usable floor and ceiling surfaces without inventing walls. Cropping clears scale and floor review.
+- Trace a simple interior floor polygon in the studio drawing settings after confirming scale. It defines usable floor and ceiling surfaces without inventing walls. Cropping clears scale and floor review.
 
 Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Crowd simulation, registration queues and the old replay/review APIs have been removed. The Python layout solver, validation rules and walkable-area geometry remain available for future integration.
 
@@ -136,6 +136,12 @@ transformations stay in `lib/`.
 Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
 in a worktree or packaged install); the default is `../DemoData` relative to the web
 working directory. Missing examples return 404 and users can upload their own drawings.
+
+### Chat controls
+
+Muse uses the current [AI Elements Prompt Input](https://ui.shadcn.com/docs/ai-elements/base/prompt-input) composition: shadcn Base UI Input Group with a textarea and action addon, and standard Buttons for suggestions and review actions. Source management remains the existing Sources workflow. Send becomes Stop during an active AI SDK response; source preparation disables Send until the request can start. Enter sends, Shift+Enter inserts a newline, and IME composition does not submit.
+
+Input Group was added from the official `base-nova` registry with the shadcn CLI on 2026-10-28. Its MIT license was verified against [shadcn-ui/ui LICENSE.md](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md); the existing notice in `licenses/shadcn-ui-MIT.txt` covers this component. Existing Button, Input and Textarea customizations are preserved.
 
 ## Local Meta API key
 
