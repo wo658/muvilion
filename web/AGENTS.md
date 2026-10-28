@@ -2,6 +2,12 @@
 
 The root `AGENTS.md` also applies here.
 
+## Design
+
+- Follow `design.md` for layout, copy, color tokens and verification, and the root
+  `AGENTS.md` "Design and color tokens" rules. Colors come only from `lib/ui/tokens.ts`;
+  `tests/tokens.test.ts` must pass.
+
 ## Server and browser boundaries
 
 - Keep `app/api/**/route.ts` focused on HTTP parsing, validation, responses, and streaming
