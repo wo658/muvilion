@@ -10,6 +10,8 @@ The root `AGENTS.md` also applies here.
   at runtime entry points. Never import them from client components or browser utilities.
 - Keep shared schemas and pure geometry/transformation functions in `lib/`. IndexedDB,
   browser file handling, and view state belong on the browser side, not in `server/`.
+- SQLite is authoritative for project state and uploaded assets. IndexedDB/localStorage
+  access is limited to legacy migration; do not add new browser persistence for projects.
 - Keep secrets, model configuration, filesystem access, and Python connection configuration
   on the server. Do not expose them through `NEXT_PUBLIC_*` variables.
 - Route Python requests through the common engine client. Preserve request cancellation,

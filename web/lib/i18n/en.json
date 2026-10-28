@@ -281,5 +281,17 @@
   "Select a larger region inside the drawing.": "Select a larger region inside the drawing.",
   "Your browser cannot crop this preview.": "Your browser cannot crop this preview.",
   "{count} source notes to review": "{count} source notes to review",
-  "Page {page} of {pages}": "Page {page} of {pages}"
+  "Page {page} of {pages}": "Page {page} of {pages}",
+  "Opening local projects…": "Opening local projects…",
+  "Saved to SQLite": "Saved to SQLite",
+  "Unsaved changes": "Unsaved changes",
+  "Not saved": "Not saved",
+  "Open project": "Open project",
+  "Project name": "Project name",
+  "New project": "New project",
+  "Retry save": "Retry save",
+  "Retry opening projects": "Retry opening projects",
+  "Open SQLite projects without browser import": "Open SQLite projects without browser import",
+  "Local projects": "Local projects",
+  "Could not open the project. Browser data has not been replaced.": "Could not open the project. Browser data has not been replaced."
 }
