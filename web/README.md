@@ -25,6 +25,7 @@ Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignor
 - Derived 3D walls merge collinear overlapping evidence and gaps up to 5 mm after scale confirmation. Conservative parallel pairs infer thickness; source IDs and geometry remain available. Door-size gaps and ambiguous edge triples remain separate. Heights stay provisional.
 - Muse also proposes booth/stage/lounge objects; geometry checks report overlap, wall intersections and bounds.
 - SVG review + React Three Fiber preview; JSON import/export and browser local storage.
+- Trace a simple interior floor polygon in Details after confirming scale. The 3D Walk inside mode uses a 1.65 m eye height, WASD/arrows, drag to look, reset and Escape to return to the overview. Movement collides with derived walls, placed objects and the reviewed floor boundary. Unrecognized walls remain open; the outline never creates invented walls. Cropping clears both scale and floor review.
 
 Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Legacy simulation modules remain in the repository but are not the studio workflow.
 
@@ -34,6 +35,8 @@ Place local PDFs under root `DemoData/` or set `DEMO_DATA_DIR`:
 
 - `san-jose-mcenery-floor-plan-and-specs.pdf`: Facebook F8 venue brochure; useful context, not detailed architectural geometry.
 - `coex-hall-a-2024.pdf`: official COEX Hall A dimensioned plan, available from [COEX floor plans](https://business.coex.co.kr/exhibition-hall/coex-lease-info/floor-plan/).
+- `fort-mason-ground-floor.pdf`: ground-floor crop of the official Festival Pavilion dimensions sheet. `engine/scripts/prepare_fort_mason.py` prepares the local asset. Adjacent source metadata records crop coordinates and manually checked dimension references.
+- `fort-mason-reviewed-plan.json`: saved live Muse recognition with separately reviewed scale and floor outline; accessible from the example selector. Raw model results and the evaluation report are kept alongside it. This local artifact is required for the saved walkthrough; uploading the PDF starts a fresh review.
 
 PDFs are local evaluation assets, not bundled or committed. Source metadata lives alongside them. The UI reports missing files rather than supplying a synthetic substitute.
 

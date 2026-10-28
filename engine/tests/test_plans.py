@@ -206,3 +206,27 @@ def test_text_resource_limit_rejects_whole_plan(client, monkeypatch):
     response = client.post("/plans/extract", files={"file": ("hall.pdf", vector_pdf())})
     assert response.status_code == 413
     assert "No partial evidence" in response.json()["detail"]
+
+
+def test_media_box_crop_excludes_hidden_geometry_and_text():
+    # A real cropped PDF may preserve the source's content stream off-page.
+    stream = (
+        b"2 w 20 20 m 180 20 l S -80 10 m -20 90 l S "
+        b"BT /F1 12 Tf -90 50 Td (Hidden) Tj ET "
+        b"BT /F1 12 Tf 30 50 Td (Visible) Tj ET"
+    )
+    plan = extract_plan(vector_pdf(stream=stream), "cropped.pdf")
+    assert len(plan.lines) == 1
+    assert [text.text for text in plan.texts] == ["Visible"]
+    assert plan.lines[0].a.x == pytest.approx(0.1)
+    assert plan.lines[0].b.x == pytest.approx(0.9)
+
+
+def test_media_box_crop_clips_diagonal_at_actual_intersection():
+    plan = extract_plan(vector_pdf(stream=b"2 w -100 0 m 100 100 l S"), "diagonal.pdf")
+    assert len(plan.lines) == 1
+    segment = plan.lines[0]
+    assert segment.a.x == pytest.approx(0)
+    assert segment.a.y == pytest.approx(0.5)
+    assert segment.b.x == pytest.approx(0.5)
+    assert segment.b.y == pytest.approx(0)
