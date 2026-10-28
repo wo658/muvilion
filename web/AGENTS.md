@@ -1,3 +1,24 @@
+# Web agent instructions
+
+The root `AGENTS.md` also applies here.
+
+## Server and browser boundaries
+
+- Keep `app/api/**/route.ts` focused on HTTP parsing, validation, responses, and streaming
+  transport. Move model invocation and feature workflows into server feature modules.
+- New or migrated server modules belong in `server/` and must use `import "server-only"`
+  at runtime entry points. Never import them from client components or browser utilities.
+- Keep shared schemas and pure geometry/transformation functions in `lib/`. IndexedDB,
+  browser file handling, and view state belong on the browser side, not in `server/`.
+- Keep secrets, model configuration, filesystem access, and Python connection configuration
+  on the server. Do not expose them through `NEXT_PUBLIC_*` variables.
+- Route Python requests through the common engine client. Preserve request cancellation,
+  operation-specific timeouts, and response validation when migrating existing calls.
+- Existing implementations live in `lib/agent`, `lib/engine`, and some API routes. Migrate
+  by feature without creating a parallel implementation or changing behavior incidentally.
+- Keep public HTTP request/response shapes and example behavior stable during structural
+  moves. Run the relevant tests and the root workflow checks before merging.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
