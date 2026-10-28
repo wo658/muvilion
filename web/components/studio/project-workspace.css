@@ -5,12 +5,11 @@
 .pw-shell[data-collapsed] .pw-projects{width:56px;align-items:center}
 .pw-projects-head{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:10px}
 .pw-shell[data-collapsed] .pw-projects-head{flex-direction:column}
-.pw-brand{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;color:var(--accent)}
 .pw-rail-button{display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 9px;border-radius:10px;color:var(--ink-soft);text-align:left;cursor:pointer;flex-shrink:0}
 .pw-rail-button svg{width:18px;height:18px;flex-shrink:0}
 .pw-rail-button:hover{background:var(--sunken);color:var(--ink)}
 .pw-rail-button:disabled{opacity:.5;pointer-events:none}
-.pw-rail-button:focus-visible,.pw-brand:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pw-rail-button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .pw-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pw-shell[data-collapsed] .pw-rail-button{width:36px;justify-content:center;padding:0}
 .pw-shell[data-collapsed] .pw-label{display:none}

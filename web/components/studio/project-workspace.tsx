@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState, type ComponentProps, type ComponentType, type ReactNode } from "react";
-import Link from "next/link";
 import { CircleAlertIcon, FolderIcon, PanelLeftIcon, PlusIcon } from "lucide-react";
 import { Button } from "../ui";
 import { Input } from "../ui/input";
@@ -26,9 +25,6 @@ export type ProjectControls = {
 /** Sidebar item: icon always, label only while the rail is expanded. */
 export function RailButton({ icon, label, ...props }: { icon: ReactNode; label: string } & Omit<ComponentProps<"button">, "children">) {
   return <button type="button" className="pw-rail-button" aria-label={label} title={label} {...props}>{icon}<span className="pw-label">{label}</span></button>;
-}
-function Mark() {
-  return <svg width={24} height={24} viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M5 29V13L18 6l13 7v16M5 13l13 7 13-7M18 20v15M11 16v16M25 16v16" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>;
 }
 function download(value: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: "application/json" }));
@@ -151,7 +147,6 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   return <div className="pw-shell" data-collapsed={collapsed || undefined}>
     <nav className="pw-projects" aria-label={t("Local projects")}>
       <div className="pw-projects-head">
-        <Link href="/" className="pw-brand" aria-label={t("muvilion home")} onClick={event => { event.preventDefault(); navigate("/"); }}><Mark/></Link>
         <button type="button" className="pw-rail-button pw-toggle" aria-expanded={!collapsed} aria-label={collapsed ? t("Show projects") : t("Hide projects")} title={collapsed ? t("Show projects") : t("Hide projects")} onClick={() => setCollapsed(value => !value)}><PanelLeftIcon/></button>
       </div>
       <RailButton icon={<PlusIcon/>} label={t("New project")} disabled={switching || starting} onClick={() => void newProject()}/>

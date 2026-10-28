@@ -155,3 +155,7 @@
 .ps-send:disabled{background:var(--hairline-strong)!important;opacity:1}
 .ps-muse-selection{margin:0 12px 8px;border:1px solid var(--hairline);border-radius:14px}
 @media(prefers-reduced-motion:reduce){.ps-muse-thinking{animation:none}}
+
+/* No top bar: actions live in the project sidebar, so give the workspace its own top inset. */
+.ps-simple-view .ps-workspace,.ps-detail-view .ps-workspace{padding-top:24px}
+@media(max-width:900px){.ps-simple-view .ps-workspace,.ps-detail-view .ps-workspace{padding-top:16px}}
