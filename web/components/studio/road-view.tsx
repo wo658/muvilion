@@ -86,7 +86,7 @@ export function RoadView({ world, shape, onStatus }: {
     </mesh>
     {marker && <mesh position={[marker.point.x - world.width / 2, 0.04, marker.point.y - world.depth / 2]} rotation-x={-Math.PI / 2} raycast={() => {}}>
       <ringGeometry args={[0.18, 0.25, 32]} />
-      <meshBasicMaterial color={marker.allowed ? TOKENS.accent : "#a34848"} side={DoubleSide} depthWrite={false} />
+      <meshBasicMaterial color={marker.allowed ? TOKENS.accent : TOKENS.bad} side={DoubleSide} depthWrite={false} />
     </mesh>}
   </>;
 }
