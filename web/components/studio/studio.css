@@ -198,3 +198,4 @@
 .ps-has-plan .ps-simple-summary .ps-design-issues{max-width:min(360px,60vw);margin:0;padding:0;border:0}
 .ps-has-plan .ps-scene-tools{top:12px;left:auto;right:12px;justify-content:flex-end}
 .ps-toolbar-divider{width:1px;align-self:stretch;margin:4px 2px;background:var(--hairline)}
+.ps-icon-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0!important}.ps-icon-button svg{width:18px;height:18px}

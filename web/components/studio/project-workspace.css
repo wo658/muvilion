@@ -15,6 +15,22 @@
 .pw-shell[data-collapsed] .pw-label{display:none}
 .pw-toggle{width:36px;justify-content:center;padding:0;color:var(--muted)}
 .pw-rail-alert{color:var(--bad)}
+.pw-recent{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0 0;padding:8px 0 0;border-top:1px solid var(--hairline);list-style:none}
+.pw-tile{display:grid;place-items:center;width:32px;height:32px;flex-shrink:0;border-radius:9px;background:var(--sunken);color:var(--ink-soft);font-size:11px;font-weight:600;letter-spacing:-.02em}
+button.pw-tile{cursor:pointer;border:1.5px solid transparent}
+button.pw-tile:hover{color:var(--ink);border-color:var(--hairline-strong)}
+button.pw-tile[aria-current=page]{background:var(--ink);color:var(--surface)}
+button.pw-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.pw-tile:disabled{opacity:.5;cursor:default}
+.pw-finder{width:280px;gap:8px;padding:8px}
+.pw-finder-list{display:flex;flex-direction:column;gap:1px;max-height:min(360px,60dvh);margin:0;padding:0;overflow-y:auto;list-style:none}
+.pw-finder-list button{display:flex;align-items:center;gap:10px;width:100%;padding:6px 8px;border-radius:8px;text-align:left;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.pw-finder-list button:hover,.pw-finder-list button:focus-visible{background:var(--sunken);color:var(--ink);outline:none}
+.pw-finder-list button[aria-current=page]{color:var(--ink);font-weight:500}
+.pw-finder-list .pw-tile{width:26px;height:26px;border-radius:7px;font-size:10px}
+.pw-finder-list .pw-label{flex:1;min-width:0}
+.pw-finder-list svg{width:15px;height:15px;color:var(--accent)}
+.pw-finder-empty{padding:8px;font-size:12px;color:var(--muted)}
 .pw-heading{margin:14px 9px 6px;font-size:11px;font-weight:500;color:var(--muted)}
 .pw-list{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto;margin:0;padding:0;list-style:none}
 .pw-list button{width:100%;padding:8px 10px;border-radius:8px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);cursor:pointer}
@@ -32,7 +48,7 @@
   .pw-projects .pw-rail-button{width:36px;justify-content:center;padding:0}
   .pw-projects .pw-label{display:none}
   .pw-actions,.pw-shell[data-collapsed] .pw-actions{flex-direction:row;margin:0 0 0 auto;padding:0}
-  .pw-heading{display:none}
+  .pw-heading,.pw-recent{display:none}
   .pw-list,.pw-status{flex-basis:100%}
   .pw-list{max-height:180px}
 }

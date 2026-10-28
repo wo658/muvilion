@@ -306,5 +306,8 @@
   "Creating project…": "프로젝트를 만드는 중…",
   "Start with an empty project": "빈 프로젝트로 시작",
   "The project in this link no longer exists.": "이 링크의 프로젝트를 찾을 수 없어요. 새로 시작해 주세요.",
-  "Sample drawing not found.": "샘플 도면을 찾을 수 없어요."
+  "Sample drawing not found.": "샘플 도면을 찾을 수 없어요.",
+  "Search projects": "프로젝트 검색",
+  "No matching projects": "일치하는 프로젝트가 없어요",
+  "Recent projects": "최근 프로젝트"
 }
