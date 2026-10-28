@@ -146,7 +146,7 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
         {interpretError && <p role="alert" className="mt-3 text-xs leading-relaxed text-bad">{interpretError}</p>}
         {proposal && <div className="mt-3 rounded-lg border border-hairline bg-sunken p-3">
           <p className="text-xs leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
-          <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? `${proposal.document.objects?.length ?? 0} objects proposed. Applying replaces the current concept objects; walls and scale stay unchanged.` : `${changed} line classifications suggested. Coordinates and dimensions stay unchanged.`}</p>
+          <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? `${proposal.document.zones?.length ?? 0} space zones and ${proposal.document.objects?.length ?? 0} installations proposed. Applying replaces this design; source walls, scale and ceiling conditions stay unchanged.` : `${changed} line classifications suggested. Coordinates and dimensions stay unchanged.`}</p>
           {stale && <p className="mt-2 text-xs text-amber">The drawing changed. Run analysis again before applying.</p>}
           <div className="mt-3 flex gap-2"><button disabled={Boolean(stale)} className="rounded-md bg-ink px-3 py-1.5 text-xs text-surface disabled:opacity-40" onClick={() => { if (!stale) { onDocumentChange(proposal.document); setProposal(null); setNotice("Proposal applied. Review the geometry against your source."); } }}>Apply suggestions</button><button className="px-2 text-xs text-muted" onClick={() => setProposal(null)}>Discard</button></div>
         </div>}
@@ -160,10 +160,10 @@ export function StudioChat({ document, onDocumentChange, simple = false }: {
       </div>
       <form className="border-t border-hairline p-4" onSubmit={(event) => { event.preventDefault(); send(input); }}>
         <label htmlFor="studio-muse-input" className="sr-only">Ask Muse about your drawing</label>
-        <textarea id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder="Ask about the drawing or describe your event…" className="w-full resize-none rounded-lg border border-hairline bg-bg p-3 text-sm outline-none focus:border-accent" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
+        <textarea id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder="Describe your space, zones, furnishings or overhead design…" className="w-full resize-none rounded-lg border border-hairline bg-bg p-3 text-sm outline-none focus:border-accent" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <button type="button" disabled={!document?.scaleConfirmed || !input.trim() || interpreting || busy} onClick={() => void interpret("design")} className="mt-2 w-full rounded-lg border border-accent px-3 py-2 text-xs text-accent disabled:opacity-40">Draft layout with Muse</button>
         <p className="mt-1 text-[10px] text-muted">Confirm scale, then describe a layout above to create or revise a concept.</p>
-        <div className="mt-2 flex items-center justify-between gap-2"><p className="text-[10px] text-muted">Chat advises. Draft a layout to propose editable objects.</p>{busy ? <button type="button" onClick={() => void stop()} className="rounded-md border border-hairline px-3 py-1.5 text-xs">Stop</button> : <button type="submit" disabled={!input.trim()} className="rounded-md bg-ink px-3 py-1.5 text-xs text-surface disabled:opacity-40">Send ↗</button>}</div>
+        <div className="mt-2 flex items-center justify-between gap-2"><p className="text-[10px] text-muted">Chat advises. Draft a layout to propose editable zones and installations.</p>{busy ? <button type="button" onClick={() => void stop()} className="rounded-md border border-hairline px-3 py-1.5 text-xs">Stop</button> : <button type="submit" disabled={!input.trim()} className="rounded-md bg-ink px-3 py-1.5 text-xs text-surface disabled:opacity-40">Send ↗</button>}</div>
       </form>
     </section>
   );
