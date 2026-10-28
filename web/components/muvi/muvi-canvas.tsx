@@ -59,6 +59,7 @@ export default function MuviCanvas(props: Props) {
   return <Boundary><Canvas
     shadows={!compact} dpr={[1, 1.5]} frameloop={paused ? "demand" : "always"}
     camera={{ position: compact ? [0, 1.4, 5.1] : [2.4, 2.0, 5.4], fov: compact ? 30 : 36 }}
+    onCreated={({ camera }) => { camera.lookAt(0, 1.05, 0); }}
     fallback={<Fallback/>}
   >
     <ambientLight intensity={0.9}/>

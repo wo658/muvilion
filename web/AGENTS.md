@@ -10,15 +10,20 @@ The root `AGENTS.md` also applies here.
   at runtime entry points. Never import them from client components or browser utilities.
 - Keep shared schemas and pure geometry/transformation functions in `lib/`. IndexedDB,
   browser file handling, and view state belong on the browser side, not in `server/`.
-- SQLite is authoritative for project state and uploaded assets. IndexedDB/localStorage
-  access is limited to legacy migration; do not add new browser persistence for projects.
+- SQLite is authoritative for project state and uploaded assets. Do not add browser
+  persistence (IndexedDB/localStorage) for projects.
 - Keep secrets, model configuration, filesystem access, and Python connection configuration
   on the server. Do not expose them through `NEXT_PUBLIC_*` variables.
 - Route Python requests through the common engine client. Preserve request cancellation,
   operation-specific timeouts, and response validation when migrating existing calls.
 - Model configuration lives in `server/agent`; drawing/model workflows in `server/plans`;
-  Python transport in `server/engine`; optional local examples in `server/examples`.
+  Python transport in `server/engine`; project storage and first-run sample seeding in
+  `server/projects`.
   `lib/engine` retains shared contracts and mock computation, not HTTP transport.
+- The unified composer calls `/api/plans/intent` before dispatching chat, design, or
+  interpretation. Keep routing decisions server-side, validate model output and enforce
+  prerequisites in code. Ambiguous requests ask for clarification; failures must not
+  fall back to a drawing mutation. Changes remain proposals until the user applies them.
 - Unit tests use a test-only `server-only` alias. Next.js compilation must also pass to
   verify that server code is not imported into the client module graph.
 - Keep public HTTP request/response shapes and example behavior stable during structural

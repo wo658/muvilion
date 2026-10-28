@@ -43,17 +43,13 @@ Studio controls use shadcn Base UI primitives mapped to Muse semantic colors. An
 
 Muse drafts zones and installations with explicit review/Apply, preserving source evidence, scale, floor boundary and ceiling review. This uses live model proposals with deterministic geometry checks; the legacy OR-Tools BoothSpec packing engine is not a general 3D design solver and is not invoked here. Ceiling surfaces are level and objects schematic; sloped roofs, detailed trusses, lighting simulation and structural/rigging verification are not implemented.
 
-## Local real drawings
+## Sample projects
 
-Place local PDFs under root `DemoData/` or set `DEMO_DATA_DIR`:
-
-- `san-jose-mcenery-floor-plan-and-specs.pdf`: Facebook F8 venue brochure; useful context, not detailed architectural geometry.
-- `coex-hall-a-2024.pdf`: official COEX Hall A dimensioned plan, available from [COEX floor plans](https://business.coex.co.kr/exhibition-hall/coex-lease-info/floor-plan/).
-- `fort-mason-ground-floor.pdf`: ground-floor crop of the official Festival Pavilion dimensions sheet. `engine/scripts/prepare_fort_mason.py` prepares the local asset. Adjacent source metadata records crop coordinates and manually checked dimension references.
-- `fort-mason-reviewed-plan.json`: saved live Muse recognition with separately reviewed scale and floor outline; accessible from the example selector. Raw model results and the evaluation report are kept alongside it. This local artifact is required for the saved 3D view; uploading the PDF starts a fresh review.
-- `fort-mason-spatial-design-plan.json`: actual Muse-generated booth-free concept with 3 zones and 10 installations, available as **Fort Mason · space design demo**. Its level 6 m ceiling and wall extrusion are estimated design assumptions, not surveyed dimensions. The adjacent report records evaluation and limitations.
-
-PDFs are local evaluation assets, not bundled or committed. Source metadata lives alongside them. The UI reports missing files rather than supplying a synthetic substitute.
+On first start with an empty project database, the server seeds one project per drawing listed in
+`data/samples/samples.json` (sources and redistribution notes in `data/samples/README.md`). Originals
+are stored in SQLite; Studio extracts each drawing the first time its project opens, so the Python
+engine must be running. Set `SAMPLES_DIR` to seed from another directory. Existing databases are never
+reseeded.
 
 ## Checks
 
@@ -65,12 +61,6 @@ pnpm build
 ```
 
 Engine checks: `uv run pytest`, `uv run ruff check .`. Regenerate engine OpenAPI types with `pnpm gen:engine-types` after contract changes.
-
-### Meta / Muse exhibition concept
-
-Choose **Meta / Muse · exhibition concept** for the curated Fort Mason demo: 76 installations across keynote seating, AI demo stations, a lounge and circulation. Original procedural graphics reference the official sources in `fixtures/meta-muse-sources.json`; no third-party photos are redistributed. This is an independent concept, not a reconstruction of a Meta event.
-
-Regenerate local DemoData from the reviewed floor plan with `node --import tsx scripts/build-meta-showcase.mts /absolute/path/to/DemoData` from web. The generator checks the plan schema and design warnings before writing. The optional `visualStyle` and per-object `appearance` preserve old imports and keep the same bounds for selection, editing and collision checks; furniture collision remains conservative bounding boxes. Ceiling height remains an estimated 6 m, lighting is illustrative, and venue reconstruction uncertainty remains unchanged.
 
 ## Project sources
 
@@ -133,13 +123,9 @@ work on the local machine.
 
 `app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns
 model configuration; `server/plans` executes drawing workflows; `server/engine` is the
-single Python transport (including multipart extraction); `server/examples` loads local
-example assets. Runtime entry points import `server-only`. Shared schemas and pure
+single Python transport (including multipart extraction); `server/projects` stores projects
+and seeds samples. Runtime entry points import `server-only`. Shared schemas and pure
 transformations stay in `lib/`.
-
-Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
-in a worktree or packaged install); the default is `../DemoData` relative to the web
-working directory. Missing examples return 404 and users can upload their own drawings.
 
 ### Chat controls
 
@@ -165,3 +151,18 @@ Projects, assets and app-level credentials share this database. `server/database
 the connection and schema; `server/projects` owns transactional project persistence.
 Project endpoints use the same local-only request guard as settings. To copy the complete
 database, stop the app first; use project export when sharing a project without credentials.
+
+## Unified message routing
+
+The composer sends the message, recent conversation, selected item, and a compact drawing
+summary to `/api/plans/intent`. `server/plans/intent.ts` uses the configured model to choose
+chat, design, interpretation, or clarification. The browser dispatches the existing
+workflow; regional analysis/cropping continues to run in the browser. Design requests
+use the shared Designer Muse tool loop. Intent classification itself selects one workflow
+and does not create a background job. Each ordinary message adds one classification model call.
+
+The intent layer checks drawing availability, confirmed scale for design, and unknown
+lines for interpretation. Invalid/failed classification never defaults to a mutation.
+Design/analysis still require explicit Apply, and stale proposals cannot be applied.
+The existing analysis shortcut remains available; the main Send action routes automatically.
+Meta supports `toolChoice: "auto"`; routing accepts exactly one validated tool result.

@@ -23,8 +23,12 @@ function shouldPause() { return document.hidden || matchMedia("(prefers-reduced-
 const serverPaused = () => true;
 
 export function MuviGreeting({ thinking = false }: { thinking?: boolean }) {
+  const { locale } = useI18n();
   const paused = useSyncExternalStore(subscribe, shouldPause, serverPaused);
-  return <div className="mx-auto h-40 w-48" role="img" aria-label="Muvi"><MuviCanvas compact motion={thinking ? "think" : "hello"} paused={paused}/></div>;
+  return <Link href="/muvi" target="_blank" rel="noopener noreferrer" className="mx-auto flex w-48 shrink-0 flex-col items-center" aria-label={locale === "ko" ? "뮤비 3D 만나기 (새 탭)" : "Meet Muvi in 3D (new tab)"}>
+    <div className="h-36 w-48" aria-hidden="true"><MuviCanvas compact motion={thinking ? "think" : "hello"} paused={paused}/></div>
+    <span className="text-xs text-muted-foreground">{locale === "ko" ? "뮤비 만나기 ↗" : "Meet Muvi ↗"}</span>
+  </Link>;
 }
 
 const labels = {

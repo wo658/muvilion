@@ -8,7 +8,7 @@ export async function callProject(url: string, options?: RequestInit) {
 }
 export const listProjects = async () => z.array(ProjectSummary).parse(await callProject("/api/projects"));
 export const loadProject = async (id: string) => Project.parse(await callProject(`/api/projects/${encodeURIComponent(id)}`));
-export const createProject = async (name: string, state?: ProjectState, legacy = false, assets: unknown[] = []) => Project.parse(await callProject("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, state, legacy, assets }) }));
+export const createProject = async (name: string, state?: ProjectState, assets: unknown[] = []) => Project.parse(await callProject("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, state, assets }) }));
 export const saveProject = async (id: string, name: string, revision: number, state: ProjectState) => ProjectSummary.parse(await callProject(`/api/projects/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, revision, state }) }));
 export async function uploadOriginal(id: string, file: File): Promise<string> {
   const body = new FormData(); body.set("file", file);

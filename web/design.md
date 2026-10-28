@@ -6,7 +6,7 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - Before opening a drawing, center the conversation. Use one greeting and at most two optional prompts.
 - With a drawing, share the workspace between conversation and canvas. Put conversation first on narrow screens.
-- Keep sources and application settings in dialogs. Reveal preparation under Drawing settings and analysis under Drawing tools.
+- Keep sources and application settings in dialogs. Reveal preparation under Drawing settings; Muse starts analysis from chat requests.
 - Remove marketing subtitles, decorative workflow steps, duplicate status copy and implementation details. Preserve actionable errors, scale warnings, review coverage and explicit proposal approval.
 - Send is conversational. Draft a layout creates a reviewable proposal; Apply changes commits it. Never imply chat itself performed an edit.
 

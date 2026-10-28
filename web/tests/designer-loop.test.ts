@@ -32,6 +32,15 @@ describe('Designer Muse SDK loop',()=>{
     expect(JSON.stringify(model.doGenerateCalls[0].prompt)).toContain('Korean');
     expect(JSON.stringify(model.doGenerateCalls)).not.toContain('stored-test-key');
   });
+  it('never sends a named tool choice and narrows the final step to submit_design',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[...Array.from({length:7},()=>call('review_design',proposal)),call('submit_design',proposal)]});handle.model=model;
+    await designPlan(input(),new AbortController().signal);
+    expect(model.doGenerateCalls).toHaveLength(8);
+    expect(model.doGenerateCalls.every(c=>c.toolChoice?.type==='auto')).toBe(true);
+    const final=model.doGenerateCalls[7];
+    expect(final.tools?.map(t=>t.name)).toEqual(['submit_design']);
+    expect(JSON.stringify(final.prompt)).toContain('Final step: call submit_design');
+  });
   it('rejects submission without review',async()=>{
     handle.model=new MockLanguageModelV4({doGenerate:[call('submit_design',proposal)]});
     await expect(designPlan(input(),new AbortController().signal)).rejects.toThrow('not been visually reviewed');

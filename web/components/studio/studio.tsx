@@ -18,6 +18,7 @@ import { SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
 import { ProjectWorkspace, type ProjectControls } from "./project-workspace";
 import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
+import { SettingsIcon } from "lucide-react";
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
@@ -41,7 +42,9 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const boothManager = useRef<HTMLDialogElement>(null);
     const [boothsOpen, setBoothsOpen] = useState(false);
     const { t, locale } = useI18n();
-    const sourceManager = useRef<HTMLDialogElement>(null);
+    const [settings, setSettings] = useState<string | null>(null);
+    // Start with Muse docked on phones so the plan stays visible; the editor only renders client-side.
+    const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 800px)").matches);
     const [sources, setSources] = useState<SourceLibrary>(project.state.sources);
     const sourcesRef = useRef(sources);
     const sourcesReady = true;
@@ -88,6 +91,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const save = useCallback((next: PlanDocument | null) => {
         controls.change({ projectVersion: 1, document: next, sources: sourcesRef.current, originalDrawingId: originalDrawing.current });
     }, [controls]);
+    const extractRef = useRef<typeof extract | null>(null);
     useEffect(() => {
         if (!project.state.originalDrawingId) return;
         const controller = new AbortController();
@@ -95,10 +99,15 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             .then(async response => {
                 if (!response.ok) throw new Error("Could not restore the original drawing file.");
                 const blob = await response.blob();
-                if (!controller.signal.aborted && originalDrawing.current === project.state.originalDrawingId) setSourceFile(new File([blob], project.state.document?.source.name ?? "drawing.pdf", { type: blob.type }));
+                const stored = /filename\*=UTF-8''([^;]+)/.exec(response.headers.get("Content-Disposition") ?? "")?.[1];
+                const file = new File([blob], project.state.document?.source.name ?? (stored ? decodeURIComponent(stored) : "drawing.pdf"), { type: blob.type });
+                if (controller.signal.aborted || originalDrawing.current !== project.state.originalDrawingId) return;
+                // Seeded samples keep only the original; read it the first time the project opens.
+                if (!project.state.document) void extractRef.current?.(file, project.state.originalDrawingPage ?? 1, project.state.originalDrawingId!);
+                else setSourceFile(file);
             }).catch(error => { if (!controller.signal.aborted) setNotice(error.message); });
         return () => controller.abort();
-    }, [project.id, project.state.originalDrawingId, project.state.document?.source.name]);
+    }, [project.id, project.state.originalDrawingId, project.state.document, project.state.originalDrawingPage]);
     const change = useCallback((next: PlanDocument) => {
         const previous = planRef.current;
         if (previous)
@@ -124,7 +133,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setChatKey((k) => k + 1);
         save(next);
     };
-    const extract = async (file: File, page = 1) => {
+    const extract = async (file: File, page = 1, storedAssetId?: string) => {
         if (file.size > 20 * 1024 * 1024) {
             setError(t("Please choose a file smaller than 20 MB."));
             return;
@@ -140,7 +149,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setError(null);
         setSourceFile(file);
         try {
-            const assetId = await controls.upload(file);
+            const assetId = storedAssetId ?? await controls.upload(file);
             if (controller.signal.aborted) return;
             const form = new FormData();
             form.set("file", file);
@@ -166,69 +175,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             }
         }
     };
-    const loadDemo = async (venue: "mcenery" | "coex" | "fort-mason" = "mcenery") => {
-        request.current?.abort();
-        const controller = new AbortController();
-        request.current = controller;
-        setBusy(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/plans/demo?venue=${venue}`, { signal: controller.signal });
-            if (!response.ok)
-                throw new Error(t("The demo PDF is unavailable. Upload a drawing to continue."));
-            const file = new File([await response.blob()], venue === "fort-mason" ? "Fort Mason Ground Floor.pdf" : venue === "coex" ? "COEX Hall A 2024.pdf" : "McEnery Convention Center.pdf", { type: "application/pdf" });
-            if (!controller.signal.aborted)
-                await extract(file);
-        }
-        catch (err) {
-            if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : t("Could not load the demo."));
-        }
-        finally {
-            if (request.current === controller) {
-                setBusy(false);
-                request.current = null;
-            }
-        }
-    };
-    const loadReviewedDemo = async (artifact: "reviewed" | "spatial" | "showcase" = "reviewed") => {
-        request.current?.abort();
-        const controller = new AbortController();
-        request.current = controller;
-        setBusy(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/plans/demo?venue=fort-mason&artifact=${artifact}`, { signal: controller.signal });
-            if (!response.ok)
-                throw new Error(t("The saved Fort Mason review is unavailable. Load the source drawing instead."));
-            const next = PlanDocumentSchema.parse(await response.json());
-            if (!controller.signal.aborted) {
-                originalDrawing.current = null;
-                openDocument(next);
-                setSourceFile(null);
-            }
-        }
-        catch (err) {
-            if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : t("Could not load saved review."));
-        }
-        finally {
-            if (request.current === controller) {
-                setBusy(false);
-                request.current = null;
-            }
-        }
-    };
-    const openExample = (value: string) => {
-        if (value === "fort-mason-showcase")
-            void loadReviewedDemo("showcase");
-        else if (value === "fort-mason-spatial")
-            void loadReviewedDemo("spatial");
-        else if (value === "fort-mason-reviewed")
-            void loadReviewedDemo();
-        else if (value === "mcenery" || value === "coex" || value === "fort-mason")
-            void loadDemo(value);
-    };
+    useEffect(() => { extractRef.current = extract; });
     const undo = () => {
         const previous = history[history.length - 1];
         if (!previous)
@@ -319,17 +266,23 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     };
     const calibrated = document?.scaleConfirmed && document.widthMeters && document.heightMeters;
     return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
-    <header className="ps-header">
-      <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label={t("muvilion home")}><Mark small/><span>muvilion</span></Link>
-      <div className="ps-header-actions">
-        <Link href="/settings" onClick={event => { event.preventDefault(); controls.navigate("/settings"); }}>API key</Link>
+    <div className="ps-topbar">
+      <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label={t("muvilion home")}><Mark small/></Link>
+      <div className="ps-topbar-actions">
         <Button variant="ghost" onClick={() => { setBoothsOpen(true); boothManager.current?.showModal(); }}>외부 참가 부스</Button>
-        <AppSettings/>
-        <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>{t("Sources")}</Button>
-        <Button variant="ghost" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button>
+        <Button variant="ghost" className="ps-icon-button" aria-label={t("Settings")} title={t("Settings")} onClick={() => setSettings("general")}><SettingsIcon/></Button>
       </div>
-    </header>
-    {controls.toolbar}
+    </div>
+    <AppSettings section={settings} onSectionChange={setSettings} sections={[
+      { id: "sources", label: t("Sources"), content: <>
+        <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSettings(null); input.current?.click(); }}/>
+        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
+      </> },
+      { id: "project", label: t("Project"), content: <div className="flex flex-col gap-6">
+        <section className="flex flex-col gap-2"><h3 className="font-semibold">{t("Export project")}</h3><p className="ps-help">{t("Download this project and its original files as one JSON bundle.")}</p><Button className="self-start" variant="primary" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button></section>
+        <section className="flex flex-col gap-2"><h3 className="font-semibold">{t("Import project")}</h3><p className="ps-help">{t("Open an exported JSON bundle as a new project. The current project is kept.")}</p><Button className="self-start" disabled={!sourcesReady} onClick={() => { setSettings(null); restoreInput.current?.click(); }}>{t("Import project")}</Button></section>
+      </div> },
+    ]}/>
     <dialog ref={boothManager} className="ps-source-manager" style={{ width: "min(1120px, 96vw)", maxWidth: "96vw" }} aria-labelledby="booth-manager-title" onClose={() => setBoothsOpen(false)}>
       <header><h2 id="booth-manager-title">외부 참가 부스</h2><Button onClick={() => boothManager.current?.close()} aria-label="부스 관리 닫기">닫기</Button></header>
       {boothsOpen && (document ? <OrganizerBooths document={document} onDocumentChange={change}/> : <div className="ps-section"><h3>공간에서 참가자의 부스까지</h3><p>도면의 부스 구역을 공개하고 참가비를 설정하세요. 외부 참가자의 신청을 승인하면 전용 부스 디자인 작업실이 열립니다.</p><Button variant="primary" onClick={() => openDocument(boothExample())}>참가 부스 예시로 시작</Button><p className="ps-help">직접 제작한 체험용 공간입니다. 도면을 업로드한 뒤에도 같은 흐름을 사용할 수 있습니다.</p></div>)}
@@ -340,14 +293,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         restore(await file.text());
     else if (file)
         setError(t("Plan file must be smaller than 32 MB.")); e.target.value = ""; }}/>
-    <dialog ref={sourceManager} className="ps-source-manager" aria-labelledby="sources-manager-title">
-      <header><h2 id="sources-manager-title">{t("Sources")}</h2><Button onClick={() => sourceManager.current?.close()} aria-label={t("Close Sources")}>{t("Close")}</Button></header>
-        <div className="ps-section"><NativeSelect className="ps-venue-picker" aria-label={t("Example drawing")} value="" disabled={busy} onChange={(e) => { sourceManager.current?.close(); openExample(e.target.value); }}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : t("Choose an example")}</option><option value="fort-mason-showcase">{t("Meta / Muse · exhibition concept")}</option><option value="fort-mason-spatial">{t("Fort Mason · space design demo")}</option><option value="fort-mason-reviewed">{t("Fort Mason · reviewed space")}</option><option value="fort-mason">{t("Fort Mason · source drawing")}</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">{t("COEX Hall A · detailed plan")}</option></NativeSelect></div>
-        <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { sourceManager.current?.close(); input.current?.click(); }}/>
-        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
-        <div className="ps-section"><Button disabled={!sourcesReady} onClick={() => { sourceManager.current?.close(); restoreInput.current?.click(); }}>{t("Import project")}</Button></div>
-
-    </dialog>
     <div className="ps-workspace">
       <aside className="ps-sidebar" hidden={!details}>
         <div id="drawing-details" className="ps-drawing-controls" hidden={!details}>
@@ -387,9 +332,10 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
         {details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
-      <aside className="ps-right-panel">
-        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => sourceManager.current?.showModal()} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} simple/>
+      <aside id="muse-panel" className="ps-right-panel" data-collapsed={document && !chatOpen ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
+        <StudioChat sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
       </aside>
+      {document && !chatOpen && <button type="button" className="ps-muse-launcher" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><span className="ps-muse-orb" aria-hidden="true"/><span><strong>Muse</strong><small>{selection ? selection.label : t("Talk to Muse")}</small></span></button>}
     </div>
     {document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 

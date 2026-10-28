@@ -109,3 +109,33 @@
  .ps-suggestions{flex-direction:column}
  .ps-greeting{gap:20px}
 }
+
+/* Slim top bar: brand, project switcher, booths and settings. API key, sources and export live in settings. */
+.ps-topbar{display:flex;align-items:center;gap:8px;padding:10px 24px;flex-shrink:0}
+.ps-topbar .ps-brand{color:var(--accent);flex-shrink:0}
+.ps-topbar>div[aria-label]{flex:1;flex-wrap:nowrap;padding:0;min-width:0}
+.ps-topbar>div[aria-label] input{max-width:220px}
+.ps-topbar>div[aria-label] [role=status]{color:var(--muted);font-size:12px;white-space:nowrap}
+.ps-topbar-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+@media(max-width:799px){.ps-topbar{padding:10px 16px;flex-wrap:wrap;justify-content:space-between}.ps-topbar>div[aria-label]{order:3;flex-basis:100%;flex-wrap:wrap}.ps-topbar>div[aria-label]>select,.ps-topbar>div[aria-label]>input{flex:1 1 140px;max-width:none}}
+
+/* Muse dock: with a plan open the chat floats over the canvas and can collapse into a launcher. */
+.ps-has-plan.ps-simple-view .ps-workspace{grid-template-columns:minmax(0,1fr)}
+.ps-has-plan.ps-detail-view .ps-workspace{grid-template-columns:240px minmax(0,1fr)}
+.ps-has-plan .ps-right-panel{position:fixed;right:24px;bottom:24px;z-index:40;width:min(400px,calc(100vw - 32px));height:min(680px,calc(100dvh - 96px));max-height:none;min-height:0;border:1px solid var(--hairline);border-radius:20px;overflow:hidden;box-shadow:0 24px 64px -24px var(--shadow-color);transform-origin:bottom right;transition:opacity .18s ease,transform .18s ease}
+.ps-has-plan .ps-right-panel>section.ps-conversation{height:100%;min-height:0}
+.ps-has-plan .ps-right-panel[data-collapsed]{opacity:0;transform:scale(.92) translateY(12px);pointer-events:none;visibility:hidden;transition:opacity .18s ease,transform .18s ease,visibility 0s .18s}
+.ps-has-plan .ps-conversation>header{padding:14px 16px 14px 20px}
+.ps-has-plan .ps-greeting{gap:18px;padding:16px 0}
+.ps-has-plan .ps-greeting h1{font-size:20px}
+.ps-has-plan .ps-greeting .ps-muse-orb{width:44px;height:44px}
+.ps-muse-launcher{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;gap:12px;max-width:min(320px,calc(100vw - 32px));padding:8px 20px 8px 8px;border:1px solid var(--hairline);border-radius:999px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;box-shadow:0 16px 40px -20px var(--shadow-color);transition:transform .15s ease}
+.ps-muse-launcher:hover{transform:translateY(-2px)}
+.ps-muse-launcher:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ps-muse-launcher .ps-muse-orb{width:40px;height:40px}
+.ps-muse-launcher>span:last-child{display:flex;flex-direction:column;min-width:0}
+.ps-muse-launcher strong{font-size:13px;font-weight:600}
+.ps-muse-launcher small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:799px){.ps-has-plan .ps-right-panel{right:8px;left:8px;bottom:8px;width:auto;height:min(620px,calc(100dvh - 80px))}.ps-muse-launcher{right:16px;bottom:16px}.ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}}
+@media(prefers-reduced-motion:reduce){.ps-has-plan .ps-right-panel,.ps-muse-launcher{transition:none}}
+.ps-icon-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0!important}.ps-icon-button svg{width:18px;height:18px}
