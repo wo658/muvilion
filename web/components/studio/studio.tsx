@@ -6,7 +6,7 @@ import Link from "next/link";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { AppSettings } from "../app-settings";
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { cropPlan } from "@/lib/plans/crop";
 import { boothExample } from "@/lib/booths/example";

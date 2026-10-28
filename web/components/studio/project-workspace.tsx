@@ -9,6 +9,9 @@ import { ProjectSession } from "@/lib/projects/session";
 import { readLegacySources, clearLegacySources } from "@/lib/projects/legacy";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 
+import { useI18n } from "@/lib/i18n/provider";
+import { localizeMessage } from "@/lib/i18n/messages";
+
 const LEGACY_PLAN = "pavilion.plan-studio.v1";
 export type ProjectControls = {
   change: (state: ProjectState) => void;
@@ -24,6 +27,7 @@ function download(value: unknown) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ project: Project; controls: ProjectControls }> }) {
+  const { t, locale } = useI18n();
   const [project, setProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [name, setName] = useState("");
@@ -88,7 +92,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
     catch (error) { setError(error instanceof Error ? error.message : "Could not open project."); }
     finally { setSwitching(false); }
   }
-  if (!project) return <main className="p-6"><h1>muvilion</h1><p role="status">{status}</p>{error && <><p role="alert">{error}</p><Button onClick={() => setAttempt(value => value + 1)}>Retry opening projects</Button><Button onClick={() => { skipLegacy.current = true; initial.current = null; const url = new URL(window.location.href); url.searchParams.delete("project"); window.history.replaceState(null, "", url); setAttempt(value => value + 1); }}>Open SQLite projects without browser import</Button></>}</main>;
+  if (!project) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button><Button onClick={() => { skipLegacy.current = true; initial.current = null; const url = new URL(window.location.href); url.searchParams.delete("project"); window.history.replaceState(null, "", url); setAttempt(value => value + 1); }}>{t("Open SQLite projects without browser import")}</Button></>}</main>;
   const controls: ProjectControls = {
     change: state => { if (session.current?.project.id === project.id) changed(state); },
     navigate: href => { void flush().then(() => window.location.assign(href)).catch(() => {}); },
@@ -115,12 +119,12 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       }
       download({ ...bundle, name: current.name, state: current.state, assets: bundle.assets.filter(file => ids.includes(file.id)) });
     },
-    toolbar: <div className="flex flex-wrap items-center gap-2 p-2" aria-label="Local projects">
-      <NativeSelect aria-label="Open project" value={project.id} disabled={switching} onChange={event => void switchProject(event.target.value)}>{projects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect>
-      <Input aria-label="Project name" value={name} maxLength={100} onBlur={() => { if (!name.trim()) setName(session.current!.name); }} onChange={event => { setName(event.target.value); if (event.target.value.trim()) changed(session.current!.state, event.target.value.trim()); }} />
-      <Button disabled={switching} onClick={() => void switchProject()}>New project</Button>
-      <span role="status">{status}</span>
-      {error && <><span role="alert">{error}</span><Button onClick={() => { if (session.current) session.current.failure = null; void flush().catch(() => {}); }}>Retry save</Button></>}
+    toolbar: <div className="flex flex-wrap items-center gap-2 p-2" aria-label={t("Local projects")}>
+      <NativeSelect aria-label={t("Open project")} value={project.id} disabled={switching} onChange={event => void switchProject(event.target.value)}>{projects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect>
+      <Input aria-label={t("Project name")} value={name} maxLength={100} onBlur={() => { if (!name.trim()) setName(session.current!.name); }} onChange={event => { setName(event.target.value); if (event.target.value.trim()) changed(session.current!.state, event.target.value.trim()); }} />
+      <Button disabled={switching} onClick={() => void switchProject()}>{t("New project")}</Button>
+      <span role="status">{localizeMessage(locale, status)}</span>
+      {error && <><span role="alert">{localizeMessage(locale, error)}</span><Button onClick={() => { if (session.current) session.current.failure = null; void flush().catch(() => {}); }}>{t("Retry save")}</Button></>}
     </div>,
   };
   return <div inert={switching || undefined}><Editor key={project.id} project={project} controls={controls}/></div>;
