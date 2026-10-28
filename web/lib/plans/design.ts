@@ -9,13 +9,13 @@ export function objectBounds(object: Footprint, document: PlanDocument) {
   const depth = (object.rotation === 90 ? object.width : object.depth) / (document.heightMeters ?? 1);
   return { x: object.x - width / 2, y: object.y - depth / 2, width, height: depth };
 }
-function overlaps(a: Bounds, b: Bounds) {
+export function overlaps(a: Bounds, b: Bounds) {
   return a.x < b.x + b.width - EPS && a.x + a.width > b.x + EPS && a.y < b.y + b.height - EPS && a.y + a.height > b.y + EPS;
 }
 function contains(a: Bounds, b: Bounds) {
   return b.x >= a.x - EPS && b.y >= a.y - EPS && b.x + b.width <= a.x + a.width + EPS && b.y + b.height <= a.y + a.height + EPS;
 }
-function segmentHitsRect(start: Point, end: Point, rect: Bounds) {
+export function segmentHitsRect(start: Point, end: Point, rect: Bounds) {
   const dx = end.x - start.x, dy = end.y - start.y;
   let t0 = 0, t1 = 1;
   for (const [p, q] of [[-dx, start.x - rect.x], [dx, rect.x + rect.width - start.x], [-dy, start.y - rect.y], [dy, rect.y + rect.height - start.y]]) {

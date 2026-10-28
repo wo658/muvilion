@@ -47,3 +47,5 @@ engine/.cache/
 /web/data/
 *.sqlite
 *.sqlite-*
+# Local participant records (contains contact details)
+web/.data/
