@@ -73,3 +73,5 @@ button.pw-tile:disabled{opacity:.5;cursor:default}
 .pw-start-links{display:flex;justify-content:center;gap:8px}
 @media(max-width:640px){.pw-start-options{grid-template-columns:1fr}}
 .pw-projects{padding-top:14px}
+/* The rail sits on the canvas background so only the Muse panel reads as a separate column. */
+.pw-projects{background:var(--bg);border-right:0}
