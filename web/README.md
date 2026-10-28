@@ -24,7 +24,7 @@ Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignor
 - Muse interprets fixed line IDs using 4×4 spatial regions, padded image crops and batches of up to 250 candidates, with at most three requests in flight. Every selected candidate is assigned once; default minimum length is 12 preview pixels (adjustable 2–24). Shorter evidence is preserved and explicitly reported as deferred. Long new wall candidates (at least 12% of the shorter preview dimension) undergo a second pass against the full-page image to reject floor trenches and grid lines; unchecked or rejected long walls stay unknown. Short room walls retain the regional result, because full-page downscaling obscures their detail. Failures/cancellation retain partial proposals without applying them automatically.
 - Derived 3D walls merge collinear overlapping evidence and gaps up to 5 mm after scale confirmation. Conservative parallel pairs infer thickness; source IDs and geometry remain available. Door-size gaps and ambiguous edge triples remain separate. Heights stay provisional.
 - Muse also proposes booth/stage/lounge objects; geometry checks report overlap, wall intersections and bounds.
-- SVG review + React Three Fiber preview; JSON import/export and browser local storage.
+- SVG review + React Three Fiber preview; JSON import/export and local SQLite projects.
 - Trace a simple interior floor polygon in the studio drawing settings after confirming scale. It defines usable floor and ceiling surfaces without inventing walls. Cropping clears scale and floor review.
 
 Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Crowd simulation, registration queues and the old replay/review APIs have been removed. The Python layout solver, validation rules and walkable-area geometry remain available for future integration.
@@ -78,7 +78,11 @@ The header Sources button opens a separate material manager storing concept imag
 
 Images are resized locally. Planning PDFs are rendered and text-extracted through the existing Python extraction service, with every page included (up to 12 pages, 20 MB per upload). Scanned PDFs provide page images even when no text is extractable. DOCX/PPTX are not supported; export these to PDF first. The library permits 12 references and a 10 MB serialized content budget.
 
-Sources and selection state are saved in browser IndexedDB for this local workspace; replacing the active drawing retains the library. Export project downloads a versioned JSON envelope with the plan, source previews/text/notes and selection state. Import project restores it, including source-only projects. Legacy plan JSON remains importable. Original binary files are not archived; keep originals separately. Browser storage is local, not a server backup.
+SQLite is the authoritative store for named projects, drawing geometry and edits, source previews/text/notes, and selection state. Original uploaded drawings and references are stored as BLOBs alongside preview images in the same database. Replacing a drawing retains the project's reference library. The toolbar creates, names and switches projects; edits autosave with revision checks to prevent another tab's changes from being silently overwritten. Failed saves retain the editor state and offer retry or export.
+
+Existing localStorage drawings and IndexedDB sources are imported together as a recovered project when opening the app from the same browser origin. Legacy entries are removed only after SQLite has accepted the project. Original files were not stored by the old app, so migration recovers its saved previews and extracted data, not unavailable original bytes. New uploads retain their originals.
+
+Export project downloads a version 2 JSON bundle containing the drawing, references and original files; API keys are excluded. Import creates a separate project. Version 1 project bundles and legacy drawing JSON remain importable. Source-only projects are supported. Browser storage is used only to read and clear legacy data; new project saves go through the local server to SQLite. Muse conversation/run history is not persisted by this project-storage feature.
 
 The centre workspace offers 2D editing with an optional original-drawing overlay and 3D space. Source previews open independently from the workspace. Muse does not apply source-driven changes until the existing proposal review/Apply step. Changing sources invalidates an outstanding proposal.
 
@@ -157,5 +161,7 @@ Keys never appear in status responses, browser storage or project exports. Do no
 the data directory or commit it. Settings endpoints accept only loopback hosts and reject
 cross-origin browser requests. This is a local, single-user app, not a hosted account system.
 
-Only app-level credentials are persisted in SQLite so far; project persistence remains
-separate from this settings feature.
+Projects, assets and app-level credentials share this database. `server/database.ts` owns
+the connection and schema; `server/projects` owns transactional project persistence.
+Project endpoints use the same local-only request guard as settings. To copy the complete
+database, stop the app first; use project export when sharing a project without credentials.

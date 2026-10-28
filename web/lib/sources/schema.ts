@@ -6,6 +6,7 @@ export const ReferenceSourceSchema = z.object({
   kind: z.enum(["drawing", "concept", "brand", "brief"]),
   name: z.string().trim().min(1).max(255),
   selected: z.boolean(),
+  originalAssetId: z.string().uuid().optional(),
   url: z.string().max(2000).url().refine(value => /^https?:\/\//i.test(value), "Use an http or https URL").optional(),
   text: z.string().max(60_000).default(""),
   notes: z.string().max(6000).default(""),

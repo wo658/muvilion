@@ -1,4 +1,4 @@
-import { SourceLibrarySchema, type SourceLibrary } from "./schema";
+import { SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
 const DATABASE = "muvilion-sources-v1";
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -8,7 +8,7 @@ function open(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error);
   });
 }
-export async function readSources(): Promise<SourceLibrary | null> {
+export async function readLegacySources(): Promise<SourceLibrary | null> {
   const db = await open();
   try {
     return await new Promise((resolve, reject) => {
@@ -23,15 +23,16 @@ export async function readSources(): Promise<SourceLibrary | null> {
     });
   } finally { db.close(); }
 }
-export async function writeSources(value: SourceLibrary) {
+/** Called only after the server has committed the recovered project. */
+export async function clearLegacySources() {
   const db = await open();
   try {
     await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction("workspace", "readwrite");
-      transaction.objectStore("workspace").put(value, "sources");
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-      transaction.onabort = () => reject(transaction.error);
+      const tx = db.transaction("workspace", "readwrite");
+      tx.objectStore("workspace").delete("sources");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
     });
   } finally { db.close(); }
 }
