@@ -91,6 +91,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const save = useCallback((next: PlanDocument | null) => {
         controls.change({ projectVersion: 1, document: next, sources: sourcesRef.current, originalDrawingId: originalDrawing.current });
     }, [controls]);
+    const extractRef = useRef<typeof extract | null>(null);
     useEffect(() => {
         if (!project.state.originalDrawingId) return;
         const controller = new AbortController();
@@ -98,10 +99,15 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             .then(async response => {
                 if (!response.ok) throw new Error("Could not restore the original drawing file.");
                 const blob = await response.blob();
-                if (!controller.signal.aborted && originalDrawing.current === project.state.originalDrawingId) setSourceFile(new File([blob], project.state.document?.source.name ?? "drawing.pdf", { type: blob.type }));
+                const stored = /filename\*=UTF-8''([^;]+)/.exec(response.headers.get("Content-Disposition") ?? "")?.[1];
+                const file = new File([blob], project.state.document?.source.name ?? (stored ? decodeURIComponent(stored) : "drawing.pdf"), { type: blob.type });
+                if (controller.signal.aborted || originalDrawing.current !== project.state.originalDrawingId) return;
+                // Seeded samples keep only the original; read it the first time the project opens.
+                if (!project.state.document) void extractRef.current?.(file, project.state.originalDrawingPage ?? 1, project.state.originalDrawingId!);
+                else setSourceFile(file);
             }).catch(error => { if (!controller.signal.aborted) setNotice(error.message); });
         return () => controller.abort();
-    }, [project.id, project.state.originalDrawingId, project.state.document?.source.name]);
+    }, [project.id, project.state.originalDrawingId, project.state.document, project.state.originalDrawingPage]);
     const change = useCallback((next: PlanDocument) => {
         const previous = planRef.current;
         if (previous)
@@ -127,7 +133,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setChatKey((k) => k + 1);
         save(next);
     };
-    const extract = async (file: File, page = 1) => {
+    const extract = async (file: File, page = 1, storedAssetId?: string) => {
         if (file.size > 20 * 1024 * 1024) {
             setError(t("Please choose a file smaller than 20 MB."));
             return;
@@ -143,7 +149,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setError(null);
         setSourceFile(file);
         try {
-            const assetId = await controls.upload(file);
+            const assetId = storedAssetId ?? await controls.upload(file);
             if (controller.signal.aborted) return;
             const form = new FormData();
             form.set("file", file);
@@ -169,69 +175,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             }
         }
     };
-    const loadDemo = async (venue: "mcenery" | "coex" | "fort-mason" = "mcenery") => {
-        request.current?.abort();
-        const controller = new AbortController();
-        request.current = controller;
-        setBusy(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/plans/demo?venue=${venue}`, { signal: controller.signal });
-            if (!response.ok)
-                throw new Error(t("The demo PDF is unavailable. Upload a drawing to continue."));
-            const file = new File([await response.blob()], venue === "fort-mason" ? "Fort Mason Ground Floor.pdf" : venue === "coex" ? "COEX Hall A 2024.pdf" : "McEnery Convention Center.pdf", { type: "application/pdf" });
-            if (!controller.signal.aborted)
-                await extract(file);
-        }
-        catch (err) {
-            if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : t("Could not load the demo."));
-        }
-        finally {
-            if (request.current === controller) {
-                setBusy(false);
-                request.current = null;
-            }
-        }
-    };
-    const loadReviewedDemo = async (artifact: "reviewed" | "spatial" | "showcase" = "reviewed") => {
-        request.current?.abort();
-        const controller = new AbortController();
-        request.current = controller;
-        setBusy(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/plans/demo?venue=fort-mason&artifact=${artifact}`, { signal: controller.signal });
-            if (!response.ok)
-                throw new Error(t("The saved Fort Mason review is unavailable. Load the source drawing instead."));
-            const next = PlanDocumentSchema.parse(await response.json());
-            if (!controller.signal.aborted) {
-                originalDrawing.current = null;
-                openDocument(next);
-                setSourceFile(null);
-            }
-        }
-        catch (err) {
-            if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : t("Could not load saved review."));
-        }
-        finally {
-            if (request.current === controller) {
-                setBusy(false);
-                request.current = null;
-            }
-        }
-    };
-    const openExample = (value: string) => {
-        if (value === "fort-mason-showcase")
-            void loadReviewedDemo("showcase");
-        else if (value === "fort-mason-spatial")
-            void loadReviewedDemo("spatial");
-        else if (value === "fort-mason-reviewed")
-            void loadReviewedDemo();
-        else if (value === "mcenery" || value === "coex" || value === "fort-mason")
-            void loadDemo(value);
-    };
+    useEffect(() => { extractRef.current = extract; });
     const undo = () => {
         const previous = history[history.length - 1];
         if (!previous)
@@ -324,7 +268,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
     <div className="ps-topbar">
       <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label={t("muvilion home")}><Mark small/></Link>
-      {controls.toolbar}
       <div className="ps-topbar-actions">
         <Button variant="ghost" onClick={() => { setBoothsOpen(true); boothManager.current?.showModal(); }}>외부 참가 부스</Button>
         <Button variant="ghost" className="ps-icon-button" aria-label={t("Settings")} title={t("Settings")} onClick={() => setSettings("general")}><SettingsIcon/></Button>
@@ -332,7 +275,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     </div>
     <AppSettings section={settings} onSectionChange={setSettings} sections={[
       { id: "sources", label: t("Sources"), content: <>
-        <div className="ps-section"><NativeSelect className="ps-venue-picker" aria-label={t("Example drawing")} value="" disabled={busy} onChange={(e) => { setSettings(null); openExample(e.target.value); }}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : t("Choose an example")}</option><option value="fort-mason-showcase">{t("Meta / Muse · exhibition concept")}</option><option value="fort-mason-spatial">{t("Fort Mason · space design demo")}</option><option value="fort-mason-reviewed">{t("Fort Mason · reviewed space")}</option><option value="fort-mason">{t("Fort Mason · source drawing")}</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">{t("COEX Hall A · detailed plan")}</option></NativeSelect></div>
         <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
       </> },

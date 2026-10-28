@@ -66,13 +66,8 @@ export const getProject = (id: string) => withDatabase(db => load(db, id));
 export function createProject(input: unknown) {
   const parsed = CreateProject.parse(input);
   return withDatabase(db => transaction(db, () => {
-    const legacyKey = parsed.legacy ? createHash("sha256").update(JSON.stringify(parsed.state)).digest("hex") : null;
-    if (legacyKey) {
-      const existing = db.prepare("SELECT id FROM projects WHERE legacy_key = ?").get(legacyKey);
-      if (existing) return load(db, String(existing.id));
-    }
     const id = randomUUID(), time = new Date().toISOString();
-    db.prepare("INSERT INTO projects VALUES (?, ?, 0, '{}', ?, ?, ?)").run(id, parsed.name, legacyKey, time, time);
+    db.prepare("INSERT INTO projects VALUES (?, ?, 0, '{}', ?, ?, ?)").run(id, parsed.name, null, time, time);
     const ids = new Map<string, string>();
     for (const file of parsed.assets) {
       const bytes = Buffer.from(file.data, "base64");

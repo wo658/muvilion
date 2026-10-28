@@ -1,0 +1,19 @@
+/* Projects live in a collapsible rail beside the studio. */
+.pw-shell{display:flex;min-height:100dvh}
+.pw-editor{flex:1;min-width:0}
+.pw-projects{width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;padding:16px 12px;background:var(--surface);border-right:1px solid var(--hairline);font-size:13px}
+.pw-shell[data-collapsed] .pw-projects{width:48px;padding:16px 6px;align-items:center}
+.pw-projects-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pw-projects-head h2{font-size:12px;font-weight:600}
+.pw-list{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto;margin:0;padding:0;list-style:none}
+.pw-list button{width:100%;padding:8px 10px;border-radius:6px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);cursor:pointer}
+.pw-list button:hover{background:var(--sunken);color:var(--ink)}
+.pw-list input{font-weight:500}
+.pw-status{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted)}
+.pw-status [role=alert]{color:var(--bad)}
+@media(min-width:1121px){.pw-shell{height:100dvh;overflow:hidden}}
+@media(max-width:900px){
+  .pw-shell{flex-direction:column}
+  .pw-projects,.pw-shell[data-collapsed] .pw-projects{width:auto;border-right:0;border-bottom:1px solid var(--hairline);align-items:stretch}
+  .pw-list{max-height:180px}
+}

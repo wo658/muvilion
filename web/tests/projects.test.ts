@@ -41,12 +41,6 @@ describe("SQLite projects and file ownership", () => {
     expect(() => saveProject(p.id, { name: "Second tab", revision: 0, state: emptyProject() })).toThrow(/another tab/);
     expect(getProject(p.id).name).toBe("First tab");
   });
-  it("recovers browser data idempotently without replacing existing projects", () => {
-    createProject({ name: "Existing" });
-    const a = createProject({ name: "Recovered", state: state(), legacy: true });
-    const b = createProject({ name: "Recovered", state: state(), legacy: true });
-    expect(a.id).toBe(b.id); expect(listProjects()).toHaveLength(2);
-  });
   it("exports and imports original file bytes with fresh IDs, excluding app credentials", () => {
     saveMetaKey("test-secret-never-export");
     const p = createProject({ name: "Source project", state: state() });
