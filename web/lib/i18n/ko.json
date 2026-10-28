@@ -294,5 +294,15 @@
   "Local projects": "로컬 프로젝트",
   "Could not open the project. Browser data has not been replaced.": "프로젝트를 열지 못했습니다. 기존 브라우저 데이터는 보존됩니다.",
   "Request cancelled. Your drawing is unchanged.": "요청을 취소했어요. 도면은 변경되지 않았습니다.",
-  "Muse could not determine your request. Please try again.": "요청의 의도를 판단하지 못했어요. 다시 시도해주세요."
+  "Muse could not determine your request. Please try again.": "요청의 의도를 판단하지 못했어요. 다시 시도해주세요.",
+  "General": "일반",
+  "API key": "API 키",
+  "Project": "프로젝트",
+  "Settings sections": "설정 메뉴",
+  "Export project": "프로젝트 내보내기",
+  "Download this project and its original files as one JSON bundle.": "이 프로젝트와 원본 파일을 JSON 묶음 하나로 내려받습니다.",
+  "Open an exported JSON bundle as a new project. The current project is kept.": "내보낸 JSON 묶음을 새 프로젝트로 엽니다. 현재 프로젝트는 그대로 유지됩니다.",
+  "Minimize Muse": "Muse 접기",
+  "Talk to Muse": "Muse와 대화하기",
+  "Muse is replying…": "Muse가 답하는 중…"
 }
