@@ -22,6 +22,7 @@ export function cropEvidence(document: PlanDocument, region: CropRegion): Omit<P
     source:{...document.source,width:Math.max(1,Math.round(document.source.width*width)),height:Math.max(1,Math.round(document.source.height*height)),crop:{x:old.x+x*old.width,y:old.y+y*old.height,width:old.width*width,height:old.height*height}},
     lines, texts:document.texts.filter(t=>t.x>=x&&t.x<=x+width&&t.y>=y&&t.y<=y+height).map(t=>({...t,...remap(t)})),
     widthMeters:document.widthMeters ? document.widthMeters*width:null,heightMeters:document.heightMeters ? document.heightMeters*height:null,
+    entrances:document.entrances?.filter(p=>p.x>=x&&p.x<=x+width&&p.y>=y&&p.y<=y+height).map(p=>({...p,...remap(p)})),
     scaleConfirmed:false,zones:[],ceiling:undefined,wallHeight:undefined,objects:[],floorBoundary:undefined,walkStart:undefined,warnings:[...document.warnings,"Source cropped to the selected space. Reconfirm its scale; previous zones, objects, floor outline and height settings were cleared."].slice(-100),
   };
 }

@@ -17,7 +17,7 @@ describe("Muse shared spatial model",()=>{
  });
  it("supports booth-free design and preserves source and reviewed height conditions",()=>{
   const result=applyDesignProposal(doc,{...proposal,ceiling:{height:99},wallHeight:99,floorBoundary:[]});
-  expect(result.objects).toEqual([sign]);expect(result.zones).toEqual(doc.zones);expect(result.ceiling).toEqual(doc.ceiling);expect(result.wallHeight).toBe(6);expect(result.floorBoundary).toEqual(doc.floorBoundary);expect(result.source).toEqual(doc.source);
+  expect(result.objects).toEqual([{ ...sign, provenance: "ai" }]);expect(result.zones).toEqual(doc.zones);expect(result.ceiling).toEqual(doc.ceiling);expect(result.wallHeight).toBe(6);expect(result.floorBoundary).toEqual(doc.floorBoundary);expect(result.source).toEqual(doc.source);
  });
  it("rejects orphaned references after replacing zones and duplicate IDs",()=>{
   expect(()=>applyDesignProposal(doc,{...proposal,zones:[]})).toThrow(/unknown space zone/);

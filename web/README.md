@@ -79,3 +79,9 @@ Images are resized locally. Planning PDFs are rendered and text-extracted throug
 Sources and selection state are saved in browser IndexedDB for this local workspace; replacing the active drawing retains the library. Export project downloads a versioned JSON envelope with the plan, source previews/text/notes and selection state. Import project restores it, including source-only projects. Legacy plan JSON remains importable. Original binary files are not archived; keep originals separately. Browser storage is local, not a server backup.
 
 The centre workspace offers 2D editing with an optional original-drawing overlay and 3D space. Source previews open independently from the workspace. Muse does not apply source-driven changes until the existing proposal review/Apply step. Changing sources invalidates an outstanding proposal.
+
+## Venue overview
+
+The default 3D cutaway caps source-wall display at 1.1 m to reveal the interior while retaining every classified wall segment and real gap. Switch off cutaway or enter Explore to see full wall heights. Stored geometry and navigation checks always retain physical dimensions. Existing walls are neutral grey; planned partitions are blue with a dark top edge. Selected AI-authored partitions are labelled as AI proposals; older objects with no recorded provenance are only labelled planned partitions.
+
+Use **입구 표시** in 2D to place an entrance marker, then edit its name or direction in Design space. Markers persist in exports and appear in both views and Muse context. These are user annotations, not automatically verified doors; they do not cut openings in wall geometry. No source gaps are automatically filled or wall lines discarded for presentation.

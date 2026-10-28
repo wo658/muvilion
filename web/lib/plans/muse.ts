@@ -58,6 +58,7 @@ export function planChatContext(document: Omit<PlanDocument, "preview"> | null) 
     heightMeters: document.heightMeters,
     coordinates: "x/y are normalized plan centres, origin top-left; width/depth/height/elevation are metres. Elevation is the object bottom above floor; top = elevation + height.",
     floorBoundary: document.floorBoundary ?? null,
+    entrances: document.entrances ?? [],
     zones: document.zones ?? [],
     ceiling: document.ceiling ?? null,
     wallHeight: document.wallHeight ?? null,
@@ -117,7 +118,15 @@ export function applyDesignProposal(document: PlanDocument, input: unknown): Pla
   if (proposal.objects.some(object => object.zoneId && !zoneIds.has(object.zoneId)))
     throw new Error("Design object references an unknown space zone.");
   // Only editable design collections may be replaced. Source, floor and height review stay intact.
-  const next = PlanDocumentSchema.parse({ ...document, zones, objects: proposal.objects });
+  const objects = proposal.objects.map(object => {
+    const previous = document.objects?.find(item => item.id === object.id);
+    const shape = { ...object }; delete shape.provenance;
+    const previousShape = previous ? { ...previous } : undefined;
+    if (previousShape) delete previousShape.provenance;
+    const unchanged = previousShape && Object.keys(shape).length === Object.keys(previousShape).length && Object.entries(shape).every(([key, value]) => previousShape[key as keyof typeof previousShape] === value);
+    return { ...shape, provenance: unchanged ? previous?.provenance : "ai" as const };
+  });
+  const next = PlanDocumentSchema.parse({ ...document, zones, objects });
   return {
     ...next,
     warnings: [...new Set([...document.warnings, "Muse layout is a concept, not a verified construction or safety plan.", ...proposal.assumptions, ...designWarnings(next)])].slice(0, 100),
