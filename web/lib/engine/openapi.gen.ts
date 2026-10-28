@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plans/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Extract */
+        post: operations["extract_plans_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/queue": {
         parameters: {
             query?: never;
@@ -118,6 +135,16 @@ export interface components {
             t0: number;
             /** Xy */
             xy: number[];
+        };
+        /** Body_extract_plans_extract_post */
+        Body_extract_plans_extract_post: {
+            /** File */
+            file: string;
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
         };
         /** Booth */
         Booth: {
@@ -338,6 +365,95 @@ export interface components {
             kind: "column" | "restroom" | "stage" | "registration" | "tree" | "fountain" | "structure" | "other";
             /** Polygon */
             polygon: components["schemas"]["Point"][];
+        };
+        /** PlanEvidence */
+        PlanEvidence: {
+            /**
+             * Schemaversion
+             * @default 1
+             * @constant
+             */
+            schemaVersion: 1;
+            source: components["schemas"]["PlanSource"];
+            /** Preview */
+            preview: string;
+            /** Widthmeters */
+            widthMeters?: number | null;
+            /** Heightmeters */
+            heightMeters?: number | null;
+            /**
+             * Scaleconfirmed
+             * @default false
+             * @constant
+             */
+            scaleConfirmed: false;
+            /** Lines */
+            lines: components["schemas"]["PlanLine"][];
+            /** Texts */
+            texts: components["schemas"]["PlanText"][];
+            /** Warnings */
+            warnings: string[];
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "pdf-vector" | "opencv" | "dxf";
+        };
+        /** PlanLine */
+        PlanLine: {
+            /** Id */
+            id: string;
+            a: components["schemas"]["PlanPoint"];
+            b: components["schemas"]["PlanPoint"];
+            /**
+             * Kind
+             * @default unknown
+             * @enum {string}
+             */
+            kind: "unknown" | "wall" | "dimension";
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "vector" | "raster" | "cad";
+            /** Confidence */
+            confidence: number;
+        };
+        /** PlanPoint */
+        PlanPoint: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /** PlanSource */
+        PlanSource: {
+            /** Name */
+            name: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "pdf" | "image" | "dxf";
+            /** Page */
+            page: number;
+            /** Pages */
+            pages: number;
+            /** Width */
+            width: number;
+            /** Height */
+            height: number;
+        };
+        /** PlanText */
+        PlanText: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
         };
         /** Point */
         Point: {
@@ -645,6 +761,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LayoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extract_plans_extract_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_extract_plans_extract_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanEvidence"];
                 };
             };
             /** @description Validation Error */
