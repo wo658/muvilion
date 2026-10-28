@@ -18,6 +18,7 @@ import { selectedReferences } from "@/lib/sources/files";
 import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
 import Image from "next/image";
 import Link from "next/link";
+import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { MuviGreeting } from "@/components/muvi/muvi";
 type Proposal = {
     artifacts?: DesignArtifact[];
@@ -239,8 +240,9 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const suggestions = [t("Widen the path from the entrance to the stage"), t("Price the booths based on their size and location")];
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="ps-conversation-head">
-        <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><Image src="/mascot/muvi-face.svg" alt="" width={32} height={32}/></Link>
+        <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><MuviAvatar size={32}/></Link>
         <h2 className="ps-muse-status">{busy ? t("Muse is replying…") : messages.length ? t("Chatting with Muse") : t("Muse · Space designer")}</h2>
+
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 
       </header>

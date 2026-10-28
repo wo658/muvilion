@@ -1,6 +1,8 @@
 "use client";
+import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import type { PublicBoothProject } from "@/lib/booths/schema";
 import type { PricingContext } from "@/lib/booths/pricing";
+
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
 import dynamic from "next/dynamic";
@@ -23,7 +25,7 @@ import { Switch } from "../ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { EllipsisIcon, SettingsIcon } from "lucide-react";
 
-import Image from "next/image";
+
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
@@ -37,6 +39,7 @@ type Point = {
     x: number;
     y: number;
 };
+
 export function Studio() {
     return <ProjectWorkspace editor={StudioEditor}/>;
 }
@@ -198,7 +201,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const exportPlan = () => { void controls.export().catch(error => setError(error.message)); };
     const restore = (raw: string) => { void controls.import(raw).catch(error => setError(error instanceof Error ? error.message : "Could not import project. Your current work has been kept.")); };
     const selectedLine = document?.lines.find((line) => line.id === selected);
-    const wallCount = document?.lines.filter((line) => line.kind === "wall").length ?? 0;
     const selectedItem = document?.objects?.find(item => item.id === selected)
         ?? document?.zones?.find(item => item.id === selected)
         ?? document?.entrances?.find(item => item.id === selected);
@@ -278,6 +280,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const selectCanvas = editingBooth ? setBoothSelection : setSelected;
     const visibleDocument = !spaceMode && focusBooth && boothDocument ? boothDocument : !spaceMode && publicProject && publicProject.id === publishedId ? publicProject.space : document;
     const museCollapsed = Boolean(document) && !chatOpen;
+    const [toolbarEnd, setToolbarEnd] = useState<HTMLDivElement | null>(null);
     const roleToggle = <Segmented options={[{ id: "space", label: t("Organize") }, { id: "booth", label: t("Participate") }]} value={designRole} onChange={role => { setDesignRole(role); setChatOpen(true); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Design mode")}/>;
     return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
 
@@ -286,6 +289,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     </>, controls.sidebar)}
     {!document && <div className="ps-design-mode-bar">{roleToggle}</div>}
     <AppSettings section={settings} onSectionChange={setSettings} sections={spaceMode ? [
+
 
       { id: "sources", label: t("Sources"), content: <>
         <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSettings(null); input.current?.click(); }}/>
@@ -345,12 +349,13 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
               </>}
             </PopoverContent>
           </Popover>}
+          <div ref={setToolbarEnd} className="ps-toolbar-end"/>
         </div>
 
         {error && <div className="ps-alert" role="alert"><span>{localizeMessage(locale, error)}</span><Button onClick={() => setError(null)} aria-label={t("Dismiss error")}>×</Button></div>}
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
-          {document ? mode === "scene" ? <><SceneView document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}{spaceMode && wallCount === 0 && <div className="ps-scene-empty">{t("Ask Muse to identify the walls.")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={selectCanvas} sourceOnly={false} showOriginal={spaceMode && showOriginal} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {document ? mode === "scene" ? <><SceneView toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={selectCanvas} sourceOnly={false} showOriginal={spaceMode && showOriginal} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
           {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? t("Cropping your space") : t("Reading your drawing")}</strong><span>{cropping ? t("Keeping geometry inside the selected area.") : t("Extracting geometry and preparing the source preview.")}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>{t("Cancel")}</Button>}</div>}
         </div>
         <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details || !spaceMode}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || mode !== "plan" || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : mode === "scene" ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
@@ -358,17 +363,19 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {spaceMode && details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
-        {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><Image src="/mascot/muvi-face.svg" alt="" width={40} height={40}/></button>}
+        {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {document ? <details className="ps-booth-pricing"><summary>{t("Booth pricing · applications")}</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>{t("Start with the booth design example")}</Button></div>}
           <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
-          {document && <Button className="m-2 self-end" variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button>}
-          {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">{t("Muse · Booth designer")}</h2><p className="mt-3 text-sm text-muted">{t("No booths are published yet. Once you set prices with Muse and publish booths in organizer mode, you can get recommendations and apply here.")}</p><Button className="mt-4" onClick={() => setDesignRole("space")}>{t("Back to the space designer")}</Button></section>}
+          {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}
+          {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">{t("Muse · Booth designer")}</h2><p className="mt-3 text-sm text-muted">{t("No booths are published yet. Once you set prices with Muse and publish booths in organizer mode, you can get recommendations and apply here.")}</p><Button className="mt-4" onClick={() => setDesignRole("space")}>{t("Back to organizer mode")}</Button></section>}
         </div>
 
+
       </aside>
+
     </div>
     {spaceMode && document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 

@@ -3,7 +3,8 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
+import { useMotionPaused } from "./use-motion-paused";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useI18n } from "@/lib/i18n/provider";
@@ -14,18 +15,10 @@ const MuviCanvas = dynamic(() => import("./muvi-canvas"), {
   ssr: false,
   loading: () => <Image src="/mascot/muvi-face.svg" alt="Muvi" width={120} height={120} className="m-auto"/>,
 });
-function subscribe(listener: () => void) {
-  const media = matchMedia("(prefers-reduced-motion: reduce)");
-  media.addEventListener("change", listener);
-  document.addEventListener("visibilitychange", listener);
-  return () => { media.removeEventListener("change", listener); document.removeEventListener("visibilitychange", listener); };
-}
-function shouldPause() { return document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches; }
-const serverPaused = () => true;
 
 export function MuviGreeting({ thinking = false }: { thinking?: boolean }) {
   const { t } = useI18n();
-  const paused = useSyncExternalStore(subscribe, shouldPause, serverPaused);
+  const paused = useMotionPaused();
   return <Link href="/muvi" target="_blank" rel="noopener noreferrer" className="mx-auto flex w-48 shrink-0 flex-col items-center" aria-label={t("Meet Muvi in 3D (new tab)")}>
     <div className="h-36 w-48" aria-hidden="true"><MuviCanvas compact motion={thinking ? "think" : "hello"} paused={paused}/></div>
     <span className="text-xs text-muted-foreground">{t("Meet Muvi ↗")}</span>
@@ -39,7 +32,7 @@ export function MuviPlayground() {
   const [stopped, setStopped] = useState(false);
   const [target, setTarget] = useState<[number, number, number] | null>(null);
   const [revision, setRevision] = useState(0);
-  const systemPaused = useSyncExternalStore(subscribe, shouldPause, serverPaused);
+  const systemPaused = useMotionPaused();
   const paused = systemPaused || stopped;
   const move = (point: [number, number, number]) => { if (!paused) { setTarget(point); setMotion(motion === "run" ? "run" : "walk"); } };
   return <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-6 px-5 py-8">
