@@ -7,7 +7,7 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - Before opening a drawing, center the conversation. Use one greeting and at most two optional prompts.
 - With a drawing, share the workspace between conversation and canvas. Put conversation first on narrow screens.
 - No top bar. Brand, projects, booths and settings live in one sidebar that collapses to an icon rail (collapsed by default; icons only on narrow screens).
-- With a drawing, Muse is a full-height right sidebar (like the ElevenLabs agent panel) that collapses to an icon rail: avatar and status pill over the feed, plain-text replies, ink user bubbles and a bordered composer. On phones it is a bottom sheet that collapses to an icon card.
+- With a drawing, Muse is a full-height right sidebar (like the ElevenLabs agent panel) that collapses to a round launcher at the bottom right (like Channel Talk): avatar and status pill over the feed, plain-text replies, ink user bubbles and a bordered composer. On phones it is a bottom sheet.
 - Keep sources and application settings in dialogs. Reveal preparation under Drawing settings; Muse starts analysis from chat requests.
 - Remove marketing subtitles, decorative workflow steps, duplicate status copy and implementation details. Preserve actionable errors, scale warnings, review coverage and explicit proposal approval.
 - Send is conversational. Draft a layout creates a reviewable proposal; Apply changes commits it. Never imply chat itself performed an edit.
@@ -23,6 +23,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - Status: `ok`, `bad`, `badSoft`. Overlays and shadows: `overlay`, `shadowColor`.
 - Keep the existing font family, 12–14px controls, a restrained 24–32px greeting and 20px dialog/conversation corners.
 - UI chrome and the 2D plan must not introduce literal colors; add a named token instead. Exhibition scene materials and the mascot are artwork and may use their own colors. `tests/tokens.test.ts` checks WCAG AA text contrast for token pairs and rejects literal colors elsewhere.
+- Adding a color: name it by role in `lib/ui/tokens.ts` (camelCase; it becomes `--kebab-case`). If Tailwind classes need it, map it in the `@theme` block of `app/globals.css`. Add any new text/background pair to the contrast list in `tests/tokens.test.ts`. Remove tokens that are no longer used.
+- shadcn components keep their semantic names (`primary`, `secondary`, `border`, `input`, `ring`, `destructive`), which `globals.css` aliases to Muse tokens. shadcn's `accent`/`muted` mean something else here: use `sunken`/`selected` for hover and selection backgrounds, never `bg-accent` or `bg-muted`.
 - Respect reduced motion and visible keyboard focus. Dialogs require titles, Escape dismissal, close controls and focus restoration.
 
 ## Language

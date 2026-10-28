@@ -5,14 +5,16 @@ import { getModel } from "@/server/agent/model";
 import { BoothBoundsSchema, BoothObjectsSchema, boothHandoff, createBoothDocument, createBoothReviewSession, type BoothBounds } from "@/lib/booths/design";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { assetTools, ASSET_INSTRUCTIONS } from "@/server/plans/asset-tools";
+import type { Locale } from "@/lib/i18n/messages";
 
 export class BoothDesignerError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
-export type BoothDesignStep = { agent: string; tool: string; outcome: string };
+/** `agent` and `outcome` are English catalog keys; the client localizes them with `values`. */
+export type BoothDesignStep = { agent: string; tool: string; outcome: string; values?: Record<string, string | number> };
 export type BoothDesignInput = {
-  booth: BoothBounds; company: string; brief: string;
+  booth: BoothBounds; company: string; brief: string; locale?: Locale;
   currentDocument?: PlanDocument; abortSignal?: AbortSignal;
 };
 const CandidateSchema = z.object({ objects: BoothObjectsSchema.min(1) });
@@ -35,16 +37,17 @@ const DESIGNER_INSTRUCTIONS = `<role>You are Muse's specialist booth designer. Y
 export async function designBooth(input: BoothDesignInput) {
   const booth = BoothBoundsSchema.parse(input.booth);
   const handle = getModel();
-  if (!handle.hasKey) throw new BoothDesignerError(503, "Muse가 설정되지 않았습니다. 모델 API 설정을 확인해 주세요.");
+  if (!handle.hasKey) throw new BoothDesignerError(503, "Muse is not configured. Check the model API settings.");
   const deadline = AbortSignal.timeout(110_000);
   const signal = input.abortSignal ? AbortSignal.any([deadline, input.abortSignal]) : deadline;
   const steps: BoothDesignStep[] = [];
-  const review = createBoothReviewSession(booth);
+  const locale = input.locale ?? "en";
+  const review = createBoothReviewSession(booth, locale);
   const output: { summary: string; buildNotes: string[] } = { summary: "", buildNotes: [] };
   const specialist = new ToolLoopAgent({
     id: "muse-booth-designer",
     model: handle.model,
-    instructions: `${DESIGNER_INSTRUCTIONS}\n${ASSET_INSTRUCTIONS}`,
+    instructions: DESIGNER_INSTRUCTIONS + "\n" + ASSET_INSTRUCTIONS + (input.locale ? `\nWrite the summary, build notes and new labels in ${input.locale === "ko" ? "Korean" : "English"}.` : ""),
     temperature: 0.2,
     maxRetries: 1,
     maxOutputTokens: 6000,
@@ -56,7 +59,7 @@ export async function designBooth(input: BoothDesignInput) {
         inputSchema: CandidateSchema,
         execute: ({ objects }) => {
           const result = review.validate(objects);
-          steps.push({ agent: "부스 디자인 에이전트", tool: "validate_booth_design", outcome: result.valid ? "경계·높이·겹침 검사 통과" : `${result.issues.length}개 수정 사항 발견` });
+          steps.push({ agent: "Booth design agent", tool: "validate_booth_design", ...(result.valid ? { outcome: "Boundary, height and overlap checks passed" } : { outcome: "{count} issues to fix found", values: { count: result.issues.length } }) });
           return result;
         },
       }),
@@ -66,7 +69,7 @@ export async function designBooth(input: BoothDesignInput) {
         execute: ({ objects, summary, buildNotes }) => {
           const result = review.submit(objects);
           if (result.accepted) { output.summary = summary; output.buildNotes = buildNotes; }
-          steps.push({ agent: "부스 디자인 에이전트", tool: "submit_design", outcome: result.accepted ? "검사된 디자인 제안 완료" : "검사 후 다시 제출 필요" });
+          steps.push({ agent: "Booth design agent", tool: "submit_design", outcome: result.accepted ? "Checked design proposal completed" : "Must be checked and submitted again" });
           return result;
         },
       }),
@@ -87,7 +90,7 @@ export async function designBooth(input: BoothDesignInput) {
         description: "Run an isolated booth design specialist with only the approved booth, participant brief and current booth objects.",
         inputSchema: z.object({}),
         execute: async () => {
-          steps.push({ agent: "Muse", tool: "delegate_booth_design", outcome: `${booth.name} 전담 에이전트에 위임` });
+          steps.push({ agent: "Muse", tool: "delegate_booth_design", outcome: "Delegated to the dedicated agent for {booth}", values: { booth: booth.name } });
           await specialist.generate({
             prompt: JSON.stringify({ booth, company: input.company, brief: input.brief, existingObjects: input.currentDocument?.objects ?? [] }),
             abortSignal: signal,
@@ -108,7 +111,7 @@ export async function designBooth(input: BoothDesignInput) {
     throw error;
   }
   const objects = review.result();
-  if (!objects) throw new BoothDesignerError(502, "Muse가 제한된 실행 단계 내에 검사를 통과한 디자인을 완성하지 못했습니다. 요구사항을 좁혀 다시 시도해 주세요.");
+  if (!objects) throw new BoothDesignerError(502, "Muse could not complete a design that passed the checks within the step limit. Narrow the requirements and try again.");
   const document = createBoothDocument(booth, objects.map(object => ({ ...object, provenance: "ai" })));
-  return { document, summary: output.summary, steps, handoff: boothHandoff(document, output.buildNotes) };
+  return { document, summary: output.summary, steps, handoff: boothHandoff(document, output.buildNotes, locale) };
 }

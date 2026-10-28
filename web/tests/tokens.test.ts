@@ -53,14 +53,14 @@ describe("color tokens", () => {
 // Scene materials and the mascot are domain artwork, not UI chrome (see design.md).
 const ARTWORK = ["components/muvi/", "components/studio/exhibition-object.tsx"];
 const ALLOWED: Record<string, string[]> = {
-  // Search keywords describe asset finishes; these strings are never UI paint values.
-  "lib/assets/catalog.ts": ['"white"'],
   // exhibition-mode lighting and materials
   "components/studio/scene-view.tsx": ["#e6f1ff", "#c6b69b", "#b9b5af", "#d2bfa7", "#263b58", "#000000"],
   // flattens transparent uploads onto paper before extraction
   "lib/sources/files.ts": ['"white"'],
 };
 const LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch)\(|["'](?:white|black)["']/g;
+// shadcn's accent/muted backgrounds collide with Muse's accent blue and muted text color.
+const MISUSED_ROLE = /\bbg-(?:accent|muted)(?![-\w])/g;
 
 function sources(dir: string): string[] {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap(entry => {
@@ -79,5 +79,9 @@ describe("UI code uses color tokens only", () => {
     const allowed = ALLOWED[file] ?? [];
     const found = (readFileSync(join(root, file), "utf8").match(LITERAL) ?? []).filter(match => !allowed.includes(match));
     expect(found).toEqual([]);
+  });
+
+  it.each(files)("%s uses sunken/selected for hover and selection backgrounds", file => {
+    expect(readFileSync(join(root, file), "utf8").match(MISUSED_ROLE) ?? []).toEqual([]);
   });
 });

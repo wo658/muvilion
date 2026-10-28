@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type ComponentProps, type ComponentType, type ReactNode } from "react";
-import { CircleAlertIcon, FolderIcon, PanelLeftIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, FolderIcon, PanelLeftIcon, PlusIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { matchProjects, monogram, recentProjects } from "@/lib/projects/rail";
 import { Button } from "../ui";
 import { Input } from "../ui/input";
 import { ProjectState, ProjectExport, emptyProject, type Project, type ProjectSummary } from "@/lib/projects/schema";
@@ -45,6 +47,8 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const initial = useRef<Promise<Project | null> | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [finding, setFinding] = useState(false);
+  const [query, setQuery] = useState("");
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -103,7 +107,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const switchProject = (id: string) => open(() => loadProject(id));
   /** Stores the drawing as the project's original; Studio extracts it when the project opens. */
   const startWithDrawing = (file: File) => open(async () => {
-    const created = await createProject(file.name.replace(/\.[^.]+$/, "").slice(0, 100) || "Untitled project");
+    const created = await createProject(file.name.replace(/\.[^.]+$/, "").slice(0, 100) || t("Untitled project"));
     const originalDrawingId = await uploadOriginal(created.id, file);
     await saveProject(created.id, created.name, created.revision, { ...created.state, originalDrawingId });
     return loadProject(created.id);
@@ -114,7 +118,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   if (!ready) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button></>}</main>;
   const start = <ProjectStart busy={switching} error={starting ? error : ""} notice={notice}
     onDrawing={file => void startWithDrawing(file)} onSample={file => void open(() => createSampleProject(file))}
-    onBlank={() => void open(() => createProject("Untitled project"))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
+    onBlank={() => void open(() => createProject(t("Untitled project")))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
   function navigate(href: string) { void flush().then(() => window.location.assign(href)).catch(() => {}); }
   const controls: ProjectControls | null = project && {
     change: state => { if (session.current?.project.id === project.id) changed(state); },
@@ -126,7 +130,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       const bundle = parsed.projectVersion === 2 ? ProjectExport.parse(parsed) : null;
       const state = bundle?.state ?? (parsed.projectVersion === 1 ? ProjectState.parse(parsed) : { ...emptyProject(), document: PlanDocumentSchema.parse(parsed) });
       await flush();
-      const imported = await createProject(bundle?.name ?? "Imported project", state, bundle?.assets ?? []);
+      const imported = await createProject(bundle?.name ?? t("Imported project"), state, bundle?.assets ?? []);
       await flush(); activate(imported); setProjects(await listProjects());
     },
     export: async () => {
@@ -151,7 +155,23 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       </div>
       <RailButton icon={<PlusIcon/>} label={t("New project")} disabled={switching || starting} onClick={() => void newProject()}/>
       {collapsed
-        ? <RailButton icon={<FolderIcon/>} label={t("Projects")} aria-expanded={false} onClick={() => setCollapsed(false)}/>
+        ? <>
+          <Popover open={finding} onOpenChange={open => { setFinding(open); if (!open) setQuery(""); }}>
+            <PopoverTrigger render={<RailButton icon={<FolderIcon/>} label={t("Projects")} disabled={switching}/>}/>
+            <PopoverContent side="right" align="start" sideOffset={10} className="pw-finder">
+              <Input autoFocus aria-label={t("Search projects")} placeholder={t("Search projects")} value={query} onChange={event => setQuery(event.target.value)}/>
+              <ul className="pw-finder-list">{matchProjects(projects, query).map(item => <li key={item.id}>
+                <button type="button" aria-current={item.id === project?.id ? "page" : undefined} onClick={() => { setFinding(false); setQuery(""); if (item.id !== project?.id) void switchProject(item.id); }}>
+                  <span className="pw-tile" aria-hidden="true">{monogram(item.name)}</span><span className="pw-label">{item.name}</span>{item.id === project?.id && <CheckIcon aria-hidden="true"/>}
+                </button>
+              </li>)}</ul>
+              {!matchProjects(projects, query).length && <p className="pw-finder-empty">{t("No matching projects")}</p>}
+            </PopoverContent>
+          </Popover>
+          <ul className="pw-recent" aria-label={t("Recent projects")}>{recentProjects(projects, project?.id).map(item => <li key={item.id}>
+            <button type="button" className="pw-tile" aria-label={item.name} title={item.name} aria-current={item.id === project?.id && !starting ? "page" : undefined} disabled={switching} onClick={() => { if (item.id !== project?.id || starting) void switchProject(item.id); }}>{monogram(item.name)}</button>
+          </li>)}</ul>
+        </>
         : <>
           <h2 className="pw-heading">{t("Projects")}</h2>
           <ul className="pw-list">{projects.map(item => <li key={item.id}>

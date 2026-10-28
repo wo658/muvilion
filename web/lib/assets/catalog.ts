@@ -55,7 +55,7 @@ const models: readonly ModelAsset[] = [
     4.34, 0.770370, 0.950000),
   model("modern_ceiling_lamp_01", "light", "Modern Ceiling Lamp 01",
     "흰 반투명 구형 유리와 금속 피팅의 천장 펜던트 조명. 케이블을 포함한 외형이며 실제 광원·배광 검증은 별도.",
-    ["전등", "조명", "펜던트", "천장", "구형", "라운지", "흰색", "light", "lamp", "pendant", "ceiling", "white", "globe"],
+    ["전등", "조명", "펜던트", "천장", "구형", "라운지", "흰색", "light", "lamp", "pendant", "ceiling", "white finish", "globe"],
     0.431649, 0.431661, 0.951551),
   model("mounted_fluorescent_lights", "light", "Mounted Fluorescent Lights",
     "선형 형광등 기구 여러 개의 세트. 단일 등으로 취급하지 말 것. 발광 표면은 조도 시뮬레이션이 아님.",
@@ -76,7 +76,7 @@ function material(id: MaterialAssetId, name: string, description: string, tags: 
 
 const materials: readonly MaterialAsset[] = [
   material("Plaster001", "Plaster 001", "흰 무광 미장 재질. 매끈한 도장보다 거친 표면이며 가벽 마감에 사용.",
-    ["흰", "흰색", "미장", "가벽", "벽", "무광", "white", "plaster", "wall", "partition", "matte"]),
+    ["흰", "흰색", "미장", "가벽", "벽", "무광", "white finish", "plaster", "wall", "partition", "matte"]),
   material("Concrete034", "Concrete 034", "밝은 회색의 매끈한 콘크리트 재질.",
     ["콘크리트", "회색", "바닥", "벽", "concrete", "grey", "floor", "wall"]),
   material("Wood051", "Wood 051", "어둡고 매끈한 목재. 전시대·카운터·가구 마감에 적합.",

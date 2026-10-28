@@ -2,7 +2,11 @@
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 
+import { createPortal } from "react-dom";
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
+import { MuviRoaming } from "@/components/muvi/muvi-roaming";
+import { useMotionPaused } from "@/components/muvi/use-motion-paused";
+import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { SceneLabel } from "./scene-label";
 import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
@@ -29,8 +33,13 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   render() { return this.state.failed ? <SceneUnavailable/> : this.props.children; }
 }
 
-export default function SceneView({ document, wallHeight, selected, onSelect }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void }) {
+/** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
+export default function SceneView({ document, wallHeight, selected, onSelect, toolbar }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null }) {
   const { t } = useI18n();
+  const systemPaused = useMotionPaused();
+  const [showMuvi, setShowMuvi] = useState(true);
+  const [muviPaused, setMuviPaused] = useState(false);
+
   const exhibition = document.visualStyle === "exhibition";
   const width = document.widthMeters ?? 10;
   const depth = document.heightMeters ?? width * document.source.height / document.source.width;
@@ -61,20 +70,24 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     document.floorBoundary.forEach((p, i) => { if (i === 0) shape.moveTo(p.x * width - width / 2, depth / 2 - p.y * depth); else shape.lineTo(p.x * width - width / 2, depth / 2 - p.y * depth); });
     shape.closePath(); return shape;
   }, [document.floorBoundary, width, depth]);
-  return <SceneBoundary><div className="ps-scene-tools">
+  const tools = <div className="ps-scene-tools">
     <ToggleGroup aria-label={t("Camera view")} value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
       <ToggleGroupItem value="overview">{t("Overview")}</ToggleGroupItem><ToggleGroupItem value="top">{t("Top")}</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?t("Review scale and floor boundary; a clear interior viewpoint is required."):t("Click the floor to move; drag to look around")}>{t("Explore")}</ToggleGroupItem>
     </ToggleGroup>
     <Button variant="outline" size="icon-sm" aria-label={t("Focus selected area or element")} title={t("Focus selection")} disabled={!selectedItem} onClick={()=>changeView("selection")}><FocusIcon/></Button>
     <Button variant="outline" size="icon-sm" aria-label={t("Reset camera")} title={t("Reset camera")} onClick={()=>changeView(view)}><RotateCcwIcon/></Button>
     <Button variant={cutaway ? "secondary" : "outline"} size="sm" aria-pressed={cutaway} disabled={view === "interior"} onClick={() => setCutaway(value => !value)}>{t("Cutaway")}</Button>
+    <Button variant="outline" size="sm" aria-pressed={!muviPaused && !systemPaused} disabled={!showMuvi || systemPaused} onClick={() => setMuviPaused(value => !value)}><MuviAvatar size={18}/>{(muviPaused || systemPaused ? t("Resume Muvi") : t("Pause Muvi"))}</Button>
     <Popover><PopoverTrigger render={<Button variant="outline" size="icon-sm" aria-label={t("Display layers")} title={t("Display layers")}/>}><LayersIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Display layers")}</PopoverTitle><FieldGroup>
       <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
+      <Field orientation="horizontal"><FieldLabel htmlFor="muvi-display">{t("Show Muvi")}</FieldLabel><Switch id="muvi-display" checked={showMuvi} onCheckedChange={setShowMuvi}/></Field>
       <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
       <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
     </FieldGroup></PopoverContent></Popover>
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View help and model information")}/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Viewing the space")}</PopoverTitle><p>{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.")}</p><p>{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p><p>{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p></PopoverContent></Popover>
-  </div><div className="ps-venue-legend" aria-label={t("Space legend")}><span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  </div>;
+  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}<div className="ps-venue-legend" aria-label={t("Space legend")}>{showMuvi && <span title={t("Decorative roaming; not connected to collisions or real navigation.")}>{t("Muvi roaming · demo")}</span>}<span><i style={{background:VENUE_COLORS.existing}}/>{t("Existing walls · from drawing")}</span><span><i style={{background:VENUE_COLORS.partition}}/>{t("Planned / AI partitions")}</span><span><i style={{background:VENUE_COLORS.entrance}}/>{t("Mark entrance")}</span>{cutaway && view !== "interior" && <span>{t("Cutaway overview")}</span>}</div>{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
     {exhibition && <hemisphereLight args={["#e6f1ff","#c6b69b",1.4]}/>}
@@ -112,6 +125,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
       <SceneLabel position={[0,Math.max(renderedWallHeight,1.2)+0.6,0]} text={`↳ ${entrance.label}`} color={VENUE_COLORS.entrance} onSelect={() => onSelect(entrance.id)}/>
     </group>)}
     {view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
+    {showMuvi && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} paused={muviPaused || systemPaused}/>}
     <SceneCamera document={document} view={view} revision={cameraRevision} selected={selected}/>
   </Canvas></SceneBoundary>;
 }
