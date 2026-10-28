@@ -60,6 +60,31 @@ def check_evidence_budget(line_count=0, text_count=0, text_characters=0):
         )
 
 
+def clip_segment(x0, y0, x1, y1, bounds):
+    """Clip a segment parametrically; preserve diagonal intersections at page edges."""
+    left, top, right, bottom = bounds
+    dx, dy = x1 - x0, y1 - y0
+    enter, leave = 0.0, 1.0
+    for direction, distance in (
+        (-dx, x0 - left),
+        (dx, right - x0),
+        (-dy, y0 - top),
+        (dy, bottom - y0),
+    ):
+        if direction == 0:
+            if distance < 0:
+                return None
+            continue
+        ratio = distance / direction
+        if direction < 0:
+            enter = max(enter, ratio)
+        else:
+            leave = min(leave, ratio)
+        if enter > leave:
+            return None
+    return x0 + enter * dx, y0 + enter * dy, x0 + leave * dx, y0 + leave * dy
+
+
 def point(x, y):
     return PlanPoint(x=max(0, min(1, float(x))), y=max(0, min(1, float(y))))
 
@@ -171,15 +196,23 @@ def read_pdf(data, name, page):
             p = document.pages[page - 1]
             w, h = p.width, p.height
             ox, oy = p.bbox[:2]
+            # PDF content streams may retain objects beyond a cropped MediaBox.
+            # Ignore hidden views before normalization instead of clamping them
+            # onto the visible page border. Preserve crop metadata for warnings.
+            visible = p.crop(p.bbox)
             lines = []
             # .edges includes line objects, rectangle edges and curve segments.
-            for edge in p.edges:
+            for edge in visible.edges:
                 x0, x1 = edge["x0"], edge["x1"]
                 top, bottom = edge["top"], edge["bottom"]
                 # For actual lines preserve the endpoint direction (diagonal sign).
                 pts = edge.get("pts")
                 if pts and len(pts) == 2:
                     (x0, top), (x1, bottom) = pts
+                clipped = clip_segment(x0, top, x1, bottom, p.bbox)
+                if clipped is None:
+                    continue
+                x0, top, x1, bottom = clipped
                 if math.hypot(x1 - x0, bottom - top) <= 1e-9:
                     continue
                 lines.append(
@@ -191,7 +224,7 @@ def read_pdf(data, name, page):
                     )
                 )
                 check_evidence_budget(line_count=len(lines))
-            words = p.extract_words()
+            words = visible.extract_words()
             check_evidence_budget(
                 text_count=len(words), text_characters=sum(len(word["text"]) for word in words)
             )
