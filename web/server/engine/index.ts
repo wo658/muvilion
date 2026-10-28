@@ -1,6 +1,7 @@
+import "server-only";
 import type { Env } from "@/lib/env";
 import { createHttpEngine, type Engine } from "./client";
-import { createMockEngine } from "./mock";
+import { createMockEngine } from "@/lib/engine/mock";
 
 export type { Engine } from "./client";
 export { EngineError } from "./client";
