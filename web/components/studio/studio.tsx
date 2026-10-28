@@ -9,6 +9,7 @@ import { AppSettings } from "../app-settings";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { cropPlan } from "@/lib/plans/crop";
+import { boothExample } from "@/lib/booths/example";
 import { Badge, Button, Segmented } from "../ui";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
@@ -21,6 +22,7 @@ import "./studio.css";
 import "./spatial-design.css";
 import "./sources.css";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: SceneLoading });
+const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: () => <p role="status">부스 관리 열기…</p> });
 const STORAGE = "pavilion.plan-studio.v1";
 type Mode = "plan" | "scene";
 type Point = {
@@ -33,6 +35,8 @@ function Mark({ small = false }: {
     return <svg width={small ? 25 : 44} height={small ? 25 : 44} viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M5 29V13L18 6l13 7v16M5 13l13 7 13-7M18 20v15M11 16v16M25 16v16" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>;
 }
 export function Studio() {
+    const boothManager = useRef<HTMLDialogElement>(null);
+    const [boothsOpen, setBoothsOpen] = useState(false);
     const { t, locale } = useI18n();
     const sourceManager = useRef<HTMLDialogElement>(null);
     const [sources, setSources] = useState<SourceLibrary>(emptySources);
@@ -335,11 +339,17 @@ export function Studio() {
     <header className="ps-header">
       <Link href="/" className="ps-brand" aria-label={t("muvilion home")}><Mark small/><span>muvilion</span></Link>
       <div className="ps-header-actions">
+        <Link href="/settings">API key</Link>
+        <Button variant="ghost" onClick={() => { setBoothsOpen(true); boothManager.current?.showModal(); }}>외부 참가 부스</Button>
         <AppSettings/>
         <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>{t("Sources")}</Button>
         <Button variant="ghost" onClick={exportPlan} disabled={!document || busy || !sourcesReady}>{t("Export")}</Button>
       </div>
     </header>
+    <dialog ref={boothManager} className="ps-source-manager" style={{ width: "min(1120px, 96vw)", maxWidth: "96vw" }} aria-labelledby="booth-manager-title" onClose={() => setBoothsOpen(false)}>
+      <header><h2 id="booth-manager-title">외부 참가 부스</h2><Button onClick={() => boothManager.current?.close()} aria-label="부스 관리 닫기">닫기</Button></header>
+      {boothsOpen && (document ? <OrganizerBooths document={document} onDocumentChange={change}/> : <div className="ps-section"><h3>공간에서 참가자의 부스까지</h3><p>도면의 부스 구역을 공개하고 참가비를 설정하세요. 외부 참가자의 신청을 승인하면 전용 부스 디자인 작업실이 열립니다.</p><Button variant="primary" onClick={() => openDocument(boothExample())}>참가 부스 예시로 시작</Button><p className="ps-help">직접 제작한 체험용 공간입니다. 도면을 업로드한 뒤에도 같은 흐름을 사용할 수 있습니다.</p></div>)}
+    </dialog>
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
     <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 32 * 1024 * 1024)
