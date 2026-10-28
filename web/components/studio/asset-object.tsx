@@ -37,7 +37,7 @@ function ModelAsset({ object }: { object: DesignObject }) {
 function LoadedModel({ url, object }: { url: string; object: DesignObject }) {
   // Bundled glTFs are uncompressed; do not attach external decoder endpoints.
   const { scene } = useGLTF(url, false, false);
-  const instance = useMemo(() => {
+  const { instance, authoredBounds } = useMemo(() => {
     const copy = clone(scene);
     copy.traverse(node => {
       if (node instanceof Mesh) {
@@ -49,12 +49,13 @@ function LoadedModel({ url, object }: { url: string; object: DesignObject }) {
       if (node instanceof Light) node.visible = false;
     });
     copy.updateMatrixWorld(true);
-    return copy;
+    // Measure before mounting: a parent may later rotate, elevate or scale this
+    // instance. Resizing must always fit the original authored bounds.
+    return { instance: copy, authoredBounds: new Box3().setFromObject(copy, true) };
   }, [scene]);
   const fit = useMemo(() => {
-    const bounds = new Box3().setFromObject(instance, true);
-    return fitAssetBounds(bounds.min.toArray(), bounds.max.toArray(), [object.width, object.height, object.depth]);
-  }, [instance, object.width, object.height, object.depth]);
+    return fitAssetBounds(authoredBounds.min.toArray(), authoredBounds.max.toArray(), [object.width, object.height, object.depth]);
+  }, [authoredBounds, object.width, object.height, object.depth]);
   useEffect(() => () => {
     instance.traverse(node => { if (node instanceof SkinnedMesh) node.skeleton.dispose(); });
   }, [instance]);

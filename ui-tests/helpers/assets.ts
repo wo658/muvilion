@@ -12,7 +12,7 @@ export async function importPlan(page:Page){
  await page.getByRole('button',{name:'프로젝트 가져오기'}).click();
  await (await chooser).setFiles({name:'cc0-plan.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(emptyPlan))});
  await expect(page).not.toHaveURL(previousUrl);
- await expect(page.getByText('CC0 에셋 테스트',{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'도면 작업 공간',exact:true})).toBeVisible();
  if(!await page.getByLabel('Muse에게 도면에 관해 질문하기').isVisible()) await page.locator('button[aria-controls="muse-panel"][aria-expanded="false"]').click();
  await expect(page.getByLabel('Muse에게 도면에 관해 질문하기')).toBeVisible();
 }
@@ -48,7 +48,7 @@ export async function showAssets(page:Page){
   page.waitForResponse(r=>r.url().endsWith('modern_ceiling_lamp_01_1k.gltf')&&r.status()===200),
   page.waitForResponse(r=>r.url().endsWith('Wood051_1K-JPG_Color.jpg')&&r.status()===200),
  ];
- await page.getByRole('button',{name:'3D 공간',exact:true}).click();
+ await page.getByRole('button',{name:'3D',exact:true}).click();
  await Promise.all(loaded);
  await page.waitForLoadState("networkidle");
  await expect(page.locator('canvas')).toBeVisible();
