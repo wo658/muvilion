@@ -5,6 +5,7 @@ import type { CameraControlsImpl } from "@react-three/drei";
 import { DoubleSide, Vector3, type Shape } from "three";
 import { canTravel, EYE_HEIGHT, type WalkPoint, type WalkWorld } from "@/lib/plans/walk";
 import { TOKENS } from "@/lib/ui/tokens";
+const TRAVEL_SPEED_METERS_PER_SECOND = 9;
 export const EXPLORE_HINT = "Click the floor to move · Drag to look around";
 export function RoadView({ world, shape, onStatus }: {
   world: WalkWorld; shape: Shape; onStatus: (message: string) => void;
@@ -35,7 +36,7 @@ export function RoadView({ world, shape, onStatus }: {
     if (!moving.current || !controls) return;
     const start = currentPoint(), end = moving.current;
     const distance = Math.hypot(end.x - start.x, end.y - start.y);
-    const fraction = distance < 0.001 ? 1 : Math.min(1, 3 * Math.min(delta, 0.05) / distance);
+    const fraction = distance < 0.001 ? 1 : Math.min(1, TRAVEL_SPEED_METERS_PER_SECOND * Math.min(delta, 0.05) / distance);
     const next = { x: start.x + (end.x - start.x) * fraction, y: start.y + (end.y - start.y) * fraction };
     if (!canTravel(start, next, world)) {
       moving.current = null;
