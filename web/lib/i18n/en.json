@@ -296,5 +296,8 @@
   "Open an exported JSON bundle as a new project. The current project is kept.": "Open an exported JSON bundle as a new project. The current project is kept.",
   "Minimize Muse": "Minimize Muse",
   "Talk to Muse": "Talk to Muse",
-  "Muse is replying…": "Muse is replying…"
+  "Muse is replying…": "Muse is replying…",
+  "Chatting with Muse": "Chatting with Muse",
+  "Send a message…": "Send a message…",
+  "Need help with this space?": "Need help with this space?"
 }
