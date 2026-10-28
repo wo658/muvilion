@@ -12,7 +12,7 @@ export function interiorPose(doc: PlanDocument): CameraPose | null {
   const world=navigationWorld(doc);
   if(!world) return null;
   const {width,depth}=world;
-  const point=findWalkSpawn(world);
+  const point=findWalkSpawn(world,doc.visualStyle==="exhibition" && doc.walkStart?{x:doc.walkStart.x*width,y:doc.walkStart.y*depth}:undefined);
   if(!point) return null;
   const x=point.x-width/2,z=point.y-depth/2;
   return {eye:[x,1.65,z],target:[x,1.65,z-0.01]};

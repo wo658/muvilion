@@ -2,6 +2,7 @@
 
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
+import { ExhibitionObject } from "./exhibition-object";
 import { SceneCamera } from "./scene-camera";
 import { RoadView, EXPLORE_HINT } from "./road-view";
 import { interiorPose, navigationWorld, type CameraView } from "@/lib/plans/camera";
@@ -24,6 +25,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 export default function SceneView({ document, wallHeight, selected, onSelect }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void }) {
+  const exhibition = document.visualStyle === "exhibition";
   const width = document.widthMeters ?? 10;
   const depth = document.heightMeters ?? width * document.source.height / document.source.width;
   const span = Math.max(width, depth);
@@ -65,23 +67,25 @@ export default function SceneView({ document, wallHeight, selected, onSelect }: 
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="View help and model information"/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>Viewing the space</PopoverTitle><p>{view==="interior"?"Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles.":"Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus."}</p><p>{document.ceiling?`Ceiling ${document.ceiling.height} m · ${document.ceiling.status}`:"Ceiling height not set"}. Wall height {wallHeight} m is provisional.</p><p>{walls.length} wall sections from {document.lines.filter(l=>l.kind==="wall").length} source lines. Display settings never change the design or checks.</p></PopoverContent></Popover>
   </div>{view==="interior" && <div className="ps-explore-hint" role="status">{exploreStatus}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
     <color attach="background" args={[TOKENS.bg]} />
-    <ambientLight intensity={1.5} />
+    <ambientLight intensity={exhibition?0.9:1.5} />
+    {exhibition && <hemisphereLight args={["#e6f1ff","#c6b69b",1.4]}/>}
     <directionalLight position={[span / 3, span, span / 2]} intensity={2.4} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
-    <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color="#ffffff" roughness={0.9} /></mesh>
+    <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":"#ffffff"} roughness={0.9} /></mesh>
     {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
-    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={selected===zone.id?TOKENS.accent:"#7fb7b2"} transparent opacity={selected===zone.id?0.3:0.13} depthWrite={false} side={DoubleSide}/></mesh>)}
-    {<gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />}
+    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):"#7fb7b2"} transparent opacity={selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
+    {!exhibition && <gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />}
     {walls.map((line) => {
       const ax = line.a.x - width / 2, az = line.a.y - depth / 2;
       const bx = line.b.x - width / 2, bz = line.b.y - depth / 2;
       const length = Math.hypot(bx - ax, bz - az);
       if (length < 0.001) return null;
       return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, wallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow receiveShadow onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
-        <boxGeometry args={[length, wallHeight, line.thickness]} /><meshStandardMaterial color={selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : TOKENS.modelShade} roughness={0.8} />
+        <boxGeometry args={[length, wallHeight, line.thickness]} /><meshStandardMaterial color={selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : exhibition?"#e0ddd6":TOKENS.modelShade} roughness={0.8} />
       </mesh>;
     })}
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
-      <mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>
+      {exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
+
     </group>)}
     {view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
     <SceneCamera document={document} view={view} revision={cameraRevision} selected={selected}/>
