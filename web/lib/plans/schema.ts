@@ -3,6 +3,7 @@ import { isSimpleFootprint } from "./footprint";
 
 const PointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 export const DesignObjectSchema = z.object({
+  provenance: z.enum(["ai", "manual"]).optional(),
   appearance: z.enum(["screen", "counter", "sofa", "table", "plant", "truss", "seat"]).optional(),
   id: z.string().min(1).max(100), kind: z.enum(["booth", "stage", "lounge", "partition", "furniture", "equipment", "light", "hanging-sign", "canopy", "beam"]), label: z.string().max(100),
   x: z.number().min(0).max(1), y: z.number().min(0).max(1),
@@ -31,6 +32,7 @@ export const PlanLineSchema = z.object({
 });
 export const PlanDocumentSchema = z.object({
   schemaVersion: z.literal(1),
+  entrances: z.array(z.object({ id: z.string().min(1).max(100), label: z.string().min(1).max(80), x: z.number().min(0).max(1), y: z.number().min(0).max(1), rotation: z.number().min(0).max(360) })).max(30).optional(),
   visualStyle: z.enum(["schematic", "exhibition"]).optional(),
   source: z.object({ name: z.string().max(255), format: z.enum(["pdf", "image", "dxf"]),
     page: z.number().int().positive(), pages: z.number().int().positive(),
@@ -52,7 +54,7 @@ export const PlanDocumentSchema = z.object({
 }).superRefine((doc, ctx) => {
   if (new Set(doc.lines.map(line => line.id)).size !== doc.lines.length)
     ctx.addIssue({ code: "custom", message: "Line IDs must be unique", path: ["lines"] });
-  for (const key of ["zones", "objects"] as const) {
+  for (const key of ["zones", "objects", "entrances"] as const) {
     const values = doc[key] ?? [];
     if (new Set(values.map(value => value.id)).size !== values.length)
       ctx.addIssue({ code: "custom", message: `${key} IDs must be unique`, path: [key] });

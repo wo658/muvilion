@@ -50,11 +50,11 @@ describe("Muse design proposals", () => {
   it("replaces concept objects while preserving all source geometry and dimensions", () => {
     const scaled = { ...doc, scaleConfirmed: true, widthMeters: 10, heightMeters: 10 };
     const next = applyDesignProposal(scaled, proposal);
-    expect(next.objects).toEqual([object]);
+    expect(next.objects).toEqual([{ ...object, provenance: "ai" }]);
     expect(next.lines).toEqual(doc.lines);
     expect(next.widthMeters).toBe(10);
     expect(next.warnings).toContain("Exit locations need review.");
-    expect(planChatContext(next)).toHaveProperty("objects",[object]);
+    expect(planChatContext(next)).toHaveProperty("objects",[{ ...object, provenance: "ai" }]);
   });
   it("reports geometric conflicts rather than calling a draft feasible", () => {
     const next = applyDesignProposal({...doc,scaleConfirmed:true,widthMeters:10,heightMeters:10}, {...proposal,objects:[{...object,x:0}]});

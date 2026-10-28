@@ -4,6 +4,7 @@ import { Input } from "../ui/input";
 import { useMemo, useState } from "react";
 import { designWarnings } from "@/lib/plans/design";
 import type { DesignObject, PlanDocument, SpaceZone } from "@/lib/plans/schema";
+import { EntranceEditor } from "./entrance-editor";
 import { Segmented } from "../ui";
 import { Button } from "../ui";
 const TYPES: DesignObject["kind"][] = ["partition", "stage", "furniture", "equipment", "light", "hanging-sign", "canopy", "beam"];
@@ -39,13 +40,14 @@ export function DesignPanel({ document, onDocumentChange, selected, onSelect }: 
     const centre = document.walkStart ?? (document.floorBoundary?.length ? { x: document.floorBoundary.reduce((n, p) => n + p.x, 0) / document.floorBoundary.length, y: document.floorBoundary.reduce((n, p) => n + p.y, 0) / document.floorBoundary.length } : { x: 0.5, y: 0.5 });
     const add = (kind: DesignObject["kind"]) => {
         const id = crypto.randomUUID(), [width, depth, height, elevation] = DEFAULTS[kind];
-        onDocumentChange({ ...document, objects: [...objects, { id, kind, label: `${kind} ${objects.length + 1}`, ...centre, width, depth, height, elevation, rotation: 0, color: kind === "light" ? "#fff0b0" : "#89a9b6" }] });
+        onDocumentChange({ ...document, objects: [...objects, { id, kind, provenance: "manual", label: `${kind} ${objects.length + 1}`, ...centre, width, depth, height, elevation, rotation: 0, color: kind === "light" ? "#fff0b0" : "#89a9b6" }] });
         onSelect(id);
     };
     const addZone = (purpose: SpaceZone["purpose"]) => { const id = crypto.randomUUID(); onDocumentChange({ ...document, zones: [...zones, { id, label: `${purpose} ${zones.length + 1}`, purpose, ...centre, width: 8, depth: 6, rotation: 0, assignable: purpose === "booth" }] }); onSelect(id); };
     const activeTab = object ? "objects" : zone ? "zones" : tab;
     return <section className="ps-section ps-design-panel" aria-label="Space designer"><div className="ps-section-heading"><h2>Design your space</h2><span className="ps-small-muted">{zones.length} areas · {objects.length} elements</span></div>
     <Segmented label="Design layer" value={activeTab} onChange={id=>{setTab(id);onSelect(null);}} options={[{id:"zones",label:"Spaces"},{id:"objects",label:"Elements"},{id:"height",label:"Height"}]}/>
+    <EntranceEditor document={document} onChange={onDocumentChange} selected={selected} onSelect={onSelect}/>
     {!document.scaleConfirmed && <p className="ps-help">Confirm drawing scale in Details before designing.</p>}
     {activeTab === "zones" && <><p className="ps-help">Plan uses and circulation. Areas are not walls; booths are optional.</p><div className="ps-design-catalog">{PURPOSES.map(p => <Button key={p} disabled={!document.scaleConfirmed || zones.length >= 100} onClick={() => addZone(p)}>+ {p}</Button>)}</div>
       <label className="ps-field">Selected space<NativeSelect aria-label="Selected space" value={zone?.id ?? ""} onChange={e => onSelect(e.target.value || null)}><option value="">Choose a space</option>{zones.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}</NativeSelect></label>

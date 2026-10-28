@@ -6,7 +6,8 @@ type Point = {
     x: number;
     y: number;
 };
-export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = true, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint }: {
+export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOriginal = true, drawing, onDraw, measurement, rectangle, floorDraft, onBoundaryPoint, onEntrancePoint }: {
+    onEntrancePoint?: (point: Point) => void;
     floorDraft?: Point[] | null;
     onBoundaryPoint?: (point: Point) => void;
     document: PlanDocument;
@@ -40,6 +41,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
     };
     return <div className={`ps-plan ${drawing ? "is-drawing" : ""}`}>
     <div className="ps-plan-scroll"><svg style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%`, minWidth: `${zoom * 100}%`, minHeight: `${zoom * 100}%` }} viewBox={`0 0 ${width} ${height}`} aria-label="Floor plan with extracted geometry" onPointerDown={(e) => {
+            if (onEntrancePoint) { onEntrancePoint(point(e)); return; }
             if (onBoundaryPoint) {
                 onBoundaryPoint(point(e));
                 return;
@@ -95,6 +97,10 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
             } }} style={{ cursor: "pointer" }}><rect x={-w / 2} y={-h / 2} width={w} height={h} fill={object.color} fillOpacity={0.8} stroke={selected === object.id ? "#0064e0" : "white"} strokeWidth={selected === object.id ? 3 : 1} vectorEffect="non-scaling-stroke"/><text textAnchor="middle" dominantBaseline="central" fontSize={Math.max(6, Math.min(w / 6, 15))} fill="white">{object.label}</text></g>;
         })}
       {(floorDraft ?? document.floorBoundary) && <g pointerEvents="none"><polygon points={(floorDraft ?? document.floorBoundary ?? []).map(p => `${p.x * width},${p.y * height}`).join(" ")} fill="#0064e0" fillOpacity={0.06} stroke="#0064e0" strokeWidth={2} strokeDasharray={floorDraft ? "6 4" : undefined} vectorEffect="non-scaling-stroke"/>{floorDraft?.map((p, i) => <circle key={i} cx={p.x * width} cy={p.y * height} r={4} fill="#0064e0"/>)}</g>}
+      {(document.entrances ?? []).map(entrance => <g key={entrance.id} transform={`translate(${entrance.x * width} ${entrance.y * height})`} onPointerDown={event => { if (!drawing && !onBoundaryPoint && !onEntrancePoint) { event.stopPropagation(); onSelect(entrance.id); } }} style={{ cursor: "pointer" }}>
+        <circle r={Math.max(width / 100, 5)} fill="#17876f" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
+        <text y={-Math.max(width / 70, 10)} textAnchor="middle" fill="#17876f" stroke="white" strokeWidth={3} paintOrder="stroke" fontSize={Math.max(width / 70, 10)}>{entrance.label}</text>
+      </g>)}
       {measurement && <g stroke="#aa7933" strokeWidth={3} fill="#aa7933"><line x1={measurement[0].x * width} y1={measurement[0].y * height} x2={measurement[1].x * width} y2={measurement[1].y * height} vectorEffect="non-scaling-stroke"/>{measurement.map((p, i) => <circle key={i} cx={p.x * width} cy={p.y * height} r={width / 150}/>)}</g>}
       {drawing && start && cursor && (rectangle ? <rect x={Math.min(start.x, cursor.x) * width} y={Math.min(start.y, cursor.y) * height} width={Math.abs(start.x - cursor.x) * width} height={Math.abs(start.y - cursor.y) * height} fill="#0064e0" fillOpacity={0.12} stroke="#0064e0" strokeWidth={2} strokeDasharray="6 4" vectorEffect="non-scaling-stroke"/> : <line x1={start.x * width} y1={start.y * height} x2={cursor.x * width} y2={cursor.y * height} stroke="#0064e0" strokeWidth={3} strokeDasharray="6 4" vectorEffect="non-scaling-stroke"/>)}
     </svg></div><div className="ps-zoom" role="group" aria-label="Plan zoom"><Button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} disabled={zoom <= 1} aria-label="Zoom out">−</Button><span>{Math.round(zoom * 100)}%</span><Button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} disabled={zoom >= 4} aria-label="Zoom in">+</Button><Button onClick={() => setZoom(1)}>Fit</Button></div>
