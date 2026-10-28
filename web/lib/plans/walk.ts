@@ -70,3 +70,16 @@ export function findWalkSpawn(world: WalkWorld, preferred?: WalkPoint): WalkPoin
   candidates.sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y));
   return candidates.find(p => canStand(p, world)) ?? null;
 }
+
+/** Straight click-to-move route. Expanded samples conservatively cover the entire swept body. */
+export function canTravel(start: WalkPoint, end: WalkPoint, world: WalkWorld): boolean {
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  if (!Number.isFinite(length) || length > 200) return false;
+  const steps = Math.max(1, Math.ceil(length / 0.05));
+  const clearance = WALK_RADIUS + length / steps / 2;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    if (!canStand({ x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t }, world, clearance)) return false;
+  }
+  return true;
+}
