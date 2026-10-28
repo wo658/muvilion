@@ -96,6 +96,39 @@ Use **입구 표시** in 2D to place an entrance marker, then edit its name or d
 
 The default 2D editor is a human-readable space diagram, not a technical drawing viewer: retain essential walls, entrances, zones and object footprints; use a muted floor and furniture symbols; show labels only where they fit or on selection. Source linework, dimensions and images are available through Original drawing, and appear during geometry-review tools. An unclassified plan falls back to its source instead of pretending to have a reconstructed structure. Schematic presentation never changes geometry, wall openings, object IDs, coordinates or validation inputs.
 
+## External exhibitor booths
+
+Open **외부 참가 부스** from the studio header. Without a drawing, **참가 부스 예시로 시작**
+loads an original schematic 18 × 12 m example with four booths; it requires no external
+venue files and is neither a measured venue nor model-generated output.
+
+Organizers select assignable zones, set their position/dimensions, participation fee in
+KRW, maximum installation height and included services, then publish a participant URL.
+Publishing snapshots the space. Overlapping booths, circulation obstructions and
+existing geometry conflicts are rejected. Applicants submit company/contact details
+and a brief. Their fee quote is retained even if the listing price changes later.
+Only one application per booth may be approved.
+
+Applicants keep a private fragment-based resume URL. Approval opens an isolated booth
+workspace with 2D/3D preview, manual installation editing, and Muse proposals. Muse's
+coordinator delegates to a fresh booth specialist, which calls geometry validation,
+reads repair feedback and submits only a checked proposal (at most six specialist steps,
+110-second overall deadline). It receives only its booth, company, brief and current
+booth objects. Applying a proposal and saving/submitting it are explicit user actions.
+Organizers can review a submitted design and import its transformed objects into the
+venue after a fresh geometry check. Exported dimensions, quantities and notes are
+construction-discussion concepts, not certified plans or quotations.
+
+Requires Node >=22.13. SQLite persists application state on one application host at
+`.data/booths.sqlite`, configurable with `BOOTH_DB_PATH`. Use persistent disk and backups;
+an ephemeral or multi-host deployment needs an appropriate shared storage adapter.
+Only hashes of organizer/applicant capability tokens are stored server-side. Public
+catalogues omit contact details and the source drawing. The organizer recovery code
+and applicant resume URL grant access: keep them private. This concept does not add
+account login, email delivery or payment processing. To accept actual external users,
+serve the application at an externally reachable HTTPS origin; localhost links only
+work on the local machine.
+
 ## Server code
 
 `app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns

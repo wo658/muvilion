@@ -30,6 +30,9 @@ export const TOKENS = {
   // status (desaturated so they never compete with crowding)
   ok: "#2F7A5B",
   bad: "#B3402F",
+  badSoft: "#FFF1EF",
+  overlay: "#0A131747",
+  shadowColor: "#0A131714",
   // site materials (cool, low-chroma)
   floorIndoor: "#E3E6E9",
   floorOutdoor: "#E5E8EA",
