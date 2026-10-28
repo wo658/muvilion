@@ -7,7 +7,7 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - Before opening a drawing, center the conversation. Use one greeting and at most two optional prompts.
 - With a drawing, share the workspace between conversation and canvas. Put conversation first on narrow screens.
 - No top bar. Brand, projects, booths and settings live in one sidebar that collapses to an icon rail (collapsed by default; icons only on narrow screens).
-- With a drawing, Muse docks bottom-right like the ElevenLabs agent widget: avatar and status pill over the feed, plain-text replies, ink user bubbles, a bordered composer and a separate minimize card; minimized, it becomes a launcher card.
+- With a drawing, Muse is a full-height right sidebar (like the ElevenLabs agent panel) that collapses to an icon rail: avatar and status pill over the feed, plain-text replies, ink user bubbles and a bordered composer. On phones it is a bottom sheet that collapses to an icon card.
 - Keep sources and application settings in dialogs. Reveal preparation under Drawing settings; Muse starts analysis from chat requests.
 - Remove marketing subtitles, decorative workflow steps, duplicate status copy and implementation details. Preserve actionable errors, scale warnings, review coverage and explicit proposal approval.
 - Send is conversational. Draft a layout creates a reviewable proposal; Apply changes commits it. Never imply chat itself performed an edit.

@@ -106,22 +106,29 @@
  .ps-greeting{gap:20px}
 }
 
-/* Muse dock (after the ElevenLabs agent widget): with a plan open, a floating sheet over the canvas
-   with a separate control card below it; minimized, it becomes a small launcher card. */
-.ps-has-plan.ps-simple-view .ps-workspace{grid-template-columns:minmax(0,1fr)}
-.ps-has-plan.ps-detail-view .ps-workspace{grid-template-columns:240px minmax(0,1fr)}
-.ps-has-plan .ps-right-panel{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;flex-direction:column;align-items:flex-end;gap:8px;width:min(400px,calc(100vw - 32px));height:min(700px,calc(100dvh - 48px));max-height:none;min-height:0;border:0;border-radius:0;background:transparent;overflow:visible;transform-origin:bottom right;transition:opacity .18s ease,transform .18s ease}
-.ps-has-plan .ps-right-panel>section.ps-conversation{width:100%;flex:1;height:auto;min-height:0;border:1px solid var(--hairline);border-radius:20px;overflow:hidden;box-shadow:0 24px 64px -24px var(--shadow-color)}
-.ps-has-plan .ps-right-panel[data-collapsed]{opacity:0;transform:scale(.92) translateY(12px);pointer-events:none;visibility:hidden;transition:opacity .18s ease,transform .18s ease,visibility 0s .18s}
-.ps-has-plan .ps-right-panel>.ps-muse-controls{flex:none;min-height:0;display:flex;padding:8px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface);box-shadow:0 16px 40px -20px var(--shadow-color)}
+/* Muse dock: with a plan open, Muse is a full-height right sidebar (like the ElevenLabs agent
+   panel) that collapses to an icon rail; the studio reserves its width. */
+.ps-has-plan{--muse-width:400px;padding-right:var(--muse-width);transition:padding-right .2s ease}
+.ps-has-plan.ps-muse-collapsed{--muse-width:56px}
+.ps-has-plan.ps-simple-view .ps-workspace{grid-template-columns:minmax(0,1fr);padding-top:16px}
+.ps-has-plan.ps-detail-view .ps-workspace{grid-template-columns:240px minmax(0,1fr);padding-top:16px}
+.ps-has-plan .ps-right-panel{position:fixed;top:0;right:0;bottom:0;z-index:30;display:flex;flex-direction:column;width:var(--muse-width);height:auto;max-height:none;min-height:0;border:0;border-left:1px solid var(--hairline);border-radius:0;background:var(--surface);overflow:hidden;transition:width .2s ease}
+.ps-has-plan .ps-right-panel>section.ps-conversation{flex:1;min-width:320px;height:auto;min-height:0;border:0;border-radius:0}
+.ps-has-plan .ps-right-panel[data-collapsed]>section.ps-conversation{display:none}
+.ps-muse-rail{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 9px}
+.ps-muse-rail-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;cursor:pointer}
+.ps-muse-rail-avatar:hover{background:var(--sunken)}
+.ps-muse-rail-avatar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .ps-ink-button{background:var(--ink)!important;color:var(--surface)!important;border-color:var(--ink)!important}
 .ps-ink-button:hover:not(:disabled){opacity:.88}
-.ps-muse-launcher{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:8px 8px 8px 10px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:0 16px 40px -20px var(--shadow-color)}
-.ps-muse-launcher>span{min-width:0;max-width:200px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ps-muse-launcher button{border-radius:10px}
-@media(max-width:799px){.ps-has-plan .ps-right-panel{right:8px;left:8px;bottom:8px;width:auto;height:min(660px,calc(100dvh - 72px))}.ps-muse-launcher{right:16px;bottom:16px}.ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}}
-@media(prefers-reduced-motion:reduce){.ps-has-plan .ps-right-panel{transition:none}}
-.ps-icon-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0!important}.ps-icon-button svg{width:18px;height:18px}
+@media(max-width:799px){
+  .ps-has-plan,.ps-has-plan.ps-muse-collapsed{padding-right:0}
+  .ps-has-plan .ps-right-panel{top:auto;left:0;width:100%;height:min(640px,calc(100dvh - 64px));border-left:0;border-top:1px solid var(--hairline);border-radius:20px 20px 0 0;box-shadow:0 -16px 48px -24px var(--shadow-color)}
+  .ps-has-plan .ps-right-panel[data-collapsed]{left:auto;right:16px;bottom:16px;width:auto;height:auto;border:1px solid var(--hairline);border-radius:16px}
+  .ps-has-plan .ps-right-panel[data-collapsed] .ps-muse-rail{flex-direction:row;padding:6px}
+  .ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}
+}
+@media(prefers-reduced-motion:reduce){.ps-has-plan,.ps-has-plan .ps-right-panel{transition:none}}
 
 /* Muse conversation: avatar and status pill float over the feed; Muse replies are plain text,
    your messages are ink bubbles. */
@@ -155,7 +162,27 @@
 .ps-send:disabled{background:var(--hairline-strong)!important;opacity:1}
 .ps-muse-selection{margin:0 12px 8px;border:1px solid var(--hairline);border-radius:14px}
 @media(prefers-reduced-motion:reduce){.ps-muse-thinking{animation:none}}
+/* Role changes preserve the canvas and both conversations. */
+.ps-role-panel { display:flex; flex-direction:column; min-height:0; height:100%; overflow-y:auto; }
+.ps-role-panel[hidden], .ps-sidebar[hidden] { display:none!important; }
+.ps-role-panel > .ps-conversation { flex:1; min-height:360px; height:auto; overflow:hidden; }
+.ps-booth-pricing { flex-shrink:0; border-bottom:1px solid var(--hairline); max-height:55vh; overflow-y:auto; }
+.ps-booth-pricing > summary { cursor:pointer; padding:16px 20px; font-weight:600; }
+@media(max-width:760px) { .ps-header { height:auto; min-height:68px; flex-wrap:wrap; padding:16px; } .ps-header-actions { flex-wrap:wrap; gap:12px; } }
 
 /* No top bar: actions live in the project sidebar, so give the workspace its own top inset. */
 .ps-simple-view .ps-workspace,.ps-detail-view .ps-workspace{padding-top:24px}
 @media(max-width:900px){.ps-simple-view .ps-workspace,.ps-detail-view .ps-workspace{padding-top:16px}}
+
+/* One quiet canvas header: view switch, everything else behind the overflow menu. */
+.ps-canvas-toolbar,.ps-simple-view .ps-canvas-toolbar{height:52px;min-height:0;flex-wrap:nowrap;padding:0 16px;gap:8px}
+.ps-tools-menu{width:auto;min-width:180px;gap:2px;padding:6px}
+.ps-tools-menu>button{justify-content:flex-start}
+/* Let the drawing sit on the page itself: no card, no canvas fill. */
+.ps-simple-view .ps-center{border:0;border-radius:0;box-shadow:none;background:transparent}
+.ps-simple-view .ps-canvas-area{background:transparent}
+.ps-simple-view .ps-canvas-toolbar{background:transparent;border-bottom:0}
+
+.ps-design-mode-bar { display:flex; justify-content:flex-start; padding:10px 24px; flex-shrink:0; }
+.ps-has-plan .ps-right-panel > .ps-role-panel { width:100%; flex:1; height:auto; min-height:0; overflow-y:auto; }
+.ps-has-plan .ps-right-panel[data-collapsed] > .ps-role-panel { display:none; }
