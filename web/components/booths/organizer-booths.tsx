@@ -93,7 +93,7 @@ function OrganizerBoothsInner({ document, onDocumentChange, onPublished, onPrici
   }
   const publicPath = project ? `/participate/${project.id}` : "";
   return <div className="flex flex-col gap-6 p-5">
-    <div><p className="eyebrow">SPACE DESIGN</p><h2 className="mt-2 text-xl font-semibold">부스 가격 · 신청 관리</h2><p className="mt-2 text-sm text-muted">Muse와 가격을 검토한 뒤 공개하세요. 부스 디자이너 모드에서 신청 경험을 바로 확인할 수 있어요.</p></div>
+    <div><p className="eyebrow">SPACE DESIGN</p><h2 className="mt-2 text-xl font-semibold">부스 가격 · 신청 관리</h2><p className="mt-2 text-sm text-muted">Muse와 가격을 검토한 뒤 공개하세요. 참가 모드에서 신청 경험을 바로 확인할 수 있어요.</p></div>
     {error && <p role="alert" className="text-sm text-bad">{error}</p>}
     {notice && <p role="status" className="text-sm text-accent">{notice}</p>}
     {restoring && <p role="status" className="text-sm text-muted">저장된 모집 정보를 확인하는 중…</p>}
