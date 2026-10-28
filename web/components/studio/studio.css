@@ -107,28 +107,30 @@
 }
 
 /* Muse dock: with a plan open, Muse is a full-height right sidebar (like the ElevenLabs agent
-   panel) that collapses to an icon rail; the studio reserves its width. */
-.ps-has-plan{--muse-width:400px;padding-right:var(--muse-width);transition:padding-right .2s ease}
-.ps-has-plan.ps-muse-collapsed{--muse-width:56px}
+   panel); collapsed, it floats as a round launcher at the bottom right (like Channel Talk). */
+.ps-has-plan{--muse-width:400px;padding-right:var(--muse-width)}
+.ps-has-plan.ps-muse-collapsed{--muse-width:0px}
 .ps-has-plan.ps-simple-view .ps-workspace{grid-template-columns:minmax(0,1fr);padding-top:16px}
 .ps-has-plan.ps-detail-view .ps-workspace{grid-template-columns:240px minmax(0,1fr);padding-top:16px}
-.ps-has-plan .ps-right-panel{position:fixed;top:0;right:0;bottom:0;z-index:30;display:flex;flex-direction:column;width:var(--muse-width);height:auto;max-height:none;min-height:0;border:0;border-left:1px solid var(--hairline);border-radius:0;background:var(--surface);overflow:hidden;transition:width .2s ease}
+.ps-has-plan .ps-right-panel{position:fixed;top:0;right:0;bottom:0;z-index:30;display:flex;flex-direction:column;width:var(--muse-width);height:auto;max-height:none;min-height:0;border:0;border-left:1px solid var(--hairline);border-radius:0;background:var(--surface);overflow:hidden}
 .ps-has-plan .ps-right-panel>section.ps-conversation{flex:1;min-width:320px;height:auto;min-height:0;border:0;border-radius:0}
+.ps-has-plan .ps-right-panel[data-collapsed]{top:auto;left:auto;right:24px;bottom:24px;width:auto;height:auto;border:0;background:transparent;overflow:visible}
 .ps-has-plan .ps-right-panel[data-collapsed]>section.ps-conversation{display:none}
-.ps-muse-rail{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 9px}
-.ps-muse-rail-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;cursor:pointer}
-.ps-muse-rail-avatar:hover{background:var(--sunken)}
-.ps-muse-rail-avatar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.ps-muse-launcher{display:grid;place-items:center;width:60px;height:60px;border:1px solid var(--hairline);border-radius:50%;background:var(--surface);box-shadow:0 12px 32px -12px var(--shadow-color);cursor:pointer;animation:ps-launcher-in .2s ease-out;transition:transform .15s ease,box-shadow .15s ease}
+.ps-muse-launcher:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 16px 40px -12px var(--shadow-color)}
+.ps-muse-launcher:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@keyframes ps-launcher-in{from{opacity:0;transform:scale(.6)}}
+@media(min-width:800px){.ps-muse-collapsed .ps-zoom{right:72px}}
 .ps-ink-button{background:var(--ink)!important;color:var(--surface)!important;border-color:var(--ink)!important}
 .ps-ink-button:hover:not(:disabled){opacity:.88}
 @media(max-width:799px){
   .ps-has-plan,.ps-has-plan.ps-muse-collapsed{padding-right:0}
   .ps-has-plan .ps-right-panel{top:auto;left:0;width:100%;height:min(640px,calc(100dvh - 64px));border-left:0;border-top:1px solid var(--hairline);border-radius:20px 20px 0 0;box-shadow:0 -16px 48px -24px var(--shadow-color)}
-  .ps-has-plan .ps-right-panel[data-collapsed]{left:auto;right:16px;bottom:16px;width:auto;height:auto;border:1px solid var(--hairline);border-radius:16px}
-  .ps-has-plan .ps-right-panel[data-collapsed] .ps-muse-rail{flex-direction:row;padding:6px}
+  .ps-has-plan .ps-right-panel[data-collapsed]{left:auto;right:16px;bottom:16px;width:auto;height:auto;border:0;border-radius:0;box-shadow:none}
+  .ps-muse-launcher{width:52px;height:52px}
   .ps-has-plan.ps-simple-view .ps-center{height:calc(100dvh - 140px)}
 }
-@media(prefers-reduced-motion:reduce){.ps-has-plan,.ps-has-plan .ps-right-panel{transition:none}}
+@media(prefers-reduced-motion:reduce){.ps-muse-launcher{animation:none;transition:none}}
 
 /* Muse conversation: avatar and status pill float over the feed; Muse replies are plain text,
    your messages are ink bubbles. */

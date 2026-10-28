@@ -21,7 +21,7 @@ import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { EllipsisIcon, PanelRightOpenIcon, SettingsIcon } from "lucide-react";
+import { EllipsisIcon, SettingsIcon } from "lucide-react";
 
 import Image from "next/image";
 import { designWarnings } from "@/lib/plans/design";
@@ -358,10 +358,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {spaceMode && details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
-        {museCollapsed && <div className="ps-muse-rail">
-          <RailButton icon={<PanelRightOpenIcon/>} label={t("Talk to Muse")} aria-expanded={false} aria-controls="muse-panel" onClick={() => setChatOpen(true)}/>
-          <button type="button" className="ps-muse-rail-avatar" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><Image src="/mascot/muvi-face.svg" alt="" width={32} height={32}/></button>
-        </div>}
+        {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><Image src="/mascot/muvi-face.svg" alt="" width={40} height={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {document ? <details className="ps-booth-pricing"><summary>부스 가격 · 신청 관리</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>부스 디자인 예시로 시작</Button></div>}
           <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
