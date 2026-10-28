@@ -38,3 +38,6 @@ engine/.cache/
 # Local tooling state
 .pnpm-store/
 .claude/
+
+# Local participant records (contains contact details)
+web/.data/
