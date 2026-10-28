@@ -17,8 +17,11 @@ type Props = {
   library: SourceLibrary; ready: boolean; document: PlanDocument | null; busy: boolean;
   onChange: (update: (current: SourceLibrary) => SourceLibrary) => void;
   onDrawing: () => void;
+  onUploadOriginal: (file: File) => Promise<string>;
 };
-export function SourcesPanel({ library, ready, document, busy, onChange, onDrawing }: Props) {
+export function SourcesPanel({ library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const { t, locale } = useI18n();
   const [preview, setPreview] = useState<string | null>(null);
   const [addingBrand, setAddingBrand] = useState(false);
@@ -41,8 +44,12 @@ export function SourcesPanel({ library, ready, document, busy, onChange, onDrawi
   };
   async function upload(file: File, kind: "concept" | "brief") {
     setUploading(true); setError(null);
-    try { add(await readReference(file, kind)); }
-    catch (error) { setError(error instanceof Error ? error.message : t("Could not add this source.")); }
+    try {
+      const item = await readReference(file, kind);
+      const originalAssetId = await onUploadOriginal(file);
+      if (alive.current) add({ ...item, originalAssetId });
+    }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not add this source."); }
     finally { setUploading(false); }
   }
   return <section className="ps-sources" aria-label={t("Project sources")}>
