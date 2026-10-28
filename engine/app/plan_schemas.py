@@ -4,6 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+MAX_PLAN_LINES = 100_000
+MAX_PLAN_TEXTS = 20_000
+
 
 class PlanPoint(BaseModel):
     x: float = Field(ge=0, le=1)
@@ -42,7 +45,7 @@ class PlanEvidence(BaseModel):
     widthMeters: float | None = None
     heightMeters: float | None = None
     scaleConfirmed: Literal[False] = False
-    lines: list[PlanLine] = Field(max_length=1200)
-    texts: list[PlanText] = Field(max_length=400)
+    lines: list[PlanLine] = Field(max_length=MAX_PLAN_LINES)
+    texts: list[PlanText] = Field(max_length=MAX_PLAN_TEXTS)
     warnings: list[str]
     method: Literal["pdf-vector", "opencv", "dxf"]
