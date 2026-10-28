@@ -4,7 +4,7 @@ This file is the single source of truth. The engine imports these models directl
 the web app consumes them through the engine's OpenAPI spec (generated TS types).
 
 Conventions
-- Units: meters, seconds, persons per square meter.
+- Units: meters and seconds.
 - Coordinates: origin at the hall's bottom-left corner, x to the right, y up.
 - Booth position (x, y) is the booth's bottom-left corner after rotation is applied.
 """
@@ -80,7 +80,7 @@ class BoothSpec(BaseModel):
     label: str
     w: float = Field(gt=0)
     h: float = Field(gt=0)
-    # Relative attraction 0..1; drives dwell time and visit probability in simulation.
+    # Relative attraction 0..1; controls popular-booth placement constraints.
     popularity: float = Field(default=0.5, ge=0, le=1)
     # Visual/semantic type; the engine treats every kind as a rectangular footprint.
     kind: Literal["booth", "tent", "food_truck", "kiosk"] = "booth"
@@ -128,21 +128,11 @@ class LayoutRequest(BaseModel):
     time_limit_s: float = Field(default=10.0, gt=0, le=60)
 
 
-class LayoutStep(BaseModel):
-    """An improving solution found by the solver on the way to the returned layout."""
-
-    t_s: float
-    objective: float
-    booths: list[Booth]
-
-
 class LayoutResponse(BaseModel):
     layout: Layout
     status: Literal["optimal", "feasible", "infeasible"]
     objective: float | None = None
     solve_time_s: float
-    # Improving solutions in the order found (at most ~12, last one equals `layout`).
-    steps: list[LayoutStep] = []
 
 
 class Violation(BaseModel):
@@ -164,106 +154,3 @@ class ValidateRequest(BaseModel):
 class ValidateResponse(BaseModel):
     ok: bool
     violations: list[Violation]
-
-
-class Scenario(BaseModel):
-    kind: Literal["entry", "browse", "exit"]
-    agents: int = Field(default=200, gt=0, le=3000)
-    duration_s: float = Field(default=300.0, gt=0, le=3600)
-    seed: int = 0
-
-
-class SimulateRequest(BaseModel):
-    venue: Venue
-    layout: Layout
-    booths: list[BoothSpec]
-    scenario: Scenario
-    grid_cell: float = Field(default=2.0, gt=0)
-    # Safety cap on real compute time; a run that hits it returns partial metrics with
-    # truncated=true (and is then no longer guaranteed to be reproducible).
-    max_wall_time_s: float = Field(default=60.0, gt=0, le=600)
-    # Sampling interval for recorded agent positions (served by POST /trajectories).
-    trajectory_dt: float = Field(default=0.5, gt=0, le=5)
-    # A grid cell counts as crowded while its density is at or above this (p/m^2).
-    crowd_threshold: float = Field(default=2.0, gt=0)
-
-
-class DensityGrid(BaseModel):
-    cell: float
-    cols: int
-    rows: int
-    # Row-major, rows from y=0 upward; peak density per cell over the run (p/m^2).
-    peak: list[float]
-
-
-class Hotspot(BaseModel):
-    zone: Rect
-    peak_density: float
-    mean_density: float
-    # Booths whose footprint is within one cell of the hotspot.
-    nearby_booth_ids: list[str] = []
-
-
-class Congestion(BaseModel):
-    """Sustained congestion: how much crowding there was and for how long, not just its peak."""
-
-    threshold: float
-    # Sum over sampled frames of (people standing in crowded cells) x frame interval.
-    crowded_person_s: float
-    # Sum over sampled frames of (area of crowded cells) x frame interval.
-    crowded_area_m2s: float
-    # crowded_person_s / number of agents that entered: time the average visitor spent crowded.
-    crowded_s_per_visitor: float
-    # Largest crowded area at any single sampled frame.
-    peak_crowded_area_m2: float
-    # Highest Hotspot.mean_density (density averaged over the run), 0 when there are no hotspots.
-    worst_hotspot_mean_density: float
-
-
-class SimResult(BaseModel):
-    run_id: str
-    scenario: Scenario
-    layout_id: str
-    completed_fraction: float
-    mean_travel_time_s: float
-    p90_travel_time_s: float
-    max_density: float
-    congestion: Congestion
-    hotspots: list[Hotspot]
-    grid: DensityGrid
-    sim_time_s: float
-    wall_time_s: float
-    # True when the run stopped early because max_wall_time_s was reached.
-    truncated: bool = False
-
-
-class AgentTrack(BaseModel):
-    id: int
-    # Frame index of the first sample; the agent exists for len(xy) // 2 frames from there.
-    t0: int
-    # Flat [x0, y0, x1, y1, ...] in meters, rounded to centimeters.
-    xy: list[float]
-
-
-class Trajectories(BaseModel):
-    # Same run_id as the SimResult of the same SimulateRequest.
-    run_id: str
-    layout_id: str
-    dt: float
-    frames: int
-    agents: list[AgentTrack]
-
-
-class QueueRequest(BaseModel):
-    arrivals_per_min: float = Field(gt=0)
-    service_time_s: float = Field(gt=0)
-    servers: int = Field(ge=1)
-    duration_min: float = Field(default=60, gt=0)
-    seed: int = 0
-
-
-class QueueResult(BaseModel):
-    mean_wait_s: float
-    p90_wait_s: float
-    max_queue_len: int
-    utilization: float

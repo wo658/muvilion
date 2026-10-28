@@ -1,4 +1,4 @@
-"""Run layout -> validate -> simulate (+ queue) on a fixture and print metrics.
+"""Run layout and validation on a fixture.
 
 uv run python scripts/demo.py                 # in-process, no server needed
 uv run python scripts/demo.py --fixture outdoor_plaza
@@ -39,8 +39,6 @@ def main() -> None:
         default="sample_hall",
         help="fixture name in fixtures/ (sample_hall, outdoor_plaza) or a path to a JSON file",
     )
-    ap.add_argument("--agents", type=int, default=200)
-    ap.add_argument("--duration", type=float, default=300.0)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -54,12 +52,7 @@ def main() -> None:
     lay = client.post("/layout", json={"venue": venue, "booths": specs, "seed": args.seed}).json()
     layout = lay["layout"]
     print(f"venue   {venue['name']}  ({venue.get('setting', 'indoor')}, {len(specs)} booths)")
-    print(
-        f"layout  {layout['id']}  status={lay['status']}  solve={lay['solve_time_s']:.2f}s  "
-        f"steps={len(lay['steps'])}"
-    )
-    for st in lay["steps"]:
-        print(f"    step t={st['t_s']:.2f}s  objective={st['objective']:.0f}")
+    print(f"layout  {layout['id']}  status={lay['status']}  solve={lay['solve_time_s']:.2f}s")
     if lay["status"] == "infeasible":
         return
 
@@ -67,35 +60,6 @@ def main() -> None:
     print(f"validate ok={val['ok']}  violations={len(val['violations'])}")
     for v in val["violations"]:
         print(f"  [{v['severity']}] {v['rule_id']}: {v['message']}")
-
-    for kind in ("entry", "browse", "exit"):
-        scenario = {
-            "kind": kind,
-            "agents": args.agents,
-            "duration_s": args.duration,
-            "seed": args.seed,
-        }
-        req = {"venue": venue, "layout": layout, "booths": specs, "scenario": scenario}
-        r = client.post("/simulate", json=req).json()
-        tr = client.post("/trajectories", json=req).json()  # cache hit: no second run
-        print(
-            f"simulate {kind:<6} done={r['completed_fraction']:.2f}  "
-            f"travel mean/p90={r['mean_travel_time_s']:.0f}/{r['p90_travel_time_s']:.0f}s  "
-            f"max_density={r['max_density']:.2f} p/m²  wall={r['wall_time_s']:.1f}s  "
-            f"tracks={len(tr['agents'])}x{tr['frames']}f"
-        )
-        for h in r["hotspots"][:3]:
-            z = h["zone"]
-            print(
-                f"    hotspot ({z['x']:.0f},{z['y']:.0f}) {z['w']:.0f}x{z['h']:.0f}m  "
-                f"peak={h['peak_density']:.2f} mean={h['mean_density']:.2f}  "
-                f"near={','.join(h['nearby_booth_ids'])}"
-            )
-
-    q = client.post(
-        "/queue", json={"arrivals_per_min": 6, "service_time_s": 25, "servers": 3}
-    ).json()
-    print(f"queue   3 desks: mean wait={q['mean_wait_s']:.0f}s  util={q['utilization']:.2f}")
 
 
 if __name__ == "__main__":

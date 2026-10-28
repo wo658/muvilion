@@ -27,9 +27,11 @@ Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignor
 - SVG review + React Three Fiber preview; JSON import/export and browser local storage.
 - Trace a simple interior floor polygon in Details after confirming scale. It defines usable floor and ceiling surfaces without inventing walls. Cropping clears scale and floor review.
 
-Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Legacy simulation modules remain in the repository but are not the studio workflow.
+Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Crowd simulation, registration queues and the old replay/review APIs have been removed. The Python layout solver, validation rules and walkable-area geometry remain available for future integration.
 
 ## Space design and heights
+
+CC0 materials, furniture and lighting candidates with individual download links and adoption notes are listed in [ASSET-SHORTLIST.md](ASSET-SHORTLIST.md). This is a researched shortlist; assets are not bundled or wired into the editor yet.
 
 Simple view's **Design space** opens three layers: Spaces (non-solid purpose zones), Elements (physical installations), and Height & ceiling. Booths are optional spaces; legacy booth/lounging solid objects remain importable. Zones may be marked available for later company/team assignment, without adding registration workflows.
 
@@ -89,3 +91,15 @@ Use **입구 표시** in 2D to place an entrance marker, then edit its name or d
 ### 2D presentation principle
 
 The default 2D editor is a human-readable space diagram, not a technical drawing viewer: retain essential walls, entrances, zones and object footprints; use a muted floor and furniture symbols; show labels only where they fit or on selection. Source linework, dimensions and images are available through Original drawing, and appear during geometry-review tools. An unclassified plan falls back to its source instead of pretending to have a reconstructed structure. Schematic presentation never changes geometry, wall openings, object IDs, coordinates or validation inputs.
+
+## Server code
+
+`app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns
+model configuration; `server/plans` executes drawing workflows; `server/engine` is the
+single Python transport (including multipart extraction); `server/examples` loads local
+example assets. Runtime entry points import `server-only`. Shared schemas and pure
+transformations stay in `lib/`.
+
+Examples are optional local files. Set `DEMO_DATA_DIR` to an explicit directory (especially
+in a worktree or packaged install); the default is `../DemoData` relative to the web
+working directory. Missing examples return 404 and users can upload their own drawings.

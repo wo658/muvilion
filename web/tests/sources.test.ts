@@ -1,5 +1,6 @@
+import { sourceContent } from "@/server/plans/sources";
 import { describe, expect, it } from "vitest";
-import { emptySources, SourceLibrarySchema, ReferenceSourceSchema, sourceContent } from "@/lib/sources/schema";
+import { emptySources, SourceLibrarySchema, ReferenceSourceSchema } from "@/lib/sources/schema";
 const source = (id: string, selected: boolean) => ReferenceSourceSchema.parse({ id, kind: "concept", name: id, selected, images: ["data:image/jpeg;base64,AA=="], notes: `${id} notes` });
 
 describe("project sources", () => {
