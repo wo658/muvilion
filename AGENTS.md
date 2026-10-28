@@ -56,7 +56,7 @@ attribution behavior built into the tool.
 ## Code organization and migration
 
 - `web/server/` contains server-only feature modules: `agent/`, `plans/`,
-  `engine/`, and `examples/`. Keep new server work in these modules. Update imports
+  `engine/`, and `projects/`. Keep new server work in these modules. Update imports
   and tests together, and do not keep competing implementations.
 - Keep browser code and shared pure functions/types separate from server modules.
   Follow `web/AGENTS.md` for the web boundary and `engine/AGENTS.md` for Python.
@@ -69,9 +69,9 @@ attribution behavior built into the tool.
 ## Examples and fixtures
 
 - Keep test fixtures distinct from user-facing examples and generated run artifacts.
-- Maintain one explicit catalog for user-facing examples, recording stable IDs, titles,
-  input files, optional reviewed documents/replay outputs, and source/provenance details.
-  Do not introduce another independent list of example filenames in API handlers.
+- User-facing sample drawings live in `data/samples/`, listed once in `samples.json`
+  (provenance in its README). On first run with an empty database they are seeded into
+  SQLite as projects; do not add another list of example filenames in UI or API handlers.
 - When adding generated examples, distinguish recorded playback, mock computation, and live computation in example metadata
   and user-facing descriptions. A mock result is not a measured simulation result.
 - Do not assume local untracked `DemoData/` files exist in a fresh checkout. Declare any

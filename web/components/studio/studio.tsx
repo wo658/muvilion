@@ -88,6 +88,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const save = useCallback((next: PlanDocument | null) => {
         controls.change({ projectVersion: 1, document: next, sources: sourcesRef.current, originalDrawingId: originalDrawing.current });
     }, [controls]);
+    const extractRef = useRef<typeof extract | null>(null);
     useEffect(() => {
         if (!project.state.originalDrawingId) return;
         const controller = new AbortController();
@@ -95,10 +96,15 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             .then(async response => {
                 if (!response.ok) throw new Error("Could not restore the original drawing file.");
                 const blob = await response.blob();
-                if (!controller.signal.aborted && originalDrawing.current === project.state.originalDrawingId) setSourceFile(new File([blob], project.state.document?.source.name ?? "drawing.pdf", { type: blob.type }));
+                const stored = /filename\*=UTF-8''([^;]+)/.exec(response.headers.get("Content-Disposition") ?? "")?.[1];
+                const file = new File([blob], project.state.document?.source.name ?? (stored ? decodeURIComponent(stored) : "drawing.pdf"), { type: blob.type });
+                if (controller.signal.aborted || originalDrawing.current !== project.state.originalDrawingId) return;
+                // Seeded samples keep only the original; read it the first time the project opens.
+                if (!project.state.document) void extractRef.current?.(file, project.state.originalDrawingPage ?? 1, project.state.originalDrawingId!);
+                else setSourceFile(file);
             }).catch(error => { if (!controller.signal.aborted) setNotice(error.message); });
         return () => controller.abort();
-    }, [project.id, project.state.originalDrawingId, project.state.document?.source.name]);
+    }, [project.id, project.state.originalDrawingId, project.state.document, project.state.originalDrawingPage]);
     const change = useCallback((next: PlanDocument) => {
         const previous = planRef.current;
         if (previous)
@@ -124,7 +130,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setChatKey((k) => k + 1);
         save(next);
     };
-    const extract = async (file: File, page = 1) => {
+    const extract = async (file: File, page = 1, storedAssetId?: string) => {
         if (file.size > 20 * 1024 * 1024) {
             setError(t("Please choose a file smaller than 20 MB."));
             return;
@@ -140,7 +146,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setError(null);
         setSourceFile(file);
         try {
-            const assetId = await controls.upload(file);
+            const assetId = storedAssetId ?? await controls.upload(file);
             if (controller.signal.aborted) return;
             const form = new FormData();
             form.set("file", file);
@@ -166,69 +172,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             }
         }
     };
-    const loadDemo = async (venue: "mcenery" | "coex" | "fort-mason" = "mcenery") => {
-        request.current?.abort();
-        const controller = new AbortController();
-        request.current = controller;
-        setBusy(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/plans/demo?venue=${venue}`, { signal: controller.signal });
-            if (!response.ok)
-                throw new Error(t("The demo PDF is unavailable. Upload a drawing to continue."));
-            const file = new File([await response.blob()], venue === "fort-mason" ? "Fort Mason Ground Floor.pdf" : venue === "coex" ? "COEX Hall A 2024.pdf" : "McEnery Convention Center.pdf", { type: "application/pdf" });
-            if (!controller.signal.aborted)
-                await extract(file);
-        }
-        catch (err) {
-            if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : t("Could not load the demo."));
-        }
-        finally {
-            if (request.current === controller) {
-                setBusy(false);
-                request.current = null;
-            }
-        }
-    };
-    const loadReviewedDemo = async (artifact: "reviewed" | "spatial" | "showcase" = "reviewed") => {
-        request.current?.abort();
-        const controller = new AbortController();
-        request.current = controller;
-        setBusy(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/plans/demo?venue=fort-mason&artifact=${artifact}`, { signal: controller.signal });
-            if (!response.ok)
-                throw new Error(t("The saved Fort Mason review is unavailable. Load the source drawing instead."));
-            const next = PlanDocumentSchema.parse(await response.json());
-            if (!controller.signal.aborted) {
-                originalDrawing.current = null;
-                openDocument(next);
-                setSourceFile(null);
-            }
-        }
-        catch (err) {
-            if (!controller.signal.aborted)
-                setError(err instanceof Error ? err.message : t("Could not load saved review."));
-        }
-        finally {
-            if (request.current === controller) {
-                setBusy(false);
-                request.current = null;
-            }
-        }
-    };
-    const openExample = (value: string) => {
-        if (value === "fort-mason-showcase")
-            void loadReviewedDemo("showcase");
-        else if (value === "fort-mason-spatial")
-            void loadReviewedDemo("spatial");
-        else if (value === "fort-mason-reviewed")
-            void loadReviewedDemo();
-        else if (value === "mcenery" || value === "coex" || value === "fort-mason")
-            void loadDemo(value);
-    };
+    useEffect(() => { extractRef.current = extract; });
     const undo = () => {
         const previous = history[history.length - 1];
         if (!previous)
@@ -329,7 +273,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         <Button variant="ghost" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button>
       </div>
     </header>
-    {controls.toolbar}
     <dialog ref={boothManager} className="ps-source-manager" style={{ width: "min(1120px, 96vw)", maxWidth: "96vw" }} aria-labelledby="booth-manager-title" onClose={() => setBoothsOpen(false)}>
       <header><h2 id="booth-manager-title">외부 참가 부스</h2><Button onClick={() => boothManager.current?.close()} aria-label="부스 관리 닫기">닫기</Button></header>
       {boothsOpen && (document ? <OrganizerBooths document={document} onDocumentChange={change}/> : <div className="ps-section"><h3>공간에서 참가자의 부스까지</h3><p>도면의 부스 구역을 공개하고 참가비를 설정하세요. 외부 참가자의 신청을 승인하면 전용 부스 디자인 작업실이 열립니다.</p><Button variant="primary" onClick={() => openDocument(boothExample())}>참가 부스 예시로 시작</Button><p className="ps-help">직접 제작한 체험용 공간입니다. 도면을 업로드한 뒤에도 같은 흐름을 사용할 수 있습니다.</p></div>)}
@@ -342,7 +285,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setError(t("Plan file must be smaller than 32 MB.")); e.target.value = ""; }}/>
     <dialog ref={sourceManager} className="ps-source-manager" aria-labelledby="sources-manager-title">
       <header><h2 id="sources-manager-title">{t("Sources")}</h2><Button onClick={() => sourceManager.current?.close()} aria-label={t("Close Sources")}>{t("Close")}</Button></header>
-        <div className="ps-section"><NativeSelect className="ps-venue-picker" aria-label={t("Example drawing")} value="" disabled={busy} onChange={(e) => { sourceManager.current?.close(); openExample(e.target.value); }}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : t("Choose an example")}</option><option value="fort-mason-showcase">{t("Meta / Muse · exhibition concept")}</option><option value="fort-mason-spatial">{t("Fort Mason · space design demo")}</option><option value="fort-mason-reviewed">{t("Fort Mason · reviewed space")}</option><option value="fort-mason">{t("Fort Mason · source drawing")}</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">{t("COEX Hall A · detailed plan")}</option></NativeSelect></div>
         <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { sourceManager.current?.close(); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
         <div className="ps-section"><Button disabled={!sourcesReady} onClick={() => { sourceManager.current?.close(); restoreInput.current?.click(); }}>{t("Import project")}</Button></div>

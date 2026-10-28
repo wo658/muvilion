@@ -1,0 +1,19 @@
+{
+  "samples": [
+    { "name": "Moscone West · L1 전시홀", "file": "moscone/west-L1.pdf" },
+    { "name": "Moscone West · L2 세션룸", "file": "moscone/west-L2.pdf" },
+    { "name": "Moscone West · L3 볼룸", "file": "moscone/west-L3.pdf" },
+    { "name": "Moscone North/South · 전시층", "file": "moscone/northsouth-exhibit.pdf" },
+    { "name": "Moscone North/South · 로비층", "file": "moscone/northsouth-lobby.pdf" },
+    { "name": "Moscone South · 상층 메자닌", "file": "moscone/south-upper-mezz.pdf" },
+    { "name": "Moscone South · L3 회의실", "file": "moscone/south-L3.pdf" },
+    { "name": "KINTEX · 1홀", "file": "kintex/kintex-hall1-layout.jpg" },
+    { "name": "KINTEX · 2홀", "file": "kintex/kintex-hall2-layout.jpg" },
+    { "name": "KINTEX · 3홀", "file": "kintex/kintex-hall3-layout.jpg" },
+    { "name": "KINTEX · 4홀", "file": "kintex/kintex-hall4-layout.jpg" },
+    { "name": "KINTEX · 5홀", "file": "kintex/kintex-hall5-layout.jpg" },
+    { "name": "KINTEX · 1–5홀 전체 배치", "file": "kintex/kintex-halls1-5-overview.jpg" },
+    { "name": "LVCC · West Hall (브로셔 12쪽)", "file": "lvcc/lvcc-brochure-2024-12.pdf", "page": 12 },
+    { "name": "LVCC · AHR Expo 2026 부스 배치", "file": "lvcc/ahr-expo-2026-booth-layout.pdf" }
+  ]
+}
