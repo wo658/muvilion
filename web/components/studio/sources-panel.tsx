@@ -15,8 +15,11 @@ type Props = {
   library: SourceLibrary; ready: boolean; document: PlanDocument | null; busy: boolean;
   onChange: (update: (current: SourceLibrary) => SourceLibrary) => void;
   onDrawing: () => void;
+  onUploadOriginal: (file: File) => Promise<string>;
 };
-export function SourcesPanel({ library, ready, document, busy, onChange, onDrawing }: Props) {
+export function SourcesPanel({ library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const [preview, setPreview] = useState<string | null>(null);
   const [addingBrand, setAddingBrand] = useState(false);
   const [url, setUrl] = useState("");
@@ -38,7 +41,11 @@ export function SourcesPanel({ library, ready, document, busy, onChange, onDrawi
   };
   async function upload(file: File, kind: "concept" | "brief") {
     setUploading(true); setError(null);
-    try { add(await readReference(file, kind)); }
+    try {
+      const item = await readReference(file, kind);
+      const originalAssetId = await onUploadOriginal(file);
+      if (alive.current) add({ ...item, originalAssetId });
+    }
     catch (error) { setError(error instanceof Error ? error.message : "Could not add this source."); }
     finally { setUploading(false); }
   }

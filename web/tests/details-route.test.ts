@@ -8,11 +8,9 @@ describe("studio routes", () => {
   it("redirects old review-console bookmarks to the studio", () => {
     expect(() => DetailsPage()).toThrow("NEXT_REDIRECT");
   });
-  it("starts with real drawing input and preserves the chat experience", () => {
+  it("waits for the SQLite project before enabling editing", () => {
     const html = renderToStaticMarkup(createElement(Page));
-    expect(html).toContain("Upload a floor plan");
-    expect(html).toContain("Analyze with Muse");
-    expect(html).toContain("Real-world scale");
+    expect(html).toContain("Opening local projects");
     expect(html).not.toContain("Watch recorded run");
   });
 });

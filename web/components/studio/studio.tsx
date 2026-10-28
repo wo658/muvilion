@@ -10,15 +10,15 @@ import { Badge, Button, Segmented } from "../ui";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
 import { SourcesPanel } from "./sources-panel";
-import { emptySources, SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
-import { readSources, writeSources } from "@/lib/sources/storage";
+import { SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
+import { ProjectWorkspace, type ProjectControls } from "./project-workspace";
+import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
 import "./sources.css";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: () => <div className="ps-canvas-message">Opening the 3D workspace…</div> });
-const STORAGE = "pavilion.plan-studio.v1";
 type Mode = "plan" | "scene";
 type Point = {
     x: number;
@@ -42,29 +42,18 @@ function EmptyPlan({ onUpload, onDemo, busy }: {
   </div>;
 }
 export function Studio() {
+    return <ProjectWorkspace editor={StudioEditor}/>;
+}
+function StudioEditor({ project, controls }: { project: Project; controls: ProjectControls }) {
     const sourceManager = useRef<HTMLDialogElement>(null);
-    const [sources, setSources] = useState<SourceLibrary>(emptySources);
+    const [sources, setSources] = useState<SourceLibrary>(project.state.sources);
     const sourcesRef = useRef(sources);
-    const [sourcesReady, setSourcesReady] = useState(false);
+    const sourcesReady = true;
+    const originalDrawing = useRef(project.state.originalDrawingId);
     const [sourceError, setSourceError] = useState<string | null>(null);
     const [markingEntrance, setMarkingEntrance] = useState(false);
     const [showOriginal, setShowOriginal] = useState(false);
-    const saveQueue = useRef(Promise.resolve());
-    useEffect(() => {
-        let alive = true;
-        readSources().then(saved => { if (alive && saved) { sourcesRef.current = saved; setSources(saved); } })
-            .catch(() => { if (alive) setSourceError("Saved sources could not be loaded. Import a project backup to recover them."); })
-            .finally(() => { if (alive) setSourcesReady(true); });
-        return () => { alive = false; };
-    }, []);
-    const changeSources = (update: (current: SourceLibrary) => SourceLibrary) => {
-        try {
-            const next = SourceLibrarySchema.parse(update(sourcesRef.current));
-            sourcesRef.current = next; setSources(next); setSourceError(null);
-            saveQueue.current = saveQueue.current.then(() => writeSources(next)).catch(() => setSourceError("Sources could not be saved in this browser. Export project to keep a backup."));
-        } catch (error) { setSourceError(error instanceof Error ? error.message : "Could not update sources."); }
-    };
-    const [document, setDocument] = useState<PlanDocument | null>(null);
+    const [document, setDocument] = useState<PlanDocument | null>(project.state.document);
     const [details, setDetails] = useState(false);
     const [mode, setMode] = useState<Mode>("plan");
     const [floorDraft, setFloorDraft] = useState<Point[] | null>(null);
@@ -74,8 +63,8 @@ export function Studio() {
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [sourceFile, setSourceFile] = useState<File | null>(null);
-    const [width, setWidth] = useState("");
-    const [height, setHeight] = useState("");
+    const [width, setWidth] = useState(project.state.document?.widthMeters?.toString() ?? "");
+    const [height, setHeight] = useState(project.state.document?.heightMeters?.toString() ?? "");
     const wallHeight = document?.wallHeight ?? 3;
     const [drawing, setDrawing] = useState(false);
     const [calibrating, setCalibrating] = useState(false);
@@ -90,18 +79,30 @@ export function Studio() {
     const restoreInput = useRef<HTMLInputElement>(null);
     const request = useRef<AbortController | null>(null);
     const planRef = useRef(document);
+    const changeSources = (update: (current: SourceLibrary) => SourceLibrary) => {
+        try {
+            const next = SourceLibrarySchema.parse(update(sourcesRef.current));
+            sourcesRef.current = next; setSources(next); setSourceError(null);
+            controls.change({ projectVersion: 1, document: planRef.current, sources: next, originalDrawingId: originalDrawing.current });
+        } catch (error) { setSourceError(error instanceof Error ? error.message : "Could not update sources."); }
+    };
     useEffect(() => {
         return () => request.current?.abort();
     }, []);
-    const save = useCallback((next: PlanDocument) => {
-        try {
-            localStorage.setItem(STORAGE, JSON.stringify(next));
-            setNotice(null);
-        }
-        catch {
-            setNotice("Browser storage is full. Export your plan to keep this work.");
-        }
-    }, []);
+    const save = useCallback((next: PlanDocument | null) => {
+        controls.change({ projectVersion: 1, document: next, sources: sourcesRef.current, originalDrawingId: originalDrawing.current });
+    }, [controls]);
+    useEffect(() => {
+        if (!project.state.originalDrawingId) return;
+        const controller = new AbortController();
+        void fetch(`/api/projects/${project.id}/assets/${project.state.originalDrawingId}`, { signal: controller.signal })
+            .then(async response => {
+                if (!response.ok) throw new Error("Could not restore the original drawing file.");
+                const blob = await response.blob();
+                if (!controller.signal.aborted && originalDrawing.current === project.state.originalDrawingId) setSourceFile(new File([blob], project.state.document?.source.name ?? "drawing.pdf", { type: blob.type }));
+            }).catch(error => { if (!controller.signal.aborted) setNotice(error.message); });
+        return () => controller.abort();
+    }, [project.id, project.state.originalDrawingId, project.state.document?.source.name]);
     const change = useCallback((next: PlanDocument) => {
         const previous = planRef.current;
         if (previous)
@@ -143,6 +144,8 @@ export function Studio() {
         setError(null);
         setSourceFile(file);
         try {
+            const assetId = await controls.upload(file);
+            if (controller.signal.aborted) return;
             const form = new FormData();
             form.set("file", file);
             form.set("page", String(page));
@@ -150,8 +153,11 @@ export function Studio() {
             const data = await response.json();
             if (!response.ok)
                 throw new Error(typeof data.message === "string" ? data.message : typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "We could not read this drawing. Please try another file.");
-            if (!controller.signal.aborted)
-                openDocument(PlanDocumentSchema.parse(data));
+            if (!controller.signal.aborted) {
+                const plan = PlanDocumentSchema.parse(data);
+                originalDrawing.current = assetId;
+                openDocument(plan);
+            }
         }
         catch (err) {
             if (!controller.signal.aborted)
@@ -201,6 +207,7 @@ export function Studio() {
                 throw new Error("The saved Fort Mason review is unavailable. Load the source drawing instead.");
             const next = PlanDocumentSchema.parse(await response.json());
             if (!controller.signal.aborted) {
+                originalDrawing.current = null;
                 openDocument(next);
                 setSourceFile(null);
             }
@@ -237,31 +244,8 @@ export function Studio() {
         setWidth(previous.widthMeters?.toString() ?? "");
         setHeight(previous.heightMeters?.toString() ?? "");
     };
-    const exportPlan = () => {
-        const url = URL.createObjectURL(new Blob([JSON.stringify({ projectVersion: 1, document, sources: sourcesRef.current }, null, 2)], { type: "application/json" }));
-        const a = window.document.createElement("a");
-        a.href = url;
-        a.download = "muvilion-project.json";
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-    };
-    const restore = (raw: string) => {
-        try {
-            const parsed = JSON.parse(raw);
-            if (parsed.projectVersion === 1) {
-                const library = SourceLibrarySchema.parse(parsed.sources);
-                const plan = parsed.document === null ? null : PlanDocumentSchema.parse(parsed.document);
-                if (plan) openDocument(plan);
-                else { planRef.current = null; setDocument(null); setHistory([]); setChatKey(k => k + 1); localStorage.removeItem(STORAGE); }
-                changeSources(() => library);
-            } else openDocument(PlanDocumentSchema.parse(parsed));
-            setSourceFile(null);
-            setError(null);
-        }
-        catch {
-            setError("This is not a supported muvilion plan. Your current drawing has been kept.");
-        }
-    };
+    const exportPlan = () => { void controls.export().catch(error => setError(error.message)); };
+    const restore = (raw: string) => { void controls.import(raw).catch(error => setError(error instanceof Error ? error.message : "Could not import project. Your current work has been kept.")); };
     const selectedLine = document?.lines.find((line) => line.id === selected);
     const wallCount = document?.lines.filter((line) => line.kind === "wall").length ?? 0;
     const selectedItem = document?.objects?.find(item => item.id === selected)
@@ -340,23 +324,24 @@ export function Studio() {
     const calibrated = document?.scaleConfirmed && document.widthMeters && document.heightMeters;
     return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"}`}>
     <header className="ps-header">
-      <Link href="/" className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
+      <Link href="/" onClick={event => { event.preventDefault(); controls.navigate("/"); }} className="ps-brand" aria-label="muvilion home"><Mark small/><span>muvilion</span></Link>
       <div className="ps-header-actions">
-        <Link href="/settings">Settings</Link>
+        <Link href="/settings" onClick={event => { event.preventDefault(); controls.navigate("/settings"); }}>Settings</Link>
         <Button variant="ghost" onClick={() => sourceManager.current?.showModal()}>자료</Button>
-        <Button variant="ghost" onClick={exportPlan} disabled={!document || busy || !sourcesReady}>내보내기</Button>
+        <Button variant="ghost" onClick={exportPlan} disabled={busy || !sourcesReady}>내보내기</Button>
       </div>
     </header>
+    {controls.toolbar}
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
-    <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 32 * 1024 * 1024)
+    <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 400 * 1024 * 1024)
         restore(await file.text());
     else if (file)
         setError("Plan file must be smaller than 32 MB."); e.target.value = ""; }}/>
     <dialog ref={sourceManager} className="ps-source-manager" aria-labelledby="sources-manager-title">
       <header><h2 id="sources-manager-title">자료</h2><Button onClick={() => sourceManager.current?.close()} aria-label="Close Sources">Close</Button></header>
         <div className="ps-section"><NativeSelect className="ps-venue-picker" aria-label="Example drawing" value="" disabled={busy} onChange={(e) => { sourceManager.current?.close(); openExample(e.target.value); }}><option value="">{document ? document.source.name.replace(/\.[^.]+$/, "") : "Choose an example"}</option><option value="fort-mason-showcase">Meta / Muse · exhibition concept</option><option value="fort-mason-spatial">Fort Mason · space design demo</option><option value="fort-mason-reviewed">Fort Mason · reviewed space</option><option value="fort-mason">Fort Mason · source drawing</option><option value="mcenery">Facebook F8 · San Jose</option><option value="coex">COEX Hall A · detailed plan</option></NativeSelect></div>
-        <SourcesPanel library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { sourceManager.current?.close(); input.current?.click(); }}/>
+        <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { sourceManager.current?.close(); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{sourceError}</p>}
         <div className="ps-section"><Button disabled={!sourcesReady} onClick={() => { sourceManager.current?.close(); restoreInput.current?.click(); }}>Import project</Button></div>
 
