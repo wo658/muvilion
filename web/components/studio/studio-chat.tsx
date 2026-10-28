@@ -7,7 +7,8 @@ import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 
 type Proposal = { document: PlanDocument; summary: string; base: PlanDocument; mode: "interpret" | "design" };
 
-export function StudioChat({ document, onDocumentChange }: {
+export function StudioChat({ document, onDocumentChange, simple = false }: {
+  simple?: boolean;
   document: PlanDocument | null;
   onDocumentChange: (document: PlanDocument) => void;
 }) {
@@ -63,7 +64,7 @@ export function StudioChat({ document, onDocumentChange }: {
       </header>
       <div className="border-b border-hairline p-4">
         <button type="button" onClick={() => void interpret()} disabled={!document || !unknownCount || interpreting || busy} className="w-full rounded-lg bg-accent px-4 py-2.5 text-xs font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40">{interpreting ? "Reading your drawing…" : "Analyze with Muse"}</button>
-        <p className="mt-2 text-[11px] leading-relaxed text-muted">{document ? `Review up to 600 of ${unknownCount} unclassified lines. Suggestions stay separate until you apply them.` : "Upload a drawing to identify wall and dimension candidates."}</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted">{document ? simple ? "Let Muse help you understand the drawing. Review suggestions before applying." : `Review up to 600 of ${unknownCount} unclassified lines. Suggestions stay separate until you apply them.` : "Upload a drawing to start planning together."}</p>
         {interpreting && <button className="mt-2 text-xs text-muted underline" onClick={() => controller.current?.abort()}>Cancel analysis</button>}
         {interpretError && <p role="alert" className="mt-3 text-xs leading-relaxed text-bad">{interpretError}</p>}
         {proposal && <div className="mt-3 rounded-lg border border-hairline bg-sunken p-3">
