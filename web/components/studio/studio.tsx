@@ -20,7 +20,9 @@ import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-wo
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
 import { Switch } from "../ui/switch";
-import { ChevronDownIcon, MessageCircleIcon, SettingsIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { EllipsisIcon, PanelRightOpenIcon, SettingsIcon } from "lucide-react";
+
 import Image from "next/image";
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
@@ -274,7 +276,9 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const canvasSelection = editingBooth ? boothSelection : selected;
     const selectCanvas = editingBooth ? setBoothSelection : setSelected;
     const visibleDocument = !spaceMode && focusBooth && boothDocument ? boothDocument : !spaceMode && publicProject && publicProject.id === publishedId ? publicProject.space : document;
-    return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}`}>
+    const museCollapsed = Boolean(document) && !chatOpen;
+    return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
+
     {controls.sidebar && createPortal(<>
       <RailButton icon={<SettingsIcon/>} label={t("Settings")} onClick={() => setSettings("general")}/>
     </>, controls.sidebar)}
@@ -326,8 +330,21 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         </div>
       </aside>
       <section className="ps-center" aria-label={t("Drawing workspace")} hidden={!document}>
-        <div className="ps-canvas-toolbar"><div className="ps-canvas-title"><span className="eyebrow">{document ? "DRAWING WORKSPACE" : "NEW PROJECT"}</span><strong>{visibleDocument ? visibleDocument.source.name.replace(/\.[^.]+$/, "") : t("Untitled space")}</strong></div>{spaceMode && document && <div className="ps-editor-actions"><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button><Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button></div>}<Segmented<Mode> options={[{ id: "plan", label: t("2D edit") }, { id: "scene", label: t("3D space") }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/></div>
-        {spaceMode && mode === "plan" && document && <div className="ps-original-toggle"><label className="flex items-center gap-2"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>{t("Original drawing")}</label><Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button></div>}
+        <div className="ps-canvas-toolbar">
+          <Segmented<Mode> options={[{ id: "plan", label: "2D" }, { id: "scene", label: "3D" }]} value={mode} onChange={(next) => { setMode(next); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Workspace view")}/>
+          {spaceMode && document && <Popover>
+            <PopoverTrigger render={<Button variant="ghost" className="ps-icon-button" aria-label={t("More tools")} title={t("More tools")}/>}><EllipsisIcon/></PopoverTrigger>
+            <PopoverContent align="end" className="ps-tools-menu">
+              <Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button>
+              <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button>
+              {mode === "plan" && <>
+                <Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button>
+                <label className="flex items-center gap-2 px-2.5 py-1.5"><Switch checked={showOriginal} onCheckedChange={setShowOriginal}/>{t("Original drawing")}</label>
+              </>}
+            </PopoverContent>
+          </Popover>}
+        </div>
+
         {error && <div className="ps-alert" role="alert"><span>{localizeMessage(locale, error)}</span><Button onClick={() => setError(null)} aria-label={t("Dismiss error")}>×</Button></div>}
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         {!spaceMode && boothDocument && <div className="p-3"><Segmented options={[{ id: "booth", label: "내 부스 꾸미기" }, { id: "venue", label: "전체 공간 둘러보기" }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label="부스 작업 범위"/></div>}
@@ -339,24 +356,24 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
         {spaceMode && details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
-      <aside id="muse-panel" className="ps-right-panel" data-collapsed={document && !chatOpen ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
+      <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
+        {museCollapsed && <div className="ps-muse-rail">
+          <RailButton icon={<PanelRightOpenIcon/>} label={t("Talk to Muse")} aria-expanded={false} aria-controls="muse-panel" onClick={() => setChatOpen(true)}/>
+          <button type="button" className="ps-muse-rail-avatar" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><Image src="/mascot/muvi-face.svg" alt="" width={32} height={32}/></button>
+        </div>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {document ? <details className="ps-booth-pricing"><summary>부스 가격 · 신청 관리</summary><OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/></details> : <div className="p-5"><Button onClick={() => openDocument(boothExample())}>부스 디자인 예시로 시작</Button></div>}
-          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection}/>
+          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
+          {document && <Button className="m-2 self-end" variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button>}
           {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">Muse · 부스 디자이너</h2><p className="mt-3 text-sm text-muted">아직 공개된 부스가 없어요. 공간 디자이너 모드에서 Muse와 가격을 정하고 부스를 공개하면, 여기서 추천받고 바로 신청할 수 있어요.</p><Button className="mt-4" onClick={() => setDesignRole("space")}>공간 디자이너로 돌아가기</Button></section>}
         </div>
-        {document && <div className="ps-muse-controls"><Button variant="primary" className="ps-icon-button ps-ink-button" aria-controls="muse-panel" aria-expanded={true} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} onClick={() => setChatOpen(false)}><ChevronDownIcon/></Button></div>}
 
       </aside>
-      {document && !chatOpen && <div className="ps-muse-launcher">
-        <Image src="/mascot/muvi-face.svg" alt="" width={36} height={36}/>
-        <span>{selection ? selection.label : t("Need help with this space?")}</span>
-        <Button variant="primary" className="ps-ink-button" aria-controls="muse-panel" aria-expanded={false} onClick={() => setChatOpen(true)}><MessageCircleIcon/>{t("Talk to Muse")}</Button>
-      </div>}
     </div>
-    {spaceMode && document && <div className="ps-simple-summary">{!calibrated && <p>{t("Confirm the scale to start designing.")}</p>}{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
+    {spaceMode && document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
+
 
   </main>;
 }
