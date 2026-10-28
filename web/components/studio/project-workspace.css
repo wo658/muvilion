@@ -17,3 +17,22 @@
   .pw-projects,.pw-shell[data-collapsed] .pw-projects{width:auto;border-right:0;border-bottom:1px solid var(--hairline);align-items:stretch}
   .pw-list{max-height:180px}
 }
+
+/* Start: one centered choice between your own drawing, a sample, or nothing. */
+.pw-editor:has(>.pw-start){display:grid;place-items:center;padding:48px 24px;background:var(--bg)}
+.pw-start{width:min(560px,100%);display:flex;flex-direction:column;gap:16px;text-align:center}
+.pw-start h1{font-size:clamp(22px,2.2vw,28px);font-weight:500;letter-spacing:-.03em}
+.pw-start-lead,.pw-start-status{color:var(--muted);font-size:13px}
+.pw-start-notice{padding:10px 14px;border-radius:8px;background:var(--sunken);color:var(--muted);font-size:12px}
+.pw-start-error{color:var(--bad);font-size:12px}
+.pw-start-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.pw-start-option{display:flex;flex-direction:column;gap:6px;padding:20px 18px;border:1px solid var(--hairline-strong);border-radius:10px;background:var(--surface);text-align:left;cursor:pointer}
+.pw-start-option:hover:not(:disabled),.pw-start-option[aria-expanded=true]{border-color:var(--accent)}
+.pw-start-option:disabled{opacity:.55;cursor:default}
+.pw-start-option strong{font-size:14px;font-weight:500}
+.pw-start-option span{font-size:12px;color:var(--muted)}
+.pw-samples{display:flex;flex-direction:column;max-height:280px;overflow-y:auto;margin:0;padding:4px;list-style:none;border:1px solid var(--hairline);border-radius:10px;background:var(--surface);text-align:left}
+.pw-samples button{width:100%;padding:9px 12px;border-radius:6px;text-align:left;font-size:13px;cursor:pointer}
+.pw-samples button:hover:not(:disabled){background:var(--sunken)}
+.pw-start-links{display:flex;justify-content:center;gap:8px}
+@media(max-width:640px){.pw-start-options{grid-template-columns:1fr}}

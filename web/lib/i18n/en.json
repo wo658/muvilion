@@ -296,5 +296,17 @@
   "Open an exported JSON bundle as a new project. The current project is kept.": "Open an exported JSON bundle as a new project. The current project is kept.",
   "Minimize Muse": "Minimize Muse",
   "Talk to Muse": "Talk to Muse",
-  "Muse is replying…": "Muse is replying…"
+  "Muse is replying…": "Muse is replying…",
+  "How would you like to start?": "How would you like to start?",
+  "Bring a floor plan and design the space with Muse.": "Bring a floor plan and design the space with Muse.",
+  "Start with my drawing": "Start with my drawing",
+  "PDF, PNG, JPG or DXF · up to 20 MB": "PDF, PNG, JPG or DXF · up to 20 MB",
+  "Start with a sample": "Start with a sample",
+  "Loading samples…": "Loading samples…",
+  "{count} public venue drawings": "{count} public venue drawings",
+  "No sample drawings in this checkout": "No sample drawings in this checkout",
+  "Creating project…": "Creating project…",
+  "Start with an empty project": "Start with an empty project",
+  "The project in this link no longer exists.": "The project in this link no longer exists.",
+  "Sample drawing not found.": "Sample drawing not found."
 }

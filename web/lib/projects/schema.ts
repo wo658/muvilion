@@ -19,4 +19,6 @@ export type Project = z.infer<typeof Project>;
 export const AssetBundle = z.object({ id: z.string().uuid(), name: z.string().max(255), mimeType: z.string().max(100), data: z.string().max(28_000_000).regex(/^[A-Za-z0-9+/=]*$/) });
 export const CreateProject = z.object({ name: z.string().trim().min(1).max(100), state: ProjectState.default(emptyProject), assets: z.array(AssetBundle).max(13).default([]) });
 export const SaveProject = z.object({ name: z.string().trim().min(1).max(100), revision: z.number().int().nonnegative(), state: ProjectState });
+export const SampleDrawing = z.object({ name: z.string(), file: z.string(), page: z.number().int().positive().optional() });
+export type SampleDrawing = z.infer<typeof SampleDrawing>;
 export const ProjectExport = z.object({ projectVersion: z.literal(2), name: z.string(), state: ProjectState, assets: z.array(AssetBundle) });
