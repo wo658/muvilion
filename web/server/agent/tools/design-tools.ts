@@ -10,6 +10,8 @@ import { renderDesign } from "./render-design";
 import { generateConceptImage } from "./meta-image";
 import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
 
+export const ReviewedDesignSubmission = z.object({ revision: z.number().int().positive(), summary: z.string().min(1).max(2000) }).strict();
+
 const phases = ["initial", "revision"] as const;
 
 /** Shared tools for initial design and revisions. */
@@ -65,8 +67,8 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "submit_design", category: "design", phases,
     create: () => tool({
-      description: "Submit the last visually reviewed candidate for user approval. Keep its objects and zones identical to review_design. Explain aesthetic choices, reference alignment, tradeoffs, and unresolved geometry warnings in summary. This does not apply changes.",
-      inputSchema: PlanDesignProposal,
+      description: "Submit the last visually reviewed candidate by its revision number for user approval. Do not repeat objects or zones; the server returns the exact reviewed draft. Explain aesthetic choices, reference alignment, tradeoffs, and unresolved geometry warnings in summary. This does not apply changes.",
+      inputSchema: ReviewedDesignSubmission,
     }),
   },
 ];

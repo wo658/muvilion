@@ -23,7 +23,9 @@ unverified heights must be identified as assumptions.
 - `generate_design_concept`: calls Meta Muse Image using selected reference images
   and the latest draft schematic. Uses the key saved in Settings, falling back to `MODEL_API_KEY`. Available with a key unless
   `MUSE_IMAGE_ENABLED=false`. `META_IMAGE_MODEL` defaults to `muse-image-1.0`.
-- `submit_design`: submits the last visually reviewed geometry for user Apply.
+- `submit_design`: references the last visually reviewed revision for user Apply.
+  It sends only revision and summary, avoiding a second large geometry generation.
+  The server returns the exact reviewed draft and rejects stale or unseen revisions.
 
 Generated concepts and deterministic schematics are separately labelled in the
 proposal. Schematics show massing/color, not finished materials, lighting, meshes,
@@ -52,11 +54,11 @@ imply those capabilities are available. Adding metadata alone does not enable to
 
 ## Limits and verification
 
-Runs have 10 model steps, a shared 180-second abort deadline, sequential tool execution,
+Runs have 10 model steps, a shared 420-second abort deadline for full-hall layouts (up to 80 installations), sequential tool execution,
 3 candidate reviews and at most 2 concept generations. Image requests have a
 45-second deadline and bounded response bytes/pixels. Failed tools are returned to
-the model by the SDK; failures never count as reviews. Final submitted objects/zones
-must match the last candidate whose images were sent to a subsequent model step.
+the model by the SDK; failures never count as reviews. The submitted revision must match the last candidate whose images were sent to a
+subsequent model step. Objects, zones and assumptions come from that stored draft.
 Failures log only a run ID, reason, elapsed time, completed step count and tool names,
 never prompts, references, keys or raw provider errors. Timeout, cancellation and
 provider/tool failure have distinct responses; the brief is never silently reduced.
