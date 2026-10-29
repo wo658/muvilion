@@ -40,6 +40,8 @@ describe("shipped Muvi GLB", () => {
         }
       }
       expect(model.scene.getObjectByName("PaintBrush")!.scale.x).toBe(clip.name === "paint" ? 1 : 0);
+      expect(model.scene.getObjectByName("Hammer")!.scale.x).toBe(clip.name === "arrange" ? 1 : 0);
+      expect(model.scene.getObjectByName("TapeCase")!.scale.x).toBe(clip.name === "measure" ? 1 : 0);
       // Generic work clips carry no staged result objects into a real drawing space.
       for (const name of ["Desk", "Pencil", "Tape", "Partition", "Roller", "Swatch"]) {
         expect(model.scene.getObjectByName(name)).toBeUndefined();

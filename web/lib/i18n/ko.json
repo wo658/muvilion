@@ -671,5 +671,9 @@
   "Right": "오른쪽",
   "Away": "뒤쪽",
   "The floor marker indicates the work direction, not a generated object.": "바닥 표시는 작업 방향을 나타냅니다. 생성된 오브젝트가 아닙니다.",
-  "Reusable gestures for Muse at work, independent of the final result.": "Muse의 작업을 표현하는 범용 동작. 최종 결과물의 형태에 구애받지 않아요."
+  "Reusable gestures for Muse at work, independent of the final result.": "Muse의 작업을 표현하는 범용 동작. 최종 결과물의 형태에 구애받지 않아요.",
+  "Hammer": "뚝딱뚝딱 망치질",
+  "Tap, tap, THUNK! Wind up, strike, and bounce back.": "번쩍 들고 톡, 톡, 쾅! 치고 나면 몸도 통통 튕겨요.",
+  "Pull the tape, check the marks, and zip it back.": "줄자를 쭈욱 펼쳐 눈금을 보고, 쏙 감아 넣어요.",
+  "Swish, swish! Big brush strokes with a little bounce.": "커다란 붓으로 쓱쓱! 몸도 리듬에 맞춰 움직여요."
 }

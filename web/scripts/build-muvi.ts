@@ -1,13 +1,13 @@
 /** Original Muvi geometry and reusable rigid-part animation rig. No external assets. */
 import { mkdir, writeFile } from "node:fs/promises";
-import { BoxGeometry, AnimationClip, BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry, Shape, Vector3, QuadraticBezierCurve3, TubeGeometry, Quaternion, Euler, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
+import { AnimationMixer, BoxGeometry, AnimationClip, BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry, Shape, Vector3, QuadraticBezierCurve3, TubeGeometry, Quaternion, Euler, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { MUVI_MOTIONS, MUVI_DESIGNER_DURATION, type MuviMotion } from "../lib/muvi/motions";
 
 import { TOKENS } from "../lib/ui/tokens";
 import { inspectPose } from "./muvi-motions/inspect";
-import { measurePose } from "./muvi-motions/measure";
-import { arrangePose } from "./muvi-motions/arrange";
+import { measurePose, measureExtension } from "./muvi-motions/measure";
+import { arrangePose, hammerImpact } from "./muvi-motions/arrange";
 import { paintPose } from "./muvi-motions/paint";
 import type { DesignerPose } from "./muvi-motions/types";
 
@@ -81,8 +81,33 @@ function brushPart(size: [number, number, number], y: number, color: string) {
 }
 brushPart([0.045, 0.26, 0.045], -0.49, TOKENS.ink);
 brushPart([0.10, 0.07, 0.06], -0.64, TOKENS.wall);
-brushPart([0.14, 0.10, 0.07], -0.72, TOKENS.accent);
+brushPart([0.28, 0.18, 0.12], -0.76, TOKENS.accent);
 brush.scale.setScalar(0);
+
+// Toy tools and graphic accents communicate work without a baked-in result.
+function tool(name: string, parent: Group = model) {
+  const group = new Group(); group.name = name; parent.add(group); group.scale.setScalar(0); return group;
+}
+function block(parent: Group, size: [number, number, number], at: [number, number, number], color: string) {
+  const mesh = new Mesh(new BoxGeometry(...size), new MeshStandardMaterial({ color, roughness: 0.75 }));
+  mesh.position.set(...at); parent.add(mesh); return mesh;
+}
+const hammer = tool("Hammer", model.getObjectByName("ArmR") as Group);
+block(hammer, [0.09, 0.47, 0.09], [0.1, -0.54, 0.05], TOKENS.evidenceDimension);
+block(hammer, [0.52, 0.24, 0.24], [0.1, -0.8, 0.05], TOKENS.modelEdge);
+for (const x of [-0.17, 0.37]) block(hammer, [0.07, 0.28, 0.28], [x, -0.8, 0.05], TOKENS.wall);
+const tapeCase = tool("TapeCase", model.getObjectByName("ArmR") as Group);
+block(tapeCase, [0.27, 0.25, 0.18], [0.1, -0.5, 0.2], TOKENS.evidenceDimension);
+block(tapeCase, [0.13, 0.11, 0.02], [0.1, -0.5, 0.3], TOKENS.ink);
+const tape = tool("MeasuringTape");
+block(tape, [1, 0.055, 0.035], [0.5, 0, 0], TOKENS.evidenceDimension);
+for (let i = 1; i < 20; i++) block(tape, [0.006, i % 5 === 0 ? 0.05 : 0.028, 0.04], [i / 20, 0, 0], TOKENS.ink);
+const impact = tool("HammerImpact");
+for (let i = 0; i < 5; i++) {
+  const angle = i * Math.PI * 2 / 5;
+  const ray = block(impact, [0.045, 0.2, 0.04], [Math.sin(angle) * 0.22, Math.cos(angle) * 0.22, 0], TOKENS.evidenceDimension);
+  ray.rotation.z = -angle;
+}
 
 function clip(motion: MuviMotion) {
   const designer = designerPoses[motion];
@@ -134,8 +159,31 @@ function clip(motion: MuviMotion) {
     }
     tracks.push(new VectorKeyframeTrack(`${name}.position`, times, translation), new QuaternionKeyframeTrack(`${name}.quaternion`, times, rotation), new VectorKeyframeTrack(`${name}.scale`, times, scale));
   }
-  const brushScale = motion === "paint" ? 1 : 0;
-  tracks.push(new VectorKeyframeTrack("PaintBrush.scale", [0, duration], Array(6).fill(brushScale)));
+  for (const [name, active] of [["PaintBrush", motion === "paint"], ["Hammer", motion === "arrange"], ["TapeCase", motion === "measure"]] as const) {
+    tracks.push(new VectorKeyframeTrack(`${name}.scale`, [0, duration], Array(6).fill(active ? 1 : 0)));
+  }
+  // Bake tool endpoints from the animated rig, so the tape follows the hands and
+  // the little impact bursts follow the hammer rather than an assumed wall.
+  const mixer = new AnimationMixer(model);
+  const action = mixer.clipAction(new AnimationClip("tool-bake", duration, tracks)).play();
+  const tapePositions: number[] = [], tapeRotations: number[] = [], tapeScales: number[] = [];
+  const impactPositions: number[] = [], impactScales: number[] = [];
+  for (const time of times) {
+    action.time = time; mixer.update(0); model.updateMatrixWorld(true);
+    const right = model.getObjectByName("ArmR")!.localToWorld(new Vector3(0.1, -0.5, 0.2));
+    const left = model.getObjectByName("ArmL")!.localToWorld(new Vector3(-0.1, -0.5, 0.2));
+    const delta = left.sub(right), length = delta.length();
+    const extension = motion === "measure" ? measureExtension(time / duration) : 0;
+    tapePositions.push(...right.toArray());
+    tapeRotations.push(...new Quaternion().setFromUnitVectors(new Vector3(1, 0, 0), delta.normalize()).toArray());
+    tapeScales.push(length * extension, extension > 0 ? 1 : 0, extension > 0 ? 1 : 0);
+    const hit = model.getObjectByName("ArmR")!.localToWorld(new Vector3(0.1, -0.8, 0.05));
+    impactPositions.push(...hit.toArray());
+    const flash = motion === "arrange" ? hammerImpact(time / duration) : 0;
+    impactScales.push(flash, flash, flash);
+  }
+  mixer.stopAllAction(); mixer.uncacheRoot(model);
+  tracks.push(new VectorKeyframeTrack("MeasuringTape.position", times, tapePositions), new QuaternionKeyframeTrack("MeasuringTape.quaternion", times, tapeRotations), new VectorKeyframeTrack("MeasuringTape.scale", times, tapeScales), new VectorKeyframeTrack("HammerImpact.position", times, impactPositions), new VectorKeyframeTrack("HammerImpact.scale", times, impactScales));
   return new AnimationClip(motion, duration, tracks);
 }
 async function main() {

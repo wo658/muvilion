@@ -25,7 +25,7 @@ export function MuviGreeting({ thinking = false }: { thinking?: boolean }) {
   </Link>;
 }
 
-const labels = { idle: "Idle", hello: "Hello", walk: "Walk", run: "Run", think: "Think", idea: "Idea", cheer: "Cheer", rest: "Rest", inspect: "Inspect space", measure: "Measure", arrange: "Arrange", paint: "Paint" } as const satisfies Record<MuviMotion, MessageKey>;
+const labels = { idle: "Idle", hello: "Hello", walk: "Walk", run: "Run", think: "Think", idea: "Idea", cheer: "Cheer", rest: "Rest", inspect: "Inspect space", measure: "Measure", arrange: "Hammer", paint: "Paint" } as const satisfies Record<MuviMotion, MessageKey>;
 export function MuviPlayground() {
   const { t } = useI18n();
   const [motion, setMotion] = useState<MuviMotion>("hello");

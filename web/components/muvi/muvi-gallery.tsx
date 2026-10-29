@@ -12,14 +12,14 @@ import { useMotionPaused } from "./use-motion-paused";
 const Canvas = dynamic(() => import("./muvi-canvas"), { ssr: false });
 const studies = [
   { motion: "inspect", title: "Inspect space", description: "Look around, compare areas, and lean toward a detail.", number: "01" },
-  { motion: "measure", title: "Measure", description: "Check a span with staggered hands and a following gaze.", number: "02" },
-  { motion: "arrange", title: "Arrange", description: "Reach, adjust, and release. For any placement or shape.", number: "03" },
-  { motion: "paint", title: "Paint", description: "Follow the working hand through two soft finishing passes.", number: "04" },
+  { motion: "measure", title: "Measure", description: "Pull the tape, check the marks, and zip it back.", number: "02" },
+  { motion: "arrange", title: "Hammer", description: "Tap, tap, THUNK! Wind up, strike, and bounce back.", number: "03" },
+  { motion: "paint", title: "Paint", description: "Swish, swish! Big brush strokes with a little bounce.", number: "04" },
 ] as const;
 
 export function MuviGallery() {
   const { t, locale, setLocale } = useI18n();
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(2);
   const [stopped, setStopped] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [heading, setHeading] = useState("left");

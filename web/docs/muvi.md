@@ -37,13 +37,14 @@ assets above are tracked and require no private files to build or render.
 ## Spatial designer studies
 
 Preview `/muvi/gallery`: inspect (survey and focus), measure (compare spacing), arrange
-(reach, adjust, release), and paint (two soft finishing passes). Each is a five-second,
+(cartoon hammering), and paint (three broad brush strokes). Each is a five-second,
 in-place phrase with neutral entry/exit. These replace the sketch and partition studies.
 Staged result geometry was removed: gestures must work with any real-space output.
-Paint retains only a small hand-held brush, attached to the working hand; no wall or
-painted swatch is baked in. Other clips hide the brush.
-Eyes lead attention, hands arrive sequentially, feet stay planted, and quintic easing
-softens changes of intent. Individual authored poses live in `scripts/muvi-motions/`.
+Hand tools remain: a toy hammer, a retracting marked tape measure, and an oversized
+brush. Hammer impacts use brief graphic bursts; none creates a result object. Tools
+are hidden in unrelated clips. Tape and impact transforms are baked from rig poses.
+The style is intentionally cartoon-like: large anticipation, fast strikes, bouncy
+recoil, uneven rhythms and small squash/stretch. Feet stay planted. Individual authored poses live in `scripts/muvi-motions/`.
 
 The shared `MuviModel` accepts `workHeading` (radians, local +Z work direction).
 This orients the whole phrase in scene coordinates without camera-facing behavior.
@@ -53,7 +54,7 @@ No heading, mascot, prop or gesture enters the plan document, persistence or eng
 
 These are prepared animation assets for Muse activity presentation. Live Muse event
 wiring is not implemented by this gallery. A future caller should choose inspect for
-examining context, measure for comparing spacing, arrange for composing/adjusting, or
+examining context, measure for comparing spacing, arrange for general making/building, or
 paint for applying appearance, and return to idle when work stops. Playback is not an
 indication that a proposal has been applied or a result validated. Existing drawing
 roaming is unchanged. Pause, reduced-motion, hidden-page behavior and fallback remain.
