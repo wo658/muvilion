@@ -16,6 +16,7 @@ import { boothExample } from "@/lib/booths/example";
 import { Badge, Button, Segmented } from "../ui";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
+import { activateDrawing, addDrawing, drawingSources, saveDrawing } from "@/lib/projects/drawings";
 import { SourcesPanel } from "./sources-panel";
 import { SourceLibrarySchema, type SourceLibrary } from "@/lib/sources/schema";
 import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-workspace";
@@ -57,6 +58,10 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 800px)").matches);
     const [sources, setSources] = useState<SourceLibrary>(project.state.sources);
     const sourcesRef = useRef(sources);
+    const projectState = useRef(project.state);
+    const [drawings, setDrawings] = useState(() => drawingSources(project.state));
+    const [activeDrawingId, setActiveDrawingId] = useState<string | undefined>(project.state.activeDrawingId ?? drawings[0]?.id);
+    const drawingEdits = useRef(new Map<string, { history: PlanDocument[]; width: string; height: string }>());
     const sourcesReady = true;
     const originalDrawing = useRef(project.state.originalDrawingId);
     const [sourceError, setSourceError] = useState<string | null>(null);
@@ -92,40 +97,45 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         try {
             const next = SourceLibrarySchema.parse(update(sourcesRef.current));
             sourcesRef.current = next; setSources(next); setSourceError(null);
-            controls.change({ projectVersion: 1, document: planRef.current, sources: next, originalDrawingId: originalDrawing.current });
+            projectState.current = saveDrawing({ ...projectState.current, sources: next, originalDrawingId: originalDrawing.current }, planRef.current);
+            controls.change(projectState.current);
         } catch (error) { setSourceError(error instanceof Error ? error.message : "Could not update sources."); }
     };
     useEffect(() => {
         return () => request.current?.abort();
     }, []);
     const save = useCallback((next: PlanDocument | null) => {
-        controls.change({ projectVersion: 1, document: next, sources: sourcesRef.current, originalDrawingId: originalDrawing.current });
+        projectState.current = saveDrawing({ ...projectState.current, sources: sourcesRef.current, originalDrawingId: originalDrawing.current }, next);
+        controls.change(projectState.current);
     }, [controls]);
     const extractRef = useRef<typeof extract | null>(null);
+    const activeOriginalId = drawings.find(item => item.id === activeDrawingId)?.originalAssetId ?? (drawings.length ? null : project.state.originalDrawingId);
     useEffect(() => {
-        if (!project.state.originalDrawingId) return;
+        if (!activeOriginalId) return;
         const controller = new AbortController();
-        void fetch(`/api/projects/${project.id}/assets/${project.state.originalDrawingId}`, { signal: controller.signal })
+        void fetch(`/api/projects/${project.id}/assets/${activeOriginalId}`, { signal: controller.signal })
             .then(async response => {
                 if (!response.ok) throw new Error("Could not restore the original drawing file.");
                 const blob = await response.blob();
                 const stored = /filename\*=UTF-8''([^;]+)/.exec(response.headers.get("Content-Disposition") ?? "")?.[1];
-                const file = new File([blob], project.state.document?.source.name ?? (stored ? decodeURIComponent(stored) : "drawing.pdf"), { type: blob.type });
-                if (controller.signal.aborted || originalDrawing.current !== project.state.originalDrawingId) return;
+                const file = new File([blob], (stored ? decodeURIComponent(stored) : "drawing.pdf"), { type: blob.type });
+                if (controller.signal.aborted || originalDrawing.current !== activeOriginalId) return;
                 // Seeded samples keep only the original; read it the first time the project opens.
-                if (!project.state.document) void extractRef.current?.(file, project.state.originalDrawingPage ?? 1, project.state.originalDrawingId!);
+                if (!planRef.current) void extractRef.current?.(file, project.state.originalDrawingPage ?? 1, activeOriginalId);
                 else setSourceFile(file);
             }).catch(error => { if (!controller.signal.aborted) setNotice(error.message); });
         return () => controller.abort();
-    }, [project.id, project.state.originalDrawingId, project.state.document, project.state.originalDrawingPage]);
+    }, [project.id, activeOriginalId, activeDrawingId, project.state.originalDrawingPage]);
     const change = useCallback((next: PlanDocument) => {
+        // Ignore work completed by a drawing's controls after switching sources.
+        if ((projectState.current.activeDrawingId ?? drawingSources(projectState.current)[0]?.id) !== activeDrawingId) return;
         const previous = planRef.current;
         if (previous)
             setHistory((items) => [...items.slice(-19), previous]);
         planRef.current = next;
         setDocument(next);
         save(next);
-    }, [save]);
+    }, [save, activeDrawingId]);
     const openDocument = (next: PlanDocument) => {
         planRef.current = next;
         setDocument(next);
@@ -142,7 +152,32 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setChatKey((k) => k + 1);
         save(next);
     };
+    const rememberEdits = () => {
+        if (activeDrawingId) drawingEdits.current.set(activeDrawingId, { history, width, height });
+    };
+    const showDrawing = (next: Project["state"]) => {
+        projectState.current = next;
+        originalDrawing.current = next.originalDrawingId;
+        sourcesRef.current = next.sources; setSources(next.sources);
+        setDrawings(drawingSources(next)); setActiveDrawingId(next.activeDrawingId);
+        setSourceFile(null); setError(null); setNotice(null);
+        setPublishedId(null); setPublicProject(null); setBoothDocument(null); setBoothPricing([]);
+        setBoothSelection(null); setBoothsOpen(false);
+        openDocument(next.document!);
+        const edits = next.activeDrawingId && drawingEdits.current.get(next.activeDrawingId);
+        if (edits) { setHistory(edits.history); setWidth(edits.width); setHeight(edits.height); }
+    };
+    const switchDrawing = (id: string) => {
+        if (busy || id === activeDrawingId) return;
+        rememberEdits();
+        showDrawing(activateDrawing(projectState.current, id));
+    };
     const extract = async (file: File, page = 1, storedAssetId?: string) => {
+        const existing = storedAssetId && drawingSources(projectState.current).find(item => item.originalAssetId === storedAssetId && item.document.source.page === page);
+        if (existing) { switchDrawing(existing.id); return; }
+        if (drawingSources(projectState.current).length >= 12) {
+            setError(t("A project supports up to 12 drawings.")); return;
+        }
         if (file.size > 20 * 1024 * 1024) {
             setError(t("Please choose a file smaller than 20 MB."));
             return;
@@ -156,7 +191,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         request.current = controller;
         setBusy(true);
         setError(null);
-        setSourceFile(file);
         try {
             const assetId = storedAssetId ?? await controls.upload(file);
             if (controller.signal.aborted) return;
@@ -169,8 +203,9 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
                 throw new Error(typeof data.message === "string" ? data.message : typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "We could not read this drawing. Please try another file.");
             if (!controller.signal.aborted) {
                 const plan = PlanDocumentSchema.parse(data);
-                originalDrawing.current = assetId;
-                openDocument(plan);
+                rememberEdits();
+                showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: plan, originalAssetId: assetId, selected: true }));
+                setSourceFile(file);
             }
         }
         catch (err) {
@@ -298,11 +333,11 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     ] : []}/>
 
     <ProjectDialog open={sourcesOpen} title={t("Sources")} onClose={() => setSourcesOpen(false)}>
-      <SourcesPanel onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSourcesOpen(false); input.current?.click(); }}/>
+      <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={switchDrawing} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSourcesOpen(false); input.current?.click(); }}/>
       {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
     </ProjectDialog>
     {spaceMode && document && <ProjectDialog open={boothsOpen} title={t("Booth pricing · applications")} onClose={() => setBoothsOpen(false)}>
-      <OrganizerBooths document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
+      <OrganizerBooths key={activeDrawingId} document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
     </ProjectDialog>}
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
@@ -315,7 +350,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         <div id="drawing-details" className="ps-drawing-controls" hidden={!details || !spaceMode}>
         <section className="ps-section"><div className="ps-section-heading"><h2>{t("Drawing setup")}</h2><Button variant="ghost" onClick={() => { setDetails(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{t("Close")}</Button></div>
           {document && document.source.pages > 1 && <label className="ps-field">{t("Drawing page")}<NativeSelect value={document.source.page} disabled={busy || !sourceFile} onChange={(e) => { if (sourceFile)
-        void extract(sourceFile, Number(e.target.value)); }}>{Array.from({ length: document.source.pages }, (_, i) => <option key={i} value={i + 1}>{t("Page {page}", { page: i + 1 })}</option>)}</NativeSelect>{!sourceFile && <small>{t("Re-upload the source to change pages.")}</small>}</label>}
+        void extract(sourceFile, Number(e.target.value), originalDrawing.current ?? undefined); }}>{Array.from({ length: document.source.pages }, (_, i) => <option key={i} value={i + 1}>{t("Page {page}", { page: i + 1 })}</option>)}</NativeSelect>{!sourceFile && <small>{t("Re-upload the source to change pages.")}</small>}</label>}
           {document && <><Button variant={cropping ? "primary" : "secondary"} disabled={busy} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setCropping((v) => !v); setCalibrating(false); setDrawing(false); setMeasure(null); }}>{cropping ? t("Cancel crop") : t("Crop to space")}</Button>{cropping && <p className="ps-help" style={{ marginTop: 9 }}>{t("Click opposite corners of one space. Cropping clears design objects; use Undo to restore.")}</p>}</>}
         </section>
         <section className="ps-section"><div className="ps-section-heading"><h2>{t("Real-world scale")}</h2>{calibrated ? <Badge tone="ok">{t("Confirmed")}</Badge> : <span className="ps-small-muted">{t("Needs review")}</span>}</div><p className="ps-help">{t("Pick a known distance on the drawing to set its scale.")}</p>
@@ -368,8 +403,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
-          {!document && <div className="p-5"><Button onClick={() => openDocument(boothExample())}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSourcesOpen(true)} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          {!document && <div className="p-5"><Button onClick={() => showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: boothExample(), originalAssetId: null, selected: true }))}>{t("Start with the booth design example")}</Button></div>}
+          <StudioChat key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSourcesOpen(true)} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
           {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}

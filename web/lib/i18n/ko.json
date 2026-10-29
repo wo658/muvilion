@@ -639,5 +639,8 @@
   "Basic shapes": "기본 도형",
   "Asset unavailable · basic shape": "에셋 로드 실패 · 기본 형상",
   "Scroll to latest message": "최근 메시지로 이동",
-  "Image unavailable": "이미지를 표시할 수 없어요."
+  "Image unavailable": "이미지를 표시할 수 없어요.",
+  "Current drawing": "현재 도면",
+  "Open drawing": "도면 열기",
+  "A project supports up to 12 drawings.": "프로젝트에는 도면을 최대 12개까지 추가할 수 있어요."
 }

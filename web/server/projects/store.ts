@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { withDatabase } from "@/server/database";
 import { CreateProject, SaveProject, ProjectState, type Project, type ProjectSummary } from "@/lib/projects/schema";
+import { projectOriginalIds } from "@/lib/projects/drawings";
 
 export class ProjectError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
@@ -33,16 +34,14 @@ function addAsset(db: DatabaseSync, projectId: string, name: string, mime: strin
   db.prepare("INSERT INTO assets VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(id, projectId, name, mime, data, digest, kind, new Date().toISOString());
   return id;
 }
-function originalIds(state: ProjectState) {
-  return [state.originalDrawingId, ...state.sources.items.map(item => item.originalAssetId)].filter((id): id is string => Boolean(id));
-}
 function pack(db: DatabaseSync, projectId: string, state: ProjectState): string {
-  for (const id of originalIds(state)) asset(db, projectId, id);
+  for (const id of projectOriginalIds(state)) asset(db, projectId, id);
   const image = (data: string, name: string) => {
     const match = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(data)!;
     return { assetId: addAsset(db, projectId, name, match[1], Buffer.from(match[2], "base64"), "image") };
   };
   return JSON.stringify({ ...state,
+    drawings: state.drawings?.map(item => ({ ...item, document: { ...item.document, preview: image(item.document.preview, "drawing-preview.png") } })),
     document: state.document ? { ...state.document, preview: image(state.document.preview, "drawing-preview.png") } : null,
     sources: { ...state.sources, items: state.sources.items.map(item => ({ ...item, images: item.images.map(data => image(data, item.name)) })) },
   });
@@ -53,6 +52,7 @@ function unpack(db: DatabaseSync, projectId: string, json: string): ProjectState
     const file = asset(db, projectId, ref.assetId);
     return `data:${file.mime_type};base64,${Buffer.from(file.content as Uint8Array).toString("base64")}`;
   };
+  for (const item of state.drawings ?? []) item.document.preview = image(item.document.preview);
   if (state.document) state.document.preview = image(state.document.preview);
   for (const item of state.sources.items) item.images = item.images.map(image);
   return ProjectState.parse(state);
@@ -76,6 +76,7 @@ export function createProject(input: unknown) {
     }
     const state = parsed.state;
     if (state.originalDrawingId) state.originalDrawingId = ids.get(state.originalDrawingId) ?? state.originalDrawingId;
+    for (const item of state.drawings ?? []) if (item.originalAssetId) item.originalAssetId = ids.get(item.originalAssetId) ?? item.originalAssetId;
     for (const item of state.sources.items) if (item.originalAssetId) item.originalAssetId = ids.get(item.originalAssetId) ?? item.originalAssetId;
     db.prepare("UPDATE projects SET state_json = ? WHERE id = ?").run(pack(db, id, state), id);
     return load(db, id);
@@ -101,7 +102,7 @@ export function getAsset(id: string, assetId: string) {
 export function exportProject(id: string) {
   return withDatabase(db => {
     const project = load(db, id);
-    const assets = [...new Set(originalIds(project.state))].map(assetId => {
+    const assets = projectOriginalIds(project.state).map(assetId => {
       const file = asset(db, id, assetId);
       return { id: assetId, name: String(file.name), mimeType: String(file.mime_type), data: Buffer.from(file.content as Uint8Array).toString("base64") };
     });
