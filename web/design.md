@@ -26,6 +26,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - The sidebar lists projects, not legacy sample drawings. Explicitly consolidated sample projects appear once; old links open the corresponding drawing in the retained project. Preserve the old rows and originals for recovery, and reject writes from stale tabs until they reload. Independently designed projects remain separate even when they share a venue.
 
+- App Settings uses a centered dialog and a centered content column up to 640px wide. Each section has a heading; setting rows pair left-aligned labels/descriptions with right-aligned controls. Use separators between API key actions and stack rows on narrow screens. Keep the section navigation, scrollable content and keyboard dismissal.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.

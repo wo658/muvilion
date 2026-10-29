@@ -317,8 +317,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
 
       { id: "project", label: t("Project"), content: <div className="flex flex-col gap-6">
-        <section className="flex flex-col gap-2"><h3 className="font-semibold">{t("Export project")}</h3><p className="ps-help">{t("Download this project and its original files as one JSON bundle.")}</p><Button className="self-start" variant="primary" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button></section>
-        <section className="flex flex-col gap-2"><h3 className="font-semibold">{t("Import project")}</h3><p className="ps-help">{t("Open an exported JSON bundle as a new project. The current project is kept.")}</p><Button className="self-start" disabled={!sourcesReady} onClick={() => { setSettings(null); restoreInput.current?.click(); }}>{t("Import project")}</Button></section>
+        <section className="settings-row"><div className="flex flex-col gap-2"><h4 className="font-medium">{t("Export project")}</h4><p className="settings-description">{t("Download this project and its original files as one JSON bundle.")}</p></div><Button className="self-start" variant="primary" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button></section>
+        <section className="settings-row"><div className="flex flex-col gap-2"><h4 className="font-medium">{t("Import project")}</h4><p className="settings-description">{t("Open an exported JSON bundle as a new project. The current project is kept.")}</p></div><Button className="self-start" disabled={!sourcesReady} onClick={() => { setSettings(null); restoreInput.current?.click(); }}>{t("Import project")}</Button></section>
       </div> },
     ] : []}/>
 
