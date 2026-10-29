@@ -652,5 +652,6 @@
   "The interior design is missing requested elements. No changes were applied. Retry with the same brief.": "요청한 내부 디자인 요소가 누락되어 적용하지 않았어요. 같은 요청으로 다시 시도해 주세요.",
   "Design cancelled. Your drawing is unchanged.": "설계를 취소했어요. 도면은 변경되지 않았어요.",
   "Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.": "내부 디자인 검토가 제한 시간 안에 끝나지 않았어요. 도면은 변경되지 않았어요. 같은 요청으로 다시 시도해 주세요.",
-  "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.": "내부 디자인 모델 또는 도구 호출에 실패했어요. 도면은 변경되지 않았어요. 같은 요청으로 다시 시도해 주세요."
+  "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.": "내부 디자인 모델 또는 도구 호출에 실패했어요. 도면은 변경되지 않았어요. 같은 요청으로 다시 시도해 주세요.",
+  "Live draft · not saved": "실시간 초안 · 저장 전"
 }

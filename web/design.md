@@ -18,6 +18,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - Remove marketing subtitles, decorative workflow steps, duplicate status copy and implementation details. Preserve actionable errors, scale warnings, review coverage and explicit proposal approval.
 - Send is conversational. Draft a layout creates a reviewable proposal; Apply changes commits it. Never imply chat itself performed an edit.
 
+- While Muse designs, grouped installation edits and review corrections appear in the same 3D/2D viewport with “Live draft · not saved”. This ephemeral overlay never enters project persistence or undo history. Apply commits only the final reviewed proposal. Cancel, failures, changed drawing/references and unmount discard the preview; camera navigation stays available.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.

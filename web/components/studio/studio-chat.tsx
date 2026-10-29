@@ -20,6 +20,7 @@ import { selectedReferences } from "@/lib/sources/files";
 import { DesignReviewSchema } from "@/lib/plans/design-review";
 import type { z } from "zod";
 import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
+import { readDesignStream, previewDocument } from "@/lib/plans/design-stream";
 import Image from "next/image";
 import { getModelAsset, getMaterialAsset } from "@/lib/assets/catalog";
 import Link from "next/link";
@@ -34,7 +35,8 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse, boothPricing }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse, boothPricing, onDesignPreview }: {
+    onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
     boothPricing?: PricingContext;
     onCollapse?: () => void;
 
@@ -62,9 +64,13 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const [interpreting, setInterpreting] = useState(false);
     const [interpretError, setInterpretError] = useState<string | null>(null);
     const [proposal, setProposal] = useState<Proposal | null>(null);
+    const [liveDraft, setLiveDraft] = useState<{ base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null>(null);
+    useEffect(() => { onDesignPreview?.(liveDraft); return () => onDesignPreview?.(null); }, [liveDraft, onDesignPreview]);
     const [notice, setNotice] = useState<string | null>(null);
     const controller = useRef<AbortController | null>(null);
     const mounted = useRef(true);
+    useEffect(() => { controller.current?.abort(); }, [document, sources]);
+    if (liveDraft && (liveDraft.base !== document || liveDraft.sources !== sources)) setLiveDraft(null);
     const minPixels = 12;
     const composer = useRef<HTMLTextAreaElement>(null);
     const [progress, setProgress] = useState<RegionalProgress | null>(null);
@@ -85,6 +91,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         setInterpreting(true);
         setInterpretError(null);
         setProposal(null);
+        setLiveDraft(null);
         setNotice(null);
         setProgress(null);
         setCancelRequested(false);
@@ -158,16 +165,25 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     setInterpretError(`${localizeMessage(locale, outcome.errors[0])} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
-                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale, document: base, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
-                const body = await response.json();
-                if (!response.ok)
-                    throw new Error(body.error ?? t("Muse could not draft a layout."));
+                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
+                const assertCurrent = () => {
+                    abortController.signal.throwIfAborted();
+                    if (!mounted.current || currentContext.current.document !== base || currentContext.current.sources !== sources) throw new DOMException("Stale design", "AbortError");
+                };
+                let draft = base;
+                const body = await readDesignStream(response, event => {
+                    assertCurrent();
+                    draft = previewDocument(draft, event);
+                    setLiveDraft({ base, sources, document: draft, label: event.label });
+                });
+                assertCurrent();
                 const result = PlanDocumentSchema.parse(body.document);
                 if (mounted.current)
                     setProposal({ sources, document: result, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), designReview: body.designReview ? DesignReviewSchema.parse(body.designReview) : undefined, summary: typeof body.summary === "string" ? body.summary : t("Review the proposed changes."), base, mode });
             }
         }
         catch (err) {
+            setLiveDraft(null);
             if (!mounted.current)
                 return;
             if (err instanceof Error && err.name === "AbortError") {
@@ -276,7 +292,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             <progress aria-label={reviewPhase === "walls" ? t("Long wall context batches reviewed") : t("Regions reviewed")} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
             <p className="mt-1">{progress.completed} / {progress.total} {reviewPhase === "walls" ? t("long wall context batches reviewed") : t("regions reviewed")}{progress.failed > 0 ? t(" · {count} failed", { count: progress.failed }) : ""}{cancelRequested ? t(" · stopped") : ""}</p>
           </div>}
-          {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="self-start" onClick={() => { setCancelRequested(true); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
+          {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="self-start" onClick={() => { setCancelRequested(true); setLiveDraft(null); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
           {interpretError && <p role="alert" className="text-xs leading-relaxed text-bad">{localizeMessage(locale, interpretError)}</p>}
           {proposal && <div className="ps-proposal">
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
@@ -301,8 +317,9 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             <div className="mt-3 flex gap-2"><Button type="button" size="sm" disabled={Boolean(stale)} variant="default" className="ps-ink-button" onClick={() => { if (!stale) {
               onDocumentChange(proposal.document);
               setProposal(null);
+              setLiveDraft(null);
               setNotice(t(proposal.mode === "design" ? "Interior proposal applied. Review the furnishings and brand expression in 3D." : "Proposal applied. Review the geometry against your source."));
-          } }}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Apply changes")}</Button><Button type="button" size="sm" variant="outline" onClick={() => setProposal(null)}>{t("Cancel")}</Button></div>
+          } }}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Apply changes")}</Button><Button type="button" size="sm" variant="outline" onClick={() => { setProposal(null); setLiveDraft(null); }}>{t("Cancel")}</Button></div>
           </div>}
           {notice && <p role="status" className="text-xs text-accent">{localizeMessage(locale, notice)}</p>}
         </div>}
@@ -327,7 +344,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 <PromptInputButton size="icon-sm" variant="ghost" onClick={onSources} aria-label={t("Add sources")} title={t("Add sources")}>
                   <PaperclipIcon aria-hidden="true" />
                 </PromptInputButton>
-                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
+                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setLiveDraft(null); controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
                   <SquareIcon aria-hidden="true" />
                 </PromptInputButton>}
                 <PromptInputSubmit type="submit" size="icon-sm" variant="default" className={`ps-send${busy ? "" : " ml-auto"}`} disabled={busy || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>
