@@ -10,12 +10,18 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 
 
 @router.post("/extract", response_model=PlanEvidence)
-async def extract(file: Annotated[UploadFile, File()], page: Annotated[int, Form()] = 1):
+async def extract(
+    file: Annotated[UploadFile, File()],
+    page: Annotated[int, Form()] = 1,
+    raster_pdf: Annotated[bool, Form()] = False,
+):
     try:
         data = await file.read(20 * 1024 * 1024 + 1)
         if len(data) > 20 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="Upload a file no larger than 20 MB.")
-        return await run_in_threadpool(extract_plan, data, file.filename or "drawing", page)
+        return await run_in_threadpool(
+            extract_plan, data, file.filename or "drawing", page, raster_pdf
+        )
     except PlanResourceError as error:
         raise HTTPException(status_code=413, detail=str(error)) from error
     except PlanInputError as error:

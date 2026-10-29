@@ -230,3 +230,15 @@ def test_media_box_crop_clips_diagonal_at_actual_intersection():
     assert segment.a.y == pytest.approx(0.5)
     assert segment.b.x == pytest.approx(0.5)
     assert segment.b.y == pytest.approx(0)
+
+
+def test_explicit_raster_pdf_preserves_original_page_metadata():
+    plan = extract_plan(vector_pdf(), "dense.pdf", raster_pdf=True)
+    assert plan.method == "opencv"
+    assert plan.source.format == "pdf"
+    assert plan.source.name == "dense.pdf"
+    assert plan.source.page == plan.source.pages == 1
+    assert plan.lines and all(line.origin == "raster" for line in plan.lines)
+    assert plan.texts == []
+    assert plan.scaleConfirmed is False
+    assert any("Vector paths and text were not extracted" in note for note in plan.warnings)

@@ -85,6 +85,11 @@ export interface components {
              * @default 1
              */
             page: number;
+            /**
+             * Raster Pdf
+             * @default false
+             */
+            raster_pdf: boolean;
         };
         /** Booth */
         Booth: {
