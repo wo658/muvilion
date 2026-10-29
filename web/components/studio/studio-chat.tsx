@@ -5,7 +5,9 @@ import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
+import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputButton, PromptInputSubmit } from "@/components/ai-elements/prompt-input";
 import { ArrowUpIcon, PanelRightCloseIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
@@ -65,7 +67,6 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const [progress, setProgress] = useState<RegionalProgress | null>(null);
     const [cancelRequested, setCancelRequested] = useState(false);
     const [reviewPhase, setReviewPhase] = useState<"regions" | "walls">("regions");
-    const feedContainer = useRef<HTMLDivElement | null>(null);
     const [preparing, setPreparing] = useState(false);
     const preparingRef = useRef(false);
     const currentContext = useRef({ document, sources, selection });
@@ -74,8 +75,6 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const busy = interpreting || preparing || responding;
     const unknownCount = document?.lines.filter((line) => line.kind === "unknown").length ?? 0;
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
-    useEffect(() => { if (messages.length && feedContainer.current)
-        feedContainer.current.scrollTop = feedContainer.current.scrollHeight; }, [messages, status, progress, proposal, notice]);
     async function interpret(mode: "interpret" | "design" = "interpret", brief = input.trim()) {
         if (!document || interpreting || (mode === "design" && (!brief.trim() || !document.scaleConfirmed)))
             return;
@@ -254,11 +253,20 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 
       </header>
-      <div ref={feedContainer} className="ps-conversation-feed" aria-live="polite" aria-relevant="additions text">
+      <Conversation aria-label={t("Muse drawing assistant")} aria-live="polite" aria-relevant="additions text">
+      <ConversationContent className="ps-conversation-feed">
         {!messages.length && (document
           ? <div className="ps-muse-intro"><p className="ps-msg-muse">{t("What space shall we create?")}</p><div className="ps-quick-replies">{suggestions.map((text) => <button type="button" key={text} disabled={busy} onClick={() => void send(text)}>{text}</button>)}</div></div>
           : <div className="ps-greeting"><MuviGreeting thinking={interpreting || status === "submitted" || status === "streaming"}/><h1>{t("What space shall we create?")}</h1><div className="ps-suggestions">{suggestions.map((text) => <Button type="button" size="sm" variant="outline" key={text} disabled={busy || interpreting} onClick={() => { setInput(text); composer.current?.focus(); }} className="h-auto min-h-9 whitespace-normal text-left">{text}</Button>)}</div></div>)}
-        {messages.map((message) => <article key={message.id} className={message.role === "user" ? "ps-msg-user" : "ps-msg-muse"}><span className="sr-only">{message.role === "user" ? t("You") : "Muse"}: </span>{message.parts.map((part, index) => part.type === "text" ? <p key={index}>{part.text}</p> : null)}</article>)}
+        {messages.map((message, messageIndex) => <Message key={message.id} from={message.role}>
+          <MessageContent>
+            <span className="sr-only">{message.role === "user" ? t("You") : "Muse"}: </span>
+            {message.parts.map((part, index) => part.type === "text" ? message.role === "user"
+              ? <p key={index} className="whitespace-pre-wrap wrap-anywhere">{part.text}</p>
+              : <MessageResponse key={index} mode="streaming" isAnimating={status === "streaming" && messageIndex === messages.length - 1} controls={false}>{part.text}</MessageResponse>
+              : null)}
+          </MessageContent>
+        </Message>)}
         {(preparing || status === "submitted") && <p className="ps-muse-thinking">{t("Muse is thinking…")}</p>}
         {tools && <div className="ps-conversation-tools">
           {progress && <div className="text-xs text-muted" role="status" aria-live="polite">
@@ -288,38 +296,35 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         </div>}
 
         {error && <div role="alert" className="rounded-lg border border-hairline p-3 text-xs text-bad"><p>{t("Muse couldn’t reply. Please try again.")}</p><Button type="button" size="sm" variant="outline" onClick={clearError} className="mt-2">{t("Dismiss")}</Button></div>}
-      </div>
+      </ConversationContent>
+      <ConversationScrollButton aria-label={t("Scroll to latest message")} title={t("Scroll to latest message")} />
+      </Conversation>
       {selection && <div className="ps-muse-selection" aria-label={t("Selected item")}>
         <div><span>{t("Selected item")}</span><strong>{selection.label}</strong></div>
         <Button type="button" size="sm" variant="ghost" disabled={!onRemoveSelection} onClick={onRemoveSelection}><Trash2Icon aria-hidden="true" data-icon="inline-start" />{t("Delete")}</Button>
         <Button type="button" size="icon-sm" variant="ghost" onClick={onClearSelection} aria-label={t("Clear selection")} title={t("Clear selection")}><XIcon aria-hidden="true" /></Button>
         <Button type="button" size="sm" variant="outline" onClick={() => { setInput(value => { const target = t("About “{name}”: ", { name: selection.label }); return value.startsWith(target) ? value : `${target}\n${value}`; }); composer.current?.focus(); }}><MessageCircleIcon aria-hidden="true" data-icon="inline-start" />{t("Ask about this")}</Button>
       </div>}
-      <form className="ps-chat-composer" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
+      <div className="ps-chat-composer">
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="studio-muse-input" className="sr-only">{t("Ask Muse about your drawing")}</FieldLabel>
-            <InputGroup>
-              <InputGroupTextarea ref={composer} id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder={messages.length ? t("Send a message…") : t("Tell Muse what you have in mind…")} className="min-h-16 max-h-48" onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }} />
-              <InputGroupAddon align="block-end">
-                <InputGroupButton size="icon-sm" variant="ghost" onClick={onSources} aria-label={t("Add sources")} title={t("Add sources")}>
+            <PromptInput onSubmit={({ text }) => { void send(text); }}>
+              <PromptInputTextarea ref={composer} id="studio-muse-input" value={input} onChange={(event) => setInput(event.target.value)} maxLength={6000} rows={2} placeholder={messages.length ? t("Send a message…") : t("Tell Muse what you have in mind…")} />
+              <PromptInputFooter>
+                <PromptInputButton size="icon-sm" variant="ghost" onClick={onSources} aria-label={t("Add sources")} title={t("Add sources")}>
                   <PaperclipIcon aria-hidden="true" />
-                </InputGroupButton>
-                {busy && <InputGroupButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
+                </PromptInputButton>
+                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
                   <SquareIcon aria-hidden="true" />
-                </InputGroupButton>}
-                <InputGroupButton type="submit" size="icon-sm" variant="default" className={`ps-send${busy ? "" : " ml-auto"}`} disabled={busy || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>
+                </PromptInputButton>}
+                <PromptInputSubmit type="submit" size="icon-sm" variant="default" className={`ps-send${busy ? "" : " ml-auto"}`} disabled={busy || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>
                   {preparing ? <LoaderCircleIcon aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <ArrowUpIcon aria-hidden="true" />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
+                </PromptInputSubmit>
+              </PromptInputFooter>
+            </PromptInput>
           </Field>
         </FieldGroup>
-      </form>
+      </div>
     </section>);
 }
