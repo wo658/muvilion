@@ -56,3 +56,7 @@ button returns to the latest message. Scrolling is instant, including reduced mo
 Assistant Markdown uses Streamdown; user input remains literal text. Sources,
 automatic intent routing, bilingual labels, cancellation and explicit proposal
 approval remain owned by StudioChat. File attachments remain in the Sources dialog.
+
+## Muvi motion gallery
+
+`/muvi/gallery` is a standalone motion review page: one large orbitable preview, four selectable designer studies, pause, replay, hide and language controls. Designer props are decorative GLB content, never drawing objects. Reduced motion and hidden pages stop animation.

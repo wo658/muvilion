@@ -642,5 +642,22 @@
   "Image unavailable": "이미지를 표시할 수 없어요.",
   "Current drawing": "현재 도면",
   "Open drawing": "도면 열기",
-  "A project supports up to 12 drawings.": "프로젝트에는 도면을 최대 12개까지 추가할 수 있어요."
+  "A project supports up to 12 drawings.": "프로젝트에는 도면을 최대 12개까지 추가할 수 있어요.",
+  "Sketch": "스케치",
+  "Measure": "치수 재기",
+  "Raise a partition": "가벽 세우기",
+  "Paint": "마감 칠하기",
+  "Muvi motion gallery": "Muvi 동작 갤러리",
+  "A spatial designer at work.": "공간을 만드는 작은 디자이너.",
+  "Designer studies · 4 looping motions": "디자이너 동작 연구 · 4개의 반복 애니메이션",
+  "Sketch a floor plan with a pencil.": "연필로 도면 위에 선을 그으며 구상해요.",
+  "Stretch a tape and check the proportions.": "줄자를 펼쳐 공간의 비례를 살펴봐요.",
+  "Lean in, lift the panel, and set it upright.": "몸을 기울여 가벽을 들어 올리고 세워요.",
+  "Roll the finish with an easy, steady rhythm.": "롤러를 위아래로 움직이며 마감을 입혀요.",
+  "Decorative motion studies, independent of drawing edits.": "도면 편집과 별개로 감상하는 장식용 동작 시안입니다.",
+  "Hide preview": "미리보기 숨기기",
+  "Show preview": "미리보기 보기",
+  "Replay": "처음부터",
+  "View motion gallery": "동작 갤러리 보기",
+  "Drag to orbit · Scroll to zoom": "드래그로 회전 · 스크롤로 확대"
 }

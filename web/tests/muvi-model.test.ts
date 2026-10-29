@@ -5,11 +5,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MUVI_MOTIONS } from "../lib/muvi/motions";
 
 describe("shipped Muvi GLB", () => {
-  it("loads offline with all eight usable, looping animation clips", async () => {
+  it("loads offline with all usable, looping animation clips", async () => {
     const file = readFileSync(new URL("../public/mascot/muvi-v1.glb", import.meta.url));
     const model = await new GLTFLoader().parseAsync(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength), "");
     expect(model.animations.map(clip => clip.name)).toEqual([...MUVI_MOTIONS]);
-    expect(file.byteLength).toBeLessThan(500_000);
+    expect(file.byteLength).toBeLessThan(900_000);
     const bounds = new Box3().setFromObject(model.scene);
     expect(bounds.min.y).toBeGreaterThanOrEqual(-0.001);
     expect(bounds.max.y).toBeGreaterThan(2);
@@ -27,6 +27,13 @@ describe("shipped Muvi GLB", () => {
       }
       mixer.stopAllAction(); mixer.clipAction(clip).play(); mixer.update(clip.duration / 4);
       expect(new Box3().setFromObject(model.scene).isEmpty()).toBe(false);
+      const expectedProps: Record<string, string[]> = {
+        sketch: ["Desk", "Pencil"], measure: ["Tape"], partition: ["Partition"], paint: ["Partition", "Roller", "Swatch"],
+      };
+      // Designer tools must never leak into the original viewer / roaming motions.
+      for (const name of ["Desk", "Pencil", "Tape", "Partition", "Roller", "Swatch"]) {
+        expect(model.scene.getObjectByName(name)!.scale.x).toBe((expectedProps[clip.name] ?? []).includes(name) ? 1 : 0);
+      }
     }
     mixer.stopAllAction();
   });

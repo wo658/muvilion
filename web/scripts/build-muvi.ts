@@ -1,7 +1,8 @@
 /** Original Muvi geometry and reusable rigid-part animation rig. No external assets. */
 import { mkdir, writeFile } from "node:fs/promises";
-import { AnimationClip, BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry, Shape, Vector3, QuadraticBezierCurve3, TubeGeometry, Quaternion, Euler, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
+import { BoxGeometry, AnimationClip, BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry, Shape, Vector3, QuadraticBezierCurve3, TubeGeometry, Quaternion, Euler, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+import { TOKENS } from "../lib/ui/tokens";
 import { MUVI_MOTIONS, type MuviMotion } from "../lib/muvi/motions";
 
 // GLTFExporter only needs FileReader's asynchronous binary path for this texture-free model.
@@ -61,8 +62,42 @@ for (const side of [-1, 1]) {
 const smile = new Mesh(new TubeGeometry(new QuadraticBezierCurve3(new Vector3(-0.105, 1.105, 0.537), new Vector3(0, 0.99, 0.555), new Vector3(0.105, 1.105, 0.537)), 20, 0.018, 8, false), ink);
 smile.name = "Smile"; body.add(smile);
 
+// Original designer props live in the same portable rig. Hidden in everyday clips.
+const paper = new MeshStandardMaterial({ color: TOKENS.surface, roughness: 0.9 });
+const metal = new MeshStandardMaterial({ color: TOKENS.ink, roughness: 0.7 });
+const accent = new MeshStandardMaterial({ color: TOKENS.accent, roughness: 0.8 });
+function prop(name: string, parent = model) {
+  const group = new Group(); group.name = name; parent.add(group); return group;
+}
+function box(parent: Group, size: [number, number, number], at: [number, number, number], material = paper) {
+  const mesh = new Mesh(new BoxGeometry(...size), material); mesh.position.set(...at); parent.add(mesh); return mesh;
+}
+const desk = prop("Desk"); desk.position.z = -0.2;
+box(desk, [2, 0.08, 1], [0, 0.66, 0.95]);
+for (const x of [-0.8, 0.8]) box(desk, [0.08, 0.64, 0.7], [x, 0.32, 0.95], metal);
+box(desk, [1.4, 0.01, 0.7], [0, 0.71, 0.95], accent);
+for (const x of [-0.4, 0.1, 0.4]) box(desk, [0.015, 0.01, 0.5], [x, 0.72, 0.95]);
+for (const z of [0.72, 1, 1.2]) box(desk, [0.8, 0.01, 0.015], [0, 0.72, z]);
+const pencil = prop("Pencil", model.getObjectByName("ArmR") as Group);
+box(pencil, [0.045, 0.65, 0.045], [0.1, -0.35, 0.25], accent).rotation.x = 0.8;
+const tape = prop("Tape"); tape.position.set(0, 0.9, 0.5);
+box(tape, [1.7, 0.055, 0.03], [0, 0, 0], accent);
+for (let i = 0; i < 15; i++) box(tape, [0.015, 0.035, 0.035], [-0.7 + i * 0.1, 0, 0]);
+box(tape, [0.2, 0.22, 0.15], [0.9, 0, 0], metal);
+const wall = prop("Partition"); wall.position.set(1.35, 0.08, 0.15);
+box(wall, [0.1, 1.85, 1.3], [0, 0.925, 0]);
+for (const z of [-0.45, 0.45]) box(wall, [0.7, 0.08, 0.12], [0, 0, z], metal);
+const roller = prop("Roller", model.getObjectByName("ArmR") as Group);
+box(roller, [0.05, 0.65, 0.05], [0.1, -0.3, 0.05], metal);
+box(roller, [0.12, 0.18, 0.48], [0.1, -0.65, 0.05], accent);
+const swatch = prop("Swatch");
+box(swatch, [0.015, 1.1, 0.65], [1.285, 1.1, 0.15], accent);
+const props = [desk, pencil, tape, wall, roller, swatch];
+for (const item of props) item.scale.setScalar(0);
+
 function clip(motion: MuviMotion) {
-  const duration = motion === "run" ? 0.6 : motion === "walk" ? 1 : 3;
+  const designer = ["sketch", "measure", "partition", "paint"].includes(motion);
+  const duration = designer ? 4 : motion === "run" ? 0.6 : motion === "walk" ? 1 : 3;
   const times = Array.from({ length: 61 }, (_, i) => i / 60 * duration);
   const tracks = [];
   for (const name of ["Body", "ArmL", "ArmR", "FootL", "FootR", "EyeL", "EyeR"]) {
@@ -75,11 +110,18 @@ function clip(motion: MuviMotion) {
       if (name === "Body") {
         p.y += 0.018 * (1 - Math.cos(phase));
         if (motion === "walk" || motion === "run") { p.y += bounce * (motion === "run" ? 0.12 : 0.04); e.z = wave * 0.035; e.x = motion === "run" ? 0.12 : 0; }
+        if (motion === "sketch") { e.x = 0.13; e.y = wave * 0.045; }
+        if (motion === "partition") { e.z = -0.12 * (1 - Math.cos(phase)); p.y -= bounce * 0.08; }
+        if (motion === "paint") e.z = wave * 0.06;
         if (motion === "think") e.z = -0.12 + wave * 0.025;
         if (motion === "cheer") p.y += bounce * 0.32;
         if (motion === "rest") { p.y -= 0.15; e.x = -0.06; }
       }
       if (name.startsWith("Arm")) {
+        if (motion === "sketch") { if (!left) p.x -= 0.3; e.x = -1.25 + (!left ? wave * 0.16 : 0); e.z = left ? -0.1 : 0.1 + Math.sin(phase * 3) * 0.12; }
+        if (motion === "measure") { e.x = -1.15; e.z = -sign * (0.35 + 0.15 * wave); }
+        if (motion === "partition") { e.x = -0.5; e.z = -sign * (0.6 + 0.45 * (1 - Math.cos(phase))); }
+        if (motion === "paint" && !left) { e.z = 1.65 + wave * 0.45; e.x = -0.2; }
         if (motion === "walk" || motion === "run") e.x = wave * sign * (motion === "run" ? 0.9 : 0.55);
         if (motion === "hello" && left) { e.z = -1.65 + wave * 0.3; e.x = -0.15; }
         if (motion === "think" && !left) { e.z = 2.3; e.x = -0.65; }
@@ -95,6 +137,18 @@ function clip(motion: MuviMotion) {
       translation.push(p.x, p.y, p.z); rotation.push(...new Quaternion().setFromEuler(e).toArray()); scale.push(s.x, s.y, s.z);
     }
     tracks.push(new VectorKeyframeTrack(`${name}.position`, times, translation), new QuaternionKeyframeTrack(`${name}.quaternion`, times, rotation), new VectorKeyframeTrack(`${name}.scale`, times, scale));
+  }
+  for (const item of props) {
+    const active = (motion === "sketch" && [desk, pencil].includes(item)) || (motion === "measure" && item === tape) || (motion === "partition" && item === wall) || (motion === "paint" && [wall, roller, swatch].includes(item));
+    const scales: number[] = [], rotations: number[] = [];
+    for (const time of times) {
+      const wave = (1 - Math.cos(time / duration * Math.PI * 2)) / 2;
+      const size = active ? 1 : 0;
+      scales.push(size, size, size);
+      const angle = item === wall && motion === "partition" ? -1.05 * (1 - wave) : 0;
+      rotations.push(...new Quaternion().setFromEuler(new Euler(0, 0, angle)).toArray());
+    }
+    tracks.push(new VectorKeyframeTrack(`${item.name}.scale`, times, scales), new QuaternionKeyframeTrack(`${item.name}.quaternion`, times, rotations));
   }
   return new AnimationClip(motion, duration, tracks);
 }
