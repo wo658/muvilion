@@ -637,5 +637,7 @@
   "Proposed assets": "제안에 사용한 에셋",
   "Assets used": "사용 에셋",
   "Basic shapes": "기본 도형",
-  "Asset unavailable · basic shape": "에셋 로드 실패 · 기본 형상"
+  "Asset unavailable · basic shape": "에셋 로드 실패 · 기본 형상",
+  "Scroll to latest message": "최근 메시지로 이동",
+  "Image unavailable": "이미지를 표시할 수 없어요."
 }

@@ -1,3 +1,4 @@
+@source "../node_modules/streamdown/dist/*.js";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -129,3 +130,8 @@ dialog::backdrop {
 .app-settings nav button[aria-current] { background: var(--selected); color: var(--ink); font-weight: 600; }
 .app-settings-content { padding: 24px; overflow-y: auto; min-height: 420px; }
 @media (max-width: 640px) { .app-settings-body { grid-template-columns: 1fr; } .app-settings nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--hairline); padding: 8px 12px; } .app-settings nav button { white-space: nowrap; } .app-settings-content { min-height: 0; padding: 16px; } }
+
+/* Streamdown's muted role is a surface, while Muse's muted is text. */
+.muse-message-response [data-streamdown="inline-code"],
+.muse-message-response [data-streamdown="table-header"],
+.muse-message-response [data-streamdown="image-placeholder"] { background: var(--sunken); }

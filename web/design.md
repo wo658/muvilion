@@ -7,7 +7,7 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - Before opening a drawing, center the conversation. Use one greeting and at most two optional prompts.
 - With a drawing, share the workspace between conversation and canvas. Put conversation first on narrow screens.
 - No top bar. Brand, projects, booths and settings live in one sidebar that collapses to an icon rail (collapsed by default; icons only on narrow screens).
-- With a drawing, Muse is a full-height right sidebar (like the ElevenLabs agent panel) that collapses to a round launcher at the bottom right (like Channel Talk): avatar and status pill over the feed, plain-text replies, ink user bubbles and a bordered composer. On phones it is a bottom sheet.
+- With a drawing, Muse is a full-height right sidebar (like the ElevenLabs agent panel) that collapses to a round launcher at the bottom right (like Channel Talk): avatar and status pill over the feed, streaming Markdown replies, ink user bubbles and a bordered composer. On phones it is a bottom sheet.
 - The drawing workspace is 3D. There is no 2D/3D switch: the 2D plan appears only while a setup tool needs it (Drawing settings, crop, scale, floor outline, entrance, wall drawing) and returns to 3D when the tool closes.
 - Project-level tools live in the workspace header: Sources (original drawing and references) and Booth pricing · applications each open a dialog. App Settings holds only app-wide and project file sections (General, API key, Project); do not add source management back to it.
 - Muse's header shows only the avatar, plus a status pill while Muse is replying; no role label. The 3D view has no floating legend or Muvi caption.
@@ -45,3 +45,13 @@ Language changes preserve the conversation, composer, loaded drawing, undo histo
 ## Verification
 
 Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web and engine checks before merging.
+
+## Chat components
+
+Muse uses adapted Vercel AI Elements Conversation, Message/MessageResponse and
+PromptInput components under `components/ai-elements` (source and license there).
+Conversation follows new messages until the reader scrolls away; a localized
+button returns to the latest message. Scrolling is instant, including reduced motion.
+Assistant Markdown uses Streamdown; user input remains literal text. Sources,
+automatic intent routing, bilingual labels, cancellation and explicit proposal
+approval remain owned by StudioChat. File attachments remain in the Sources dialog.
