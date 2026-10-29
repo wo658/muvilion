@@ -658,5 +658,8 @@
   "Project settings sections": "Project settings sections",
   "Switch drawing": "Switch drawing",
   "View settings": "View settings",
-  "Drag to orbit. Right-drag to pan. Scroll to zoom.": "Drag to orbit. Right-drag to pan. Scroll to zoom."
+  "Drag to orbit. Right-drag to pan. Scroll to zoom.": "Drag to orbit. Right-drag to pan. Scroll to zoom.",
+  "{count} sample projects": "{count} sample projects",
+  "{count} drawings": "{count} drawings",
+  "Preparing project drawings…": "Preparing project drawings…"
 }

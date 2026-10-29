@@ -291,7 +291,7 @@
   "Bring a floor plan and design the space with Muse.": "도면을 가져오면 Muse와 함께 공간을 설계할 수 있어요.",
   "Start with my drawing": "내 도면으로 시작",
   "PDF, PNG, JPG or DXF · up to 20 MB": "PDF, PNG, JPG, DXF · 20MB 이하",
-  "Start with a sample": "샘플 도면으로 시작",
+  "Start with a sample": "샘플 프로젝트로 시작",
   "Loading samples…": "샘플을 불러오는 중…",
   "{count} public venue drawings": "공개 전시장 도면 {count}개",
   "No sample drawings in this checkout": "이 환경에는 샘플 도면이 없어요",
@@ -658,5 +658,8 @@
   "Project settings sections": "프로젝트 설정 항목",
   "Switch drawing": "도면 전환",
   "View settings": "보기 설정",
-  "Drag to orbit. Right-drag to pan. Scroll to zoom.": "드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대·축소"
+  "Drag to orbit. Right-drag to pan. Scroll to zoom.": "드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대·축소",
+  "{count} sample projects": "샘플 프로젝트 {count}개",
+  "{count} drawings": "도면 {count}개",
+  "Preparing project drawings…": "프로젝트 도면들을 준비하고 있어요…"
 }

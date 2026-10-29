@@ -43,7 +43,7 @@ export interface HttpEngineOptions {
 }
 
 export interface HttpEngine extends Engine {
-  extract(file: File, page?: number, options?: EngineRequestOptions): Promise<PlanDocument>;
+  extract(file: File, page?: number, options?: EngineRequestOptions & { rasterPdf?: boolean }): Promise<PlanDocument>;
 }
 
 export function createHttpEngine(opts: HttpEngineOptions = {}): HttpEngine {
@@ -107,6 +107,7 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): HttpEngine {
       const body = new FormData();
       body.set("file", file);
       body.set("page", String(page));
+      if (options?.rasterPdf) body.set("raster_pdf", "true");
       return call("POST", "/plans/extract", PlanDocumentSchema, body, 90_000, options);
     },
   };

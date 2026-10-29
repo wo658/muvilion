@@ -177,11 +177,12 @@ def read_image(data, name, page):
     )
 
 
-def read_pdf(data, name, page):
+def read_pdf(data, name, page, raster_pdf=False):
     with _PDF_LOCK:
         with pdfium.PdfDocument(data) as document:
             if not 1 <= page <= len(document):
                 raise PlanInputError(f"Select a page between 1 and {len(document)}.")
+            page_count = len(document)
             pdf_page = document[page - 1]
             # Render full MediaBox to match pdfplumber, including rotated pages.
             pdf_page.set_cropbox(*pdf_page.get_mediabox())
@@ -192,6 +193,13 @@ def read_pdf(data, name, page):
             image = bitmap.to_pil().convert("RGB")
             bitmap.close()
             pdf_page.close()
+        if raster_pdf:
+            return result(
+                name, "pdf", image, raster_lines(image), [],
+                ["Explicit image-based PDF extraction. Vector paths and text were not extracted; "
+                 "line candidates are approximate. The original PDF is preserved."],
+                "opencv", page=page, pages=page_count,
+            )
         with pdfplumber.open(io.BytesIO(data)) as document:
             p = document.pages[page - 1]
             w, h = p.width, p.height
@@ -352,7 +360,9 @@ def read_dxf(data, name, page):
     )
 
 
-def extract_plan(data: bytes, filename: str, page: int = 1) -> PlanEvidence:
+def extract_plan(
+    data: bytes, filename: str, page: int = 1, raster_pdf: bool = False
+) -> PlanEvidence:
     name = Path(filename).name[:200]
     suffix = Path(name).suffix.lower()
     if not data:
@@ -363,7 +373,7 @@ def extract_plan(data: bytes, filename: str, page: int = 1) -> PlanEvidence:
         raise PlanInputError("Page numbers start at 1.")
     try:
         if suffix == ".pdf" and data.startswith(b"%PDF-"):
-            return read_pdf(data, name, page)
+            return read_pdf(data, name, page, raster_pdf)
         if suffix in {".png", ".jpg", ".jpeg"}:
             return read_image(data, name, page)
         if suffix == ".dxf":
