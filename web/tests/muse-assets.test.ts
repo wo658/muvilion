@@ -64,7 +64,7 @@ describe("Muse asset references", () => {
       call("set_design_brief", brief),
       call("search_design_assets", { category: "all", query: "" }),
       call("review_design", { coverage, summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
-      call("submit_design", { summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
+      call("submit_design", { revision:1, summary: "CC0 라운지" }),
     ] });
     vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());

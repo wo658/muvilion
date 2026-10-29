@@ -53,7 +53,7 @@ describe("source-aware Muse routes", () => {
       await options.tools.set_design_brief.execute({scope:'zoning',direction:'Preserve open space',requirements:[{id:'open',label:'Open space',target:'objects',kinds:[],minimum:0}]});
       await options.tools.review_design.execute({...proposal,coverage:[{requirementId:'open',ids:[],decision:'Open space preserved.'}]});
       options.prepareStep({ messages: options.messages, stepNumber: 1 });
-      return { toolCalls: [{ toolName: "submit_design", input: proposal }] };
+      return { toolCalls: [{ toolName: "submit_design", input: {revision:1,summary:proposal.summary} }] };
     });
     const response = await design(request({ document, drawingSelected: false, brief: "Keep open", sources: [source("chosen", true), source("excluded", false)] }));
     expect(response.status).toBe(200);

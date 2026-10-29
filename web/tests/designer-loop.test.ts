@@ -18,7 +18,7 @@ beforeEach(()=>{handle.savedKey=undefined;vi.stubEnv('MUSE_IMAGE_ENABLED','false
 
 describe('Designer Muse SDK loop',()=>{
   it('executes review and delivers image evidence to the next model step before submission',async()=>{
-    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',proposal)]});handle.model=model;
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})]});handle.model=model;
     const result=await designPlan(input(),new AbortController().signal);
     expect(result.phase).toBe('initial');expect(result.artifacts).toHaveLength(2);
     expect(model.doGenerateCalls).toHaveLength(3);
@@ -29,14 +29,14 @@ describe('Designer Muse SDK loop',()=>{
   });
   it('enables image tools with a Settings key and preserves locale instructions',async()=>{
     handle.savedKey='stored-test-key';vi.stubEnv('MODEL_API_KEY','');vi.stubEnv('MUSE_IMAGE_ENABLED','true');
-    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',proposal)]});handle.model=model;
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})]});handle.model=model;
     await designPlan({...input(),locale:'ko'},new AbortController().signal);
     expect(model.doGenerateCalls[1].tools?.some(t=>t.name==='generate_design_concept')).toBe(true);
     expect(JSON.stringify(model.doGenerateCalls[0].prompt)).toContain('Korean');
     expect(JSON.stringify(model.doGenerateCalls)).not.toContain('stored-test-key');
   });
   it('never sends a named tool choice and narrows the final step to submit_design',async()=>{
-    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),...Array.from({length:8},()=>call('review_design',proposal)),call('submit_design',proposal)]});handle.model=model;
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),...Array.from({length:8},()=>call('review_design',proposal)),call('submit_design',{revision:3,summary:proposal.summary})]});handle.model=model;
     await designPlan(input(),new AbortController().signal);
     expect(model.doGenerateCalls).toHaveLength(10);
     expect(model.doGenerateCalls.every(c=>c.toolChoice?.type==='auto')).toBe(true);
@@ -45,24 +45,31 @@ describe('Designer Muse SDK loop',()=>{
     expect(JSON.stringify(final.prompt)).toContain('Final step: call submit_design');
   });
   it('rejects submission without review',async()=>{
-    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('submit_design',proposal)]});
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('submit_design',{revision:1,summary:proposal.summary})]});
     await expect(designPlan(input(),new AbortController().signal)).rejects.toThrow('not been visually reviewed');
   });
-  it('rejects changed geometry after a reviewed candidate',async()=>{
-    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{...proposal,objects:[{id:'new',kind:'stage',label:'New',x:.5,y:.5,width:3,depth:2,height:1,rotation:0,color:'#445566'}]})]});
+  it('rejects stale revisions after a second review',async()=>{
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('review_design',proposal),call('submit_design',{revision:1,summary:'Stale'})]});
     await expect(designPlan(input(),new AbortController().signal)).rejects.toThrow('not been visually reviewed');
+  });
+  it('returns the exact reviewed geometry and assumptions without regenerating them at submission',async()=>{
+    const candidate={...proposal,objects:[{id:'stage',kind:'stage',label:'Stage',x:.5,y:.5,width:3,depth:2,height:1,rotation:0,color:'#445566'}],assumptions:['Provisional height']};
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',candidate),call('submit_design',{revision:1,summary:'Reviewed design'})]});
+    const result=await designPlan(input(),new AbortController().signal);
+    expect(result.document.objects?.[0]).toMatchObject(candidate.objects[0]);
+    expect(result.document.warnings).toContain('Provisional height');
   });
   it('uses the same loop for revisions and preserves reviewed source geometry',async()=>{
     const request=input();request.document.objects=[{id:'old',kind:'stage',label:'Old',x:.5,y:.5,width:3,depth:2,height:1,rotation:0,color:'#445566'}];
     const original=JSON.stringify(request.document);
-    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',proposal)]});
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})]});
     const result=await designPlan(request,new AbortController().signal);
     expect(result.phase).toBe('revision');expect(result.document.objects).toEqual([]);
     expect(JSON.stringify(request.document)).toBe(original);
   });
   it('refuses a reviewed but unfurnished interior instead of treating zero geometry warnings as completion',async()=>{
     const interior={scope:'interior',direction:'Furnished lounge',requirements:[{id:'chairs',label:'Two chairs',target:'objects',kinds:['furniture'],minimum:2}]};
-    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',interior),call('review_design',proposal),call('submit_design',proposal)]});
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',interior),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})]});
     await expect(designPlan(input(),new AbortController().signal)).rejects.toThrow('missing requested elements');
   });
   it('returns a distinct cancellation and logs only safe run metadata',async()=>{
