@@ -64,3 +64,9 @@ CAD도 있다: Moscone은 층별 DWG(2026년), KINTEX는 CAD zip(2005–2007년)
 - 👍 층마다 용도가 달라 "행사 전체 공간 설계" 데모에 맞다 (West L1 전시 + South 볼룸 키노트 + 로비 등록).
 - 👍 [소방 도면 요건](https://moscone.com/fire-marshal-floor-plan-requirements-exhibits) 공개 (부스 열 사이 통로 최소 10').
 - ⚠️ 도면마다 축척이 다르다 ("reproduced at various scales"). PDF가 5–10쪽 세트라 페이지를 골라야 하고, 일부 페이지는 90° 돌아가 있다.
+
+## 프로젝트 단위로 열기
+
+`samples.json`이 유일한 샘플 목록이다. 시작 화면에서 KINTEX(6개), Moscone Center(7개), LVCC(2개) 프로젝트를 선택하면 포함된 원본을 복사하고 지정된 페이지를 실제 엔진으로 추출한다. 각 도면은 독립 작업 화면으로 저장되며 헤더에서 전환한다. 이는 사전 디자인 결과나 시뮬레이션 재생이 아니다. 원본이 하나라도 없으면 해당 묶음은 제공하지 않으며, 추출 실패 시 일부만 담긴 프로젝트를 생성하지 않는다. 기존 사용자 프로젝트는 변경하지 않는다.
+
+Moscone `northsouth-exhibit.pdf`와 `northsouth-lobby.pdf`는 10만 벡터 선 제한을 초과하므로 매니페스트에 `rasterPdf: true`를 명시했다. 원본 PDF와 페이지를 보존하면서 해당 페이지를 이미지로 렌더링해 선 후보를 추정한다. 벡터·텍스트 추출 결과가 아니며, 도면 경고에도 이 제한을 기록한다. 나머지 PDF는 기본 벡터 추출을 사용한다.

@@ -22,6 +22,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - Editing is conversational: no manual editing menu in the workspace header and no immediate Delete action in the selection card. Keep canvas selection, the selected-element context card, Clear selection and Ask about this. Send selected IDs and labels to intent routing, conversation and design requests; changes remain reviewed proposals. For an unconfirmed drawing, expose Confirm scale in the conversation as prerequisite setup.
 
+- The sample picker lists venue projects, showing included drawing names and counts. Creating a sample copies all originals and extracts the listed PDF pages into separate drawings before opening; do not create partial projects on extraction failure or silently omit missing files. The header immediately switches among the included drawings. Existing user projects are not regrouped.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.

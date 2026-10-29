@@ -3,7 +3,7 @@ import Link from "next/link";
 import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui";
-import type { SampleDrawing } from "@/lib/projects/schema";
+import type { SampleProject } from "@/lib/projects/schema";
 import { listSamples } from "@/lib/projects/client";
 import { useI18n } from "@/lib/i18n/provider";
 import { localizeMessage } from "@/lib/i18n/messages";
@@ -14,13 +14,13 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
   error: string;
   notice: string;
   onDrawing: (file: File) => void;
-  onSample: (file: string) => void;
+  onSample: (id: string) => void;
   onBlank: () => void;
   onCancel?: () => void;
 }) {
   const { t, locale } = useI18n();
   const input = useRef<HTMLInputElement>(null);
-  const [samples, setSamples] = useState<SampleDrawing[] | null>(null);
+  const [samples, setSamples] = useState<SampleProject[] | null>(null);
   const [showSamples, setShowSamples] = useState(false);
   const [problem, setProblem] = useState("");
   useEffect(() => { listSamples().then(setSamples, () => setSamples([])); }, []);
@@ -42,14 +42,14 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
         <strong>{t("Start with my drawing")}</strong><span>{t("PDF, PNG, JPG or DXF · up to 20 MB")}</span>
       </button>
       <button type="button" className="pw-start-option" disabled={busy || !samples?.length} aria-expanded={showSamples} aria-controls="pw-samples" onClick={() => setShowSamples(value => !value)}>
-        <strong>{t("Start with a sample")}</strong><span>{samples === null ? t("Loading samples…") : samples.length ? t("{count} public venue drawings", { count: samples.length }) : t("No sample drawings in this checkout")}</span>
+        <strong>{t("Start with a sample")}</strong><span>{samples === null ? t("Loading samples…") : samples.length ? t("{count} sample projects", { count: samples.length }) : t("No sample drawings in this checkout")}</span>
       </button>
     </div>
-    {showSamples && samples && <ul id="pw-samples" className="pw-samples">{samples.map(sample => <li key={sample.file}>
-      <button type="button" disabled={busy} onClick={() => onSample(sample.file)}>{sample.name}</button>
+    {showSamples && samples && <ul id="pw-samples" className="pw-samples">{samples.map(sample => <li key={sample.id}>
+      <button type="button" disabled={busy} onClick={() => onSample(sample.id)}><strong>{sample.name}</strong><span className="ml-2 text-muted">{t("{count} drawings", { count: sample.drawings.length })}</span><small className="mt-1 block text-muted">{sample.drawings.map(drawing => drawing.name).join(" · ")}</small></button>
     </li>)}</ul>}
     {message && <p className="pw-start-error" role="alert">{localizeMessage(locale, message)}</p>}
-    {busy && <p className="pw-start-status" role="status">{t("Creating project…")}</p>}
+    {busy && <p className="pw-start-status" role="status">{t("Preparing project drawings…")}</p>}
     <div className="pw-start-links">
       <Button variant="ghost" disabled={busy} onClick={onBlank}>{t("Start with an empty project")}</Button>
       {onCancel && <Button variant="ghost" disabled={busy} onClick={onCancel}>{t("Cancel")}</Button>}
