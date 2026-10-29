@@ -30,6 +30,10 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 - shadcn components keep their semantic names (`primary`, `secondary`, `border`, `input`, `ring`, `destructive`), which `globals.css` aliases to Muse tokens. shadcn's `accent`/`muted` mean something else here: use `sunken`/`selected` for hover and selection backgrounds, never `bg-accent` or `bg-muted`.
 - Respect reduced motion and visible keyboard focus. Dialogs require titles, Escape dismissal, close controls and focus restoration.
 
+## Muvi mascot
+
+Keep the rounded M silhouette, periwinkle body and dark eyes consistent across 2D and 3D. Muvi has no cheek blush; apply this to avatars, icons and the 3D model.
+
 ## Language
 
 Only `en` (Eng) and `ko` (한국어) are supported. App Settings changes the UI immediately; Korean is the default. The browser stores the preference and synchronizes other tabs. When storage is unavailable, the preference works for the session.

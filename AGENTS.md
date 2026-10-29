@@ -105,7 +105,7 @@ attribution behavior built into the tool.
 
 - Muvi is the muvilion mascot. Use the canonical assets in `web/public/mascot/`
   for the website, chat avatars/launcher and icons. Keep its rounded M silhouette,
-  periwinkle body, dark eyes and peach cheeks consistent across 2D and 3D.
+  periwinkle body and dark eyes consistent across 2D and 3D; omit cheek blush.
 - The 3D drawing viewer includes optional decorative Muvi roaming. For now this is
   an illustrative animation only: do not connect it to wall collision, pathfinding,
   physical scale, occupancy/simulation, AI actions or design validation.
