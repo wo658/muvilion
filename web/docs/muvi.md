@@ -41,7 +41,9 @@ Preview `/muvi/gallery`: inspect (survey and focus), measure (compare spacing), 
 in-place phrase with neutral entry/exit. These replace the sketch and partition studies.
 Staged result geometry was removed: gestures must work with any real-space output.
 Hand tools remain: a toy hammer, a retracting marked tape measure, and an oversized
-brush. Hammer impacts use brief graphic bursts; none creates a result object. Tools
+brush. Hammer uses a grip-centered wrist pivot with its striking faces aligned to the swing
+plane. Three downward taps share a target; the shoulder stays forward. Brief contact
+bursts mark impacts without creating a result object. Tools
 are hidden in unrelated clips. Tape and impact transforms are baked from rig poses.
 The style is intentionally cartoon-like: large anticipation, fast strikes, bouncy
 recoil, uneven rhythms and small squash/stretch. Feet stay planted. Individual authored poses live in `scripts/muvi-motions/`.

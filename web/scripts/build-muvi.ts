@@ -7,7 +7,7 @@ import { MUVI_MOTIONS, MUVI_DESIGNER_DURATION, type MuviMotion } from "../lib/mu
 import { TOKENS } from "../lib/ui/tokens";
 import { inspectPose } from "./muvi-motions/inspect";
 import { measurePose, measureExtension } from "./muvi-motions/measure";
-import { arrangePose, hammerImpact } from "./muvi-motions/arrange";
+import { arrangePose, hammerImpact, hammerWristAngle } from "./muvi-motions/arrange";
 import { paintPose } from "./muvi-motions/paint";
 import type { DesignerPose } from "./muvi-motions/types";
 
@@ -93,9 +93,15 @@ function block(parent: Group, size: [number, number, number], at: [number, numbe
   mesh.position.set(...at); parent.add(mesh); return mesh;
 }
 const hammer = tool("Hammer", model.getObjectByName("ArmR") as Group);
-block(hammer, [0.09, 0.47, 0.09], [0.1, -0.54, 0.05], TOKENS.evidenceDimension);
-block(hammer, [0.52, 0.24, 0.24], [0.1, -0.8, 0.05], TOKENS.modelEdge);
-for (const x of [-0.17, 0.37]) block(hammer, [0.07, 0.28, 0.28], [x, -0.8, 0.05], TOKENS.wall);
+// Rotate at the grip, not the shoulder. The head's striking faces lie in the
+// swing plane (local +/-Z), so the lower face points down at contact.
+hammer.position.set(0.1, -0.32, 0.07);
+block(hammer, [0.075, 0.43, 0.075], [0, -0.22, 0], TOKENS.evidenceDimension);
+block(hammer, [0.20, 0.22, 0.48], [0, -0.47, 0], TOKENS.modelEdge);
+for (const z of [-0.27, 0.27]) {
+  const cap = block(hammer, [0.24, 0.26, 0.07], [0, -0.47, z], TOKENS.wall);
+  if (z < 0) cap.name = "HammerFace";
+}
 const tapeCase = tool("TapeCase", model.getObjectByName("ArmR") as Group);
 block(tapeCase, [0.27, 0.25, 0.18], [0.1, -0.5, 0.2], TOKENS.evidenceDimension);
 block(tapeCase, [0.13, 0.11, 0.02], [0.1, -0.5, 0.3], TOKENS.ink);
@@ -162,6 +168,8 @@ function clip(motion: MuviMotion) {
   for (const [name, active] of [["PaintBrush", motion === "paint"], ["Hammer", motion === "arrange"], ["TapeCase", motion === "measure"]] as const) {
     tracks.push(new VectorKeyframeTrack(`${name}.scale`, [0, duration], Array(6).fill(active ? 1 : 0)));
   }
+  tracks.push(new QuaternionKeyframeTrack("Hammer.quaternion", times, times.flatMap(time =>
+    new Quaternion().setFromEuler(new Euler(motion === "arrange" ? hammerWristAngle(time / duration) : 0, 0, 0)).toArray())));
   // Bake tool endpoints from the animated rig, so the tape follows the hands and
   // the little impact bursts follow the hammer rather than an assumed wall.
   const mixer = new AnimationMixer(model);
@@ -177,7 +185,7 @@ function clip(motion: MuviMotion) {
     tapePositions.push(...right.toArray());
     tapeRotations.push(...new Quaternion().setFromUnitVectors(new Vector3(1, 0, 0), delta.normalize()).toArray());
     tapeScales.push(length * extension, extension > 0 ? 1 : 0, extension > 0 ? 1 : 0);
-    const hit = model.getObjectByName("ArmR")!.localToWorld(new Vector3(0.1, -0.8, 0.05));
+    const hit = hammer.localToWorld(new Vector3(0, -0.47, -0.305));
     impactPositions.push(...hit.toArray());
     const flash = motion === "arrange" ? hammerImpact(time / duration) : 0;
     impactScales.push(flash, flash, flash);

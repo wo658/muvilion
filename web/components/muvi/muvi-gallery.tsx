@@ -13,7 +13,7 @@ const Canvas = dynamic(() => import("./muvi-canvas"), { ssr: false });
 const studies = [
   { motion: "inspect", title: "Inspect space", description: "Look around, compare areas, and lean toward a detail.", number: "01" },
   { motion: "measure", title: "Measure", description: "Pull the tape, check the marks, and zip it back.", number: "02" },
-  { motion: "arrange", title: "Hammer", description: "Tap, tap, THUNK! Wind up, strike, and bounce back.", number: "03" },
+  { motion: "arrange", title: "Hammer", description: "Lift at the wrist, tap the same spot, and rebound.", number: "03" },
   { motion: "paint", title: "Paint", description: "Swish, swish! Big brush strokes with a little bounce.", number: "04" },
 ] as const;
 

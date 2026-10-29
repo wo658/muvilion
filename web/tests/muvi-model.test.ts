@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AnimationMixer, Box3, Mesh } from "three";
+import { AnimationMixer, Box3, Mesh, Quaternion, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MUVI_MOTIONS, MUVI_DESIGNER_MOTIONS } from "../lib/muvi/motions";
 
@@ -38,6 +38,18 @@ describe("shipped Muvi GLB", () => {
           }
           expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.1);
         }
+      }
+      if (clip.name === "arrange") {
+        const contacts: Vector3[] = [];
+        for (const phase of [0.275, 0.475, 0.735]) {
+          mixer.setTime(phase * clip.duration);
+          model.scene.updateMatrixWorld(true);
+          const face = model.scene.getObjectByName("HammerFace")!;
+          contacts.push(face.getWorldPosition(new Vector3()));
+          const normal = new Vector3(0, 0, -1).applyQuaternion(face.getWorldQuaternion(new Quaternion()));
+          expect(normal.y).toBeLessThan(-0.9);
+        }
+        for (const contact of contacts) expect(contact.distanceTo(contacts[0])).toBeLessThan(0.015);
       }
       expect(model.scene.getObjectByName("PaintBrush")!.scale.x).toBe(clip.name === "paint" ? 1 : 0);
       expect(model.scene.getObjectByName("Hammer")!.scale.x).toBe(clip.name === "arrange" ? 1 : 0);
