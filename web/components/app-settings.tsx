@@ -19,7 +19,7 @@ export function AppSettings({ section, onSectionChange, sections = [] }: {
   const dialog = useRef<HTMLDialogElement>(null);
   const { locale, setLocale, t } = useI18n();
   const all: SettingsSection[] = [
-    { id: "general", label: t("General"), content: <FieldGroup><Field><FieldLabel htmlFor="app-language">{t("Language")}</FieldLabel><NativeSelect id="app-language" value={locale} onChange={event => setLocale(event.target.value === "en" ? "en" : "ko")}><option value="en">Eng</option><option value="ko">한국어</option></NativeSelect></Field></FieldGroup> },
+    { id: "general", label: t("General"), content: <FieldGroup><Field className="settings-row" orientation="horizontal"><FieldLabel htmlFor="app-language">{t("Language")}</FieldLabel><NativeSelect id="app-language" value={locale} onChange={event => setLocale(event.target.value === "en" ? "en" : "ko")}><option value="en">Eng</option><option value="ko">한국어</option></NativeSelect></Field></FieldGroup> },
     { id: "api-key", label: t("API key"), content: <MetaKeySettings/> },
     ...sections,
   ];
@@ -34,7 +34,7 @@ export function AppSettings({ section, onSectionChange, sections = [] }: {
     <header><h2 id="app-settings-title">{t("Settings")}</h2><Button variant="ghost" size="icon-sm" aria-label={t("Close")} onClick={() => onSectionChange(null)}><XIcon/></Button></header>
     <div className="app-settings-body">
       <nav aria-label={t("Settings sections")}>{all.map(item => <button key={item.id} type="button" aria-current={item.id === active.id ? "page" : undefined} onClick={() => onSectionChange(item.id)}>{item.label}</button>)}</nav>
-      <div className="app-settings-content">{section !== null && active.content}</div>
+      <div className="app-settings-content"><div className="app-settings-inner">{section !== null && <><h3 className="settings-section-title">{active.label}</h3>{active.content}</>}</div></div>
     </div>
   </dialog>;
 }
