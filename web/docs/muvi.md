@@ -58,3 +58,10 @@ examining context, measure for comparing spacing, arrange for general making/bui
 paint for applying appearance, and return to idle when work stops. Playback is not an
 indication that a proposal has been applied or a result validated. Existing drawing
 roaming is unchanged. Pause, reduced-motion, hidden-page behavior and fallback remain.
+
+## In-space size
+
+Drawing-space Muvi uses a maximum scale of 0.4, about 0.85 scene units tall.
+Venue dimensions never enlarge it; tiny spaces can reduce it further. It is visually
+about half the 1.8-unit walking reference, with no physical or simulation meaning.
+The standalone motion gallery and chat avatar retain their close-up framing.
