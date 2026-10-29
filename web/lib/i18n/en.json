@@ -652,5 +652,6 @@
   "The interior design is missing requested elements. No changes were applied. Retry with the same brief.": "The interior design is missing requested elements. No changes were applied. Retry with the same brief.",
   "Design cancelled. Your drawing is unchanged.": "Design cancelled. Your drawing is unchanged.",
   "Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.": "Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.",
-  "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.": "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief."
+  "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.": "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.",
+  "Live draft · not saved": "Live draft · not saved"
 }
