@@ -14,7 +14,6 @@ Object.defineProperty(globalThis, "FileReader", { value: BinaryReader, configura
 
 const skin = new MeshStandardMaterial({ color: "#b8b9ef", roughness: 0.72 });
 const ink = new MeshStandardMaterial({ color: "#25283e", roughness: 0.32 });
-const blush = new MeshStandardMaterial({ color: "#ffc5ab", roughness: 0.85 });
 const shine = new MeshStandardMaterial({ color: "#ffffff", roughness: 0.3 });
 const sphere = new SphereGeometry(1, 24, 16);
 const model = new Group(); model.name = "Muvi";
@@ -54,7 +53,6 @@ for (const side of [-1, 1]) {
   const eye = new Group(); eye.name = side < 0 ? "EyeL" : "EyeR"; eye.position.set(side * 0.29, 1.27, 0.505); body.add(eye);
   oval(eye, `${eye.name}Surface`, [0, 0, 0], [0.092, 0.125, 0.045], ink);
   oval(eye, `${eye.name}Highlight`, [-0.023, 0.045, 0.041], [0.022, 0.028, 0.009], shine);
-  oval(body, side < 0 ? "CheekL" : "CheekR", [side * 0.47, 1.06, 0.454], [0.13, 0.077, 0.024], blush);
   const arm = new Group(); arm.name = side < 0 ? "ArmL" : "ArmR"; arm.position.set(side * 0.73, 0.84, 0); body.add(arm);
   oval(arm, `${arm.name}Surface`, [side * 0.10, -0.19, 0.03], [0.18, 0.29, 0.20]);
   const foot = new Group(); foot.name = side < 0 ? "FootL" : "FootR"; foot.position.set(side * 0.29, 0.19, 0); model.add(foot);
