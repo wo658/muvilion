@@ -10,11 +10,12 @@ test('에셋 제안은 Apply 후 반영되고 내보내기와 새로고침에 �
  await test.step('제안 적용 후 모델·재질 ID 보존 확인',async()=>{
   await page.getByRole('button',{name:'변경 적용',exact:true}).click();
   const result=await exportPlan(page);
-  expect(result.document.objects.map((o:any)=>o.modelAssetId??o.materialAssetId)).toEqual(['modern_arm_chair_01','Wood051','modern_ceiling_lamp_01']);
+  expect(result.document.objects.find((o:any)=>o.id==='gallery-wall')).toMatchObject({kind:'partition',modelAssetId:'gallery_wall'});
+  expect(result.document.objects.map((o:any)=>o.modelAssetId??o.materialAssetId)).toEqual(['modern_arm_chair_01','Wood051','gallery_wall','modern_ceiling_lamp_01']);
  });
- await test.step('3D에서 glTF와 재질 이미지 실제 로딩 확인',()=>showAssets(page));
+ await test.step('3D에서 GLB 전시 가벽·glTF·재질 실제 로딩 확인',()=>showAssets(page));
  await test.step('새로고침 후 저장된 에셋 참조 확인',async()=>{
   await page.getByRole("button",{name:"프로젝트 목록 펼치기",exact:true}).click();await expect(page.getByRole("status").filter({hasText:"저장됨"})).toBeVisible();await page.reload();await expect(page.getByRole('button',{name:'설정',exact:true})).toBeEnabled();
-  const restored=await exportPlan(page);expect(restored.document.objects[0].modelAssetId).toBe('modern_arm_chair_01');expect(restored.document.objects[1].materialAssetId).toBe('Wood051');
+  const restored=await exportPlan(page);expect(restored.document.objects[0].modelAssetId).toBe('modern_arm_chair_01');expect(restored.document.objects[1].materialAssetId).toBe('Wood051');expect(restored.document.objects.find((o:any)=>o.id==='gallery-wall')).toMatchObject({kind:'partition',modelAssetId:'gallery_wall'});
  });
 });

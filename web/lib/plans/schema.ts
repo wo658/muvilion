@@ -4,7 +4,7 @@ import { MODEL_ASSET_IDS, MATERIAL_ASSET_IDS, getModelAsset } from "@/lib/assets
 
 const PointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 export const DesignObjectSchema = z.object({
-  modelAssetId: z.enum(MODEL_ASSET_IDS).optional().describe("Downloaded CC0 model ID from search_design_assets. Use the matching furniture/light kind; omit for schematic geometry."),
+  modelAssetId: z.enum(MODEL_ASSET_IDS).optional().describe("Downloaded CC0 model ID from search_design_assets. Use the matching kind returned by the catalog; omit for schematic geometry. Wall modules use partition, not booth."),
   materialAssetId: z.enum(MATERIAL_ASSET_IDS).optional().describe("Downloaded PBR material ID for a schematic installation such as a partition. Do not combine with modelAssetId."),
   provenance: z.enum(["ai", "manual"]).optional(),
   appearance: z.enum(["screen", "counter", "sofa", "table", "plant", "truss", "seat"]).optional(),

@@ -4,6 +4,8 @@ import { DesignObjectSchema, PlanDocumentSchema, type PlanDocument } from "@/lib
 import { applyDesignProposal, planChatContext } from "@/lib/plans/muse";
 import { POST } from "@/app/api/plans/design/route";
 import { getModel } from "@/server/agent/model";
+import { assetTools } from "@/server/plans/asset-tools";
+import type { ZodType } from "zod";
 
 vi.mock("@/server/agent/model", () => ({ getModel: vi.fn() }));
 const document: PlanDocument = {
@@ -18,6 +20,15 @@ const call = (name: string, input: unknown) => ({ content: [{ type: "tool-call" 
 const request = () => new Request("http://localhost/api/plans/design", { method: "POST", body: JSON.stringify({ document, brief: "라운지 의자와 목재 가벽을 제안해줘" }) });
 
 describe("Muse asset references", () => {
+  it("accepts a partition asset search and explains how to assemble an open booth perimeter", async () => {
+    const input = { query: "", category: "partition" as const };
+    const parsed = (assetTools.search_design_assets.inputSchema as ZodType).safeParse(input);
+    expect(parsed.success).toBe(true);
+    const result = await assetTools.search_design_assets.execute!(input, { toolCallId: "partition-search", messages: [], context: {} });
+    expect(result).toMatchObject({ partitionGuidance: expect.stringContaining("separate partition objects") });
+    expect(result).toMatchObject({ partitionGuidance: expect.stringContaining("entrance") });
+    expect(result).toMatchObject({ partitionGuidance: expect.stringContaining("not a complete booth") });
+  });
   it("preserves model/material IDs through proposal, context and JSON round trip without mutating the source", () => {
     const next = applyDesignProposal(document, { summary: "라운지", objects: [chair, wall], assumptions: [] });
     expect(next.objects?.[0]).toMatchObject({ modelAssetId: "modern_arm_chair_01" });
@@ -36,6 +47,15 @@ describe("Muse asset references", () => {
       { ...wall, materialAssetId: "missing" },
     ]) expect(DesignObjectSchema.safeParse(invalid).success).toBe(false);
     expect(DesignObjectSchema.safeParse({ ...chair, modelAssetId: undefined }).success).toBe(true);
+  });
+  it("preserves a GLB partition as an editable wall module rather than a solid booth", () => {
+    const partitionModule = { ...wall, materialAssetId: undefined, modelAssetId: "gallery_wall", width: 2, depth: .2, height: 3.2 };
+    const parsed = DesignObjectSchema.safeParse(partitionModule);
+    expect(parsed.success).toBe(true);
+    expect(DesignObjectSchema.safeParse({ ...partitionModule, kind: "booth" }).success).toBe(false);
+    expect(DesignObjectSchema.safeParse({ ...partitionModule, kind: "equipment", modelAssetId: "truss_vertical" }).success).toBe(true);
+    const next = applyDesignProposal(document, { summary: "가벽 모듈", objects: [partitionModule], assumptions: [] });
+    expect(PlanDocumentSchema.parse(JSON.parse(JSON.stringify(next))).objects?.[0]).toMatchObject({ kind: "partition", modelAssetId: "gallery_wall" });
   });
   it("executes asset lookup, feeds its results back to the model and returns a proposal at the HTTP boundary", async () => {
     const model = new MockLanguageModelV4({ doGenerate: [

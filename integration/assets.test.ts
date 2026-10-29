@@ -12,6 +12,19 @@ test('다운로드한 모델과 재질을 앱에서 제공',async context=>{
  });
  await step('실제 목재 재질 이미지 확인',async()=>{const response=await fetch(`${process.env.WEB_URL}/assets/cc0/materials/Wood051/Wood051_1K-JPG_Color.jpg`);expect(response.status).toBe(200);expect(response.headers.get('content-type')).toContain('image/jpeg');});
 });
+/** 실제 전시용 원본 모델을 제공하는 공개 경로를 확인한다. */
+test('전시용 GLB 원본 9종을 앱에서 제공', async context => {
+ const step = createSteps(context);
+ const ids = ['gallery_wall', 'movable_partition', 'display_plinth', 'display_vitrine', 'reception_desk', 'floor_plan_board', 'track_spot', 'truss_horizontal', 'truss_vertical'];
+ for (const id of ids) await step(`${id} GLB 제공 및 헤더 검증`, async () => {
+  const response = await fetch(`${process.env.WEB_URL}/assets/cc0/models/${id}/model.glb`);
+  expect(response.status).toBe(200);
+  const bytes = new DataView(await response.arrayBuffer());
+  expect(bytes.getUint32(0, true)).toBe(0x46546c67);
+  expect(bytes.getUint32(4, true)).toBe(2);
+  expect(bytes.getUint32(8, true)).toBe(bytes.byteLength);
+ });
+});
 /** 알려지지 않은 모델 ID가 포함된 외부 입력을 모델 호출 전에 거부한다. */
 test('유효하지 않은 에셋 ID를 API 입력에서 거부',async context=>{
  const step=createSteps(context);const response=await step('가짜 에셋을 가진 문서 제출',()=>post({...document,objects:[{id:'chair',kind:'furniture',label:'chair',x:.3,y:.3,width:1,depth:1,height:1,rotation:0,color:'#888888',modelAssetId:'invented-chair'}]}));
