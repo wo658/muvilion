@@ -1,6 +1,6 @@
 {
   "downloadedOn": "2026-10-28",
-  "resolution": "1K",
+  "resolution": "Original 1K PBR collection; exhibition GLBs retain source materials",
   "license": "CC0-1.0",
   "assets": [
     {
@@ -494,6 +494,240 @@
         }
       ],
       "entrypoint": "models/desk_lamp_arm_01/desk_lamp_arm_01_1k.gltf"
+    },
+    {
+      "id": "gallery_wall",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-gallery-wall-module-744f878b",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/gallery_wall/model.glb",
+      "files": [
+        {
+          "path": "models/gallery_wall/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35815/v1/model.glb",
+          "bytes": 10552,
+          "sha256": "2aefe424182ca8795b57d56effae61053815222983a189ca658d0ef240414754"
+        }
+      ],
+      "boundsMeters": {
+        "width": 1.999866,
+        "depth": 0.199921,
+        "height": 3.2
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "movable_partition",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-movable-partition-wal-1b35e01f",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/movable_partition/model.glb",
+      "files": [
+        {
+          "path": "models/movable_partition/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35819/v1/model.glb",
+          "bytes": 14876,
+          "sha256": "d0079c338a1f7cda0243d36cbf9a6b1a08eb29688177bc81bed7f59fc9810813"
+        }
+      ],
+      "boundsMeters": {
+        "width": 1.800096,
+        "depth": 0.620057,
+        "height": 2.39
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "display_plinth",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-display-plinth-58fbcf1d",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/display_plinth/model.glb",
+      "files": [
+        {
+          "path": "models/display_plinth/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35842/v1/model.glb",
+          "bytes": 7548,
+          "sha256": "e07faa07637b44958f3807ebfa8280ca748d3a3d4a82139d0ab7adbbaf8229d2"
+        }
+      ],
+      "boundsMeters": {
+        "width": 0.508002,
+        "depth": 0.508002,
+        "height": 0.6
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "display_vitrine",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-vitrine-case-ca6b50af",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/display_vitrine/model.glb",
+      "files": [
+        {
+          "path": "models/display_vitrine/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35846/v1/model.glb",
+          "bytes": 31812,
+          "sha256": "22225a81fa819dc51a268cac68db2e27593f3399e5a671a8bdb3f14be1cde7e4"
+        }
+      ],
+      "boundsMeters": {
+        "width": 0.64003,
+        "depth": 0.640955,
+        "height": 1.437516
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "reception_desk",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-reception-desk-0494fe21",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/reception_desk/model.glb",
+      "files": [
+        {
+          "path": "models/reception_desk/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35854/v1/model.glb",
+          "bytes": 19452,
+          "sha256": "dea92a3e40b016ef0241c2fc9efe453a8e78fef8bde10fa5b39acbd12a9b1af6"
+        }
+      ],
+      "boundsMeters": {
+        "width": 2.5,
+        "depth": 0.799966,
+        "height": 1.630022
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "floor_plan_board",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-floor-plan-board-4f776135",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/floor_plan_board/model.glb",
+      "files": [
+        {
+          "path": "models/floor_plan_board/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35863/v1/model.glb",
+          "bytes": 31808,
+          "sha256": "52a6cac4196abd96776dc8eadaa62feac538c3ca342f8013ba836a89d802fbfe"
+        }
+      ],
+      "boundsMeters": {
+        "width": 1.14,
+        "depth": 0.600076,
+        "height": 1.866488
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "track_spot",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/art-gallery-and-exhibition-rooms-track-spot-head-44353656",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/track_spot/model.glb",
+      "files": [
+        {
+          "path": "models/track_spot/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/35824/v1/model.glb",
+          "bytes": 13376,
+          "sha256": "8cf71e8ad8c440dc45b1754b2e0cd69a02bc76e47d5d259ae437c51be5b5fdba"
+        }
+      ],
+      "boundsMeters": {
+        "width": 0.110015,
+        "depth": 0.108323,
+        "height": 0.21
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "truss_horizontal",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/live-music-venue-and-festival-stage-truss-straight-bay-3e0706d1",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/truss_horizontal/model.glb",
+      "files": [
+        {
+          "path": "models/truss_horizontal/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/33888/v1/model.glb",
+          "bytes": 54064,
+          "sha256": "47bab471fb589adcbc9517bf7b22086efc7292dad6623d6f364d1e0561f7d966"
+        }
+      ],
+      "boundsMeters": {
+        "width": 3.068,
+        "depth": 0.289881,
+        "height": 0.425084
+      },
+      "dimensionSource": "gltf-scene-bounds"
+    },
+    {
+      "id": "truss_vertical",
+      "kind": "model",
+      "provider": "3DAssets.dev",
+      "source": "https://3dassets.dev/assets/live-music-venue-and-festival-stage-truss-vertical-tow-8ea841b9",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license": "CC0-1.0",
+      "downloadedOn": "2026-10-29",
+      "aiGenerated": true,
+      "provenance": "Source identifies this as AI-generated geometry. Downloaded original GLB; concept visualization, not a manufacturer or structural specification.",
+      "entrypoint": "models/truss_vertical/model.glb",
+      "files": [
+        {
+          "path": "models/truss_vertical/model.glb",
+          "sourceUrl": "https://cdn.3dassets.dev/assets/33891/v1/model.glb",
+          "bytes": 53000,
+          "sha256": "3263f338ec3819d42d43ce5345d9a28dc5d085bc95a1f467f1c88104c05aedd2"
+        }
+      ],
+      "boundsMeters": {
+        "width": 0.425084,
+        "depth": 0.289881,
+        "height": 3.068
+      },
+      "dimensionSource": "gltf-scene-bounds"
     }
   ]
 }
