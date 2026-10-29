@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AnimationMixer, Box3, Mesh } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { MUVI_MOTIONS } from "../lib/muvi/motions";
+import { MUVI_MOTIONS, MUVI_DESIGNER_MOTIONS } from "../lib/muvi/motions";
 
 describe("shipped Muvi GLB", () => {
   it("loads offline with all usable, looping animation clips", async () => {
@@ -27,12 +27,22 @@ describe("shipped Muvi GLB", () => {
       }
       mixer.stopAllAction(); mixer.clipAction(clip).play(); mixer.update(clip.duration / 4);
       expect(new Box3().setFromObject(model.scene).isEmpty()).toBe(false);
-      const expectedProps: Record<string, string[]> = {
-        sketch: ["Desk", "Pencil"], measure: ["Tape"], partition: ["Partition"], paint: ["Partition", "Roller", "Swatch"],
-      };
-      // Designer tools must never leak into the original viewer / roaming motions.
+      if ((MUVI_DESIGNER_MOTIONS as readonly string[]).includes(clip.name)) {
+        for (let step = 0; step <= 20; step++) {
+          mixer.setTime(step / 20 * clip.duration);
+          // Work gestures stay in place so callers can orient them beside any result.
+          for (const name of ["FootL", "FootR"]) {
+            const foot = model.scene.getObjectByName(name)!;
+            expect(foot.position.y).toBeCloseTo(0.19, 5);
+            expect(foot.position.z).toBeCloseTo(0, 5);
+          }
+          expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.1);
+        }
+      }
+      expect(model.scene.getObjectByName("PaintBrush")!.scale.x).toBe(clip.name === "paint" ? 1 : 0);
+      // Generic work clips carry no staged result objects into a real drawing space.
       for (const name of ["Desk", "Pencil", "Tape", "Partition", "Roller", "Swatch"]) {
-        expect(model.scene.getObjectByName(name)!.scale.x).toBe((expectedProps[clip.name] ?? []).includes(name) ? 1 : 0);
+        expect(model.scene.getObjectByName(name)).toBeUndefined();
       }
     }
     mixer.stopAllAction();

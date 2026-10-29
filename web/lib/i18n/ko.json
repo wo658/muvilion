@@ -659,5 +659,17 @@
   "Show preview": "미리보기 보기",
   "Replay": "처음부터",
   "View motion gallery": "동작 갤러리 보기",
-  "Drag to orbit · Scroll to zoom": "드래그로 회전 · 스크롤로 확대"
+  "Drag to orbit · Scroll to zoom": "드래그로 회전 · 스크롤로 확대",
+  "Inspect space": "공간 살펴보기",
+  "Arrange": "배치·조정",
+  "Look around, compare areas, and lean toward a detail.": "주변을 살피고 영역을 비교한 뒤, 관심 있는 곳으로 몸을 기울여요.",
+  "Check a span with staggered hands and a following gaze.": "한 손씩 간격을 짚고, 시선으로 비례를 확인해요.",
+  "Reach, adjust, and release. For any placement or shape.": "손을 뻗어 조정하고 놓아요. 어떤 배치나 형태에도 어울리는 동작이에요.",
+  "Follow the working hand through two soft finishing passes.": "작업하는 손을 바라보며 부드럽게 두 번 마감해요.",
+  "Work direction": "작업 방향",
+  "Left": "왼쪽",
+  "Right": "오른쪽",
+  "Away": "뒤쪽",
+  "The floor marker indicates the work direction, not a generated object.": "바닥 표시는 작업 방향을 나타냅니다. 생성된 오브젝트가 아닙니다.",
+  "Reusable gestures for Muse at work, independent of the final result.": "Muse의 작업을 표현하는 범용 동작. 최종 결과물의 형태에 구애받지 않아요."
 }

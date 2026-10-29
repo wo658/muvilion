@@ -3,6 +3,7 @@
 import { Component, Suspense, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import { TOKENS } from "@/lib/ui/tokens";
 import { MathUtils } from "three";
 import { MuviModel, type MuviModelProps } from "./muvi-model";
 
@@ -19,7 +20,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 }
 
 export default function MuviCanvas(props: MuviModelProps) {
-  const { compact, paused, onTarget } = props;
+  const { compact, paused, onTarget, workHeading } = props;
   return <Boundary><Canvas
     shadows={!compact} dpr={[1, 1.5]} frameloop={paused ? "demand" : "always"}
     camera={{ position: compact ? [0, 1.4, 5.1] : [2.4, 2.0, 5.4], fov: compact ? 30 : 36 }}
@@ -37,6 +38,9 @@ export default function MuviCanvas(props: MuviModelProps) {
         event.stopPropagation();
         onTarget?.([MathUtils.clamp(event.point.x, -2.8, 2.8), 0, MathUtils.clamp(event.point.z, -2.8, 2.8)]);
       }}><circleGeometry args={[5, 80]}/><meshStandardMaterial color="#f2eee9" roughness={1}/></mesh>
+      {workHeading !== undefined && <mesh rotation-x={-Math.PI / 2} position={[Math.sin(workHeading) * 1.8, 0.008, Math.cos(workHeading) * 1.8]} raycast={() => {}}>
+        <ringGeometry args={[0.25, 0.29, 48]}/><meshBasicMaterial color={TOKENS.accent} transparent opacity={0.6}/>
+      </mesh>}
       <OrbitControls makeDefault target={[0, 1, 0]} minDistance={3.5} maxDistance={12} maxPolarAngle={Math.PI / 2 - 0.03} enablePan={false}/>
     </>}
   </Canvas></Boundary>;

@@ -659,5 +659,17 @@
   "Show preview": "Show preview",
   "Replay": "Replay",
   "View motion gallery": "View motion gallery",
-  "Drag to orbit · Scroll to zoom": "Drag to orbit · Scroll to zoom"
+  "Drag to orbit · Scroll to zoom": "Drag to orbit · Scroll to zoom",
+  "Inspect space": "Inspect space",
+  "Arrange": "Arrange",
+  "Look around, compare areas, and lean toward a detail.": "Look around, compare areas, and lean toward a detail.",
+  "Check a span with staggered hands and a following gaze.": "Check a span with staggered hands and a following gaze.",
+  "Reach, adjust, and release. For any placement or shape.": "Reach, adjust, and release. For any placement or shape.",
+  "Follow the working hand through two soft finishing passes.": "Follow the working hand through two soft finishing passes.",
+  "Work direction": "Work direction",
+  "Left": "Left",
+  "Right": "Right",
+  "Away": "Away",
+  "The floor marker indicates the work direction, not a generated object.": "The floor marker indicates the work direction, not a generated object.",
+  "Reusable gestures for Muse at work, independent of the final result.": "Reusable gestures for Muse at work, independent of the final result."
 }

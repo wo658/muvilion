@@ -59,4 +59,4 @@ approval remain owned by StudioChat. File attachments remain in the Sources dial
 
 ## Muvi motion gallery
 
-`/muvi/gallery` is a standalone motion review page: one large orbitable preview, four selectable designer studies, pause, replay, hide and language controls. Designer props are decorative GLB content, never drawing objects. Reduced motion and hidden pages stop animation.
+`/muvi/gallery` is a standalone motion review page: one large orbitable preview, four selectable designer studies, pause, replay, hide and language controls. Work gestures contain no staged result geometry. Paint may carry a small hand tool; it must never imply a particular surface or completed result. A direction control and floor marker preview their local work orientation, independent of the camera. Eyes lead the hands; feet stay planted; phases ease through preparation, work and recovery. Reduced motion and hidden pages stop animation.

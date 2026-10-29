@@ -10,12 +10,14 @@ export type MuviModelProps = {
   motion: MuviMotion;
   paused: boolean;
   compact?: boolean;
+  /** Presentation-only heading in radians; +Z is the local work direction. */
+  workHeading?: number;
   target?: [number, number, number] | null;
   onTarget?: (target: [number, number, number]) => void;
   onArrive?: () => void;
 };
 
-export function MuviModel({ motion, paused, compact, target, onArrive }: MuviModelProps) {
+export function MuviModel({ motion, paused, compact, workHeading, target, onArrive }: MuviModelProps) {
   const { scene, animations } = useGLTF(MUVI_MODEL);
   const copy = useMemo(() => {
     const clone = scene.clone(true);
@@ -47,6 +49,6 @@ export function MuviModel({ motion, paused, compact, target, onArrive }: MuviMod
     root.current.rotation.y = Math.atan2(destination.x - current.x, destination.z - current.z);
     current.lerp(destination, step / distance);
   });
-  return <group ref={root} rotation-y={compact ? 0.15 : 0.25}><primitive object={copy} dispose={null}/></group>;
+  return <group ref={root} rotation-y={workHeading ?? (compact ? 0.15 : 0.25)}><primitive object={copy} dispose={null}/></group>;
 }
 
