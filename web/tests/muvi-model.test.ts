@@ -56,7 +56,9 @@ describe("shipped Muvi GLB", () => {
         expect(contactHand.z - windupHand.z).toBeGreaterThan(0.3);
         expect(windupHand.y - contactHand.y).toBeGreaterThan(0.35);
         expect(arm.quaternion.angleTo(windupRotation)).toBeGreaterThan(0.8);
-        expect(model.scene.getObjectByName("Body")!.position.z).toBeLessThan(windupBodyZ - 0.25);
+        expect(model.scene.getObjectByName("Body")!.position.z).toBeLessThan(windupBodyZ - 0.06);
+        // Keep the body over the planted feet; recoil must not detach the silhouette.
+        expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.12);
         const contacts: Vector3[] = [];
         for (const phase of [0.275, 0.475, 0.735]) {
           mixer.setTime(phase * clip.duration);

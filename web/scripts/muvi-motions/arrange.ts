@@ -3,7 +3,7 @@ import type { DesignerPose } from "./types";
 type Beat = readonly [time: number, value: number];
 export const hammerHits = [0.275, 0.475, 0.735] as const;
 const launches = [0.235, 0.435, 0.69] as const;
-const contactWrist = -Math.PI + 0.28 + 1.75;
+const contactWrist = -Math.PI + 0.08 + 1.75;
 
 function ease(from: number, to: number, t: number) {
   const u = Math.max(0, Math.min(1, (t - from) / (to - from)));
@@ -47,7 +47,7 @@ export function hammerPhase(t: number) {
 }
 
 /**
- * At contact: body -.28 + shoulder -1.75 + wrist = -PI. This turns the
+ * At contact: body -.08 + shoulder -1.75 + wrist = -PI. This turns the
  * hammer's local -Z striking face toward world +Z, against a FRONT wall.
  */
 export function hammerWristAngle(t: number) {
@@ -67,8 +67,8 @@ export function arrangePose(t: number): DesignerPose {
   const stretch = 0.085 * flight;
   return {
     Body: {
-      position: [-0.035 * pullback, 0.06 * pullback - 0.015 * recoil, -0.3 * drive + 0.03 * pullback],
-      rotation: [-0.28 * drive - 0.14 * pullback - 0.035 * recoil, 0.28 * pullback, -0.07 * pullback],
+      position: [-0.035 * pullback, 0.06 * pullback - 0.015 * recoil, -0.08 * drive + 0.03 * pullback],
+      rotation: [-0.08 * drive - 0.14 * pullback - 0.035 * recoil, 0.28 * pullback, -0.07 * pullback],
       // Overhead anticipation stretch and recoil squash are absent at contact,
       // preserving a repeatable target and an exactly forward-facing strike face.
       scale: [1 + 0.035 * squash, 1 + 0.04 * pullback - 0.1 * recoil * (1 - pullback) - stretch * 0.35, 1 + squash * 0.5 + stretch],

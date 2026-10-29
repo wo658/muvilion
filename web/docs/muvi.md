@@ -44,7 +44,7 @@ fast actions, delayed recovery and up to 12% squash/stretch are intentional.
 Feet can tap/rock with floor clearance. Individual poses live in `scripts/muvi-motions/`.
 
 Tools include a toy hammer, marked retracting tape and broad brush. No staged result
-geometry is included. The hammer arm rises overhead and behind the head, holds, then swings down toward local +Z while the torso visibly withdraws;
+geometry is included. The hammer arm rises overhead and behind the head, holds, then swings down toward local +Z while the torso gives a restrained recoil above the planted feet;
 the striking face is oriented toward a vertical wall and all three contacts coincide.
 A short star-shaped flash and shrinking diamond sparks burst from each fixed contact.
 The unlit effect uses dedicated artwork tokens and no borrowed textures. It does not
