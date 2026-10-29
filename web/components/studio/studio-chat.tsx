@@ -35,7 +35,7 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onDrawingSetup, onCollapse, boothPricing, onDesignPreview }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, boothPricing, onDesignPreview }: {
     onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
     boothPricing?: PricingContext;
     onCollapse?: () => void;
@@ -43,7 +43,6 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
-    onDrawingSetup?: () => void;
     sources?: SourceLibrary;
     document: PlanDocument | null;
     onDocumentChange: (document: PlanDocument) => void;
@@ -329,7 +328,6 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
       </ConversationContent>
       <ConversationScrollButton aria-label={t("Scroll to latest message")} title={t("Scroll to latest message")} />
       </Conversation>
-      {document && !document.scaleConfirmed && onDrawingSetup && <Button type="button" variant="outline" size="sm" onClick={onDrawingSetup}>{t("Confirm scale")}</Button>}
       {selection && <div className="ps-muse-selection" aria-label={t("Selected item")}>
         <div><span>{t("Selected item")}</span><strong>{selection.label}</strong></div>
         <Button type="button" size="icon-sm" variant="ghost" onClick={onClearSelection} aria-label={t("Clear selection")} title={t("Clear selection")}><XIcon aria-hidden="true" /></Button>
