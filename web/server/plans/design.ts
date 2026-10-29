@@ -1,3 +1,4 @@
+import { IntentRequest } from "@/lib/plans/intent";
 import "server-only";
 import { storedMetaKey } from "@/server/settings/store";
 import { ToolLoopAgent, isStepCount, hasToolCall } from "ai";
@@ -13,7 +14,7 @@ import { DESIGN_INSTRUCTIONS } from "./prompts";
 import { ASSET_INSTRUCTIONS } from "./asset-tools";
 import { PlanServiceError } from "./errors";
 
-export const DesignRequest = z.object({ locale: z.enum(["en", "ko"]).optional(), sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
+export const DesignRequest = z.object({ selection: IntentRequest.shape.selection.optional(), locale: z.enum(["en", "ko"]).optional(), sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
 
 export async function designPlan(input: z.infer<typeof DesignRequest>, signal: AbortSignal, emitPreview?: DesignToolContext["emitPreview"]) {
   const { document, brief } = input;
@@ -64,7 +65,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
       temperature: 0.2, maxRetries: 1,
     });
     const result = await agent.generate({
-      messages: [{ role: "user", content: [{ type: "text", text: JSON.stringify({ phase: context.phase, brief, context: { ...planChatContext({ ...document, texts: input.drawingSelected ? document.texts : [] }), lines: undefined, linesTruncated: undefined }, wallLines: document.lines.filter(line => line.kind === "wall") }) }, ...sourceContent(context.sources)] }],
+      messages: [{ role: "user", content: [{ type: "text", text: JSON.stringify({ phase: context.phase, brief, selection: input.selection ?? null, context: { ...planChatContext({ ...document, texts: input.drawingSelected ? document.texts : [] }), lines: undefined, linesTruncated: undefined }, wallLines: document.lines.filter(line => line.kind === "wall") }) }, ...sourceContent(context.sources)] }],
       abortSignal: runSignal,
     });
     const call = result.toolCalls.find(item => item.toolName === "submit_design");

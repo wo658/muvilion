@@ -8,7 +8,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputButton, PromptInputSubmit } from "@/components/ai-elements/prompt-input";
-import { ArrowUpIcon, PanelRightCloseIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowUpIcon, PanelRightCloseIcon, CheckIcon, LoaderCircleIcon, MessageCircleIcon, PaperclipIcon, SquareIcon, XIcon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { useEffect, useRef, useState } from "react";
@@ -35,7 +35,7 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onRemoveSelection, onCollapse, boothPricing, onDesignPreview }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onDrawingSetup, onCollapse, boothPricing, onDesignPreview }: {
     onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
     boothPricing?: PricingContext;
     onCollapse?: () => void;
@@ -43,7 +43,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     onSources: () => void;
     selection?: { id: string; label: string } | null;
     onClearSelection?: () => void;
-    onRemoveSelection?: () => void;
+    onDrawingSetup?: () => void;
     sources?: SourceLibrary;
     document: PlanDocument | null;
     onDocumentChange: (document: PlanDocument) => void;
@@ -54,6 +54,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         prepareSendMessagesRequest: ({ messages, body }) => ({ body: {
                 document: body?.document ?? null,
                 boothPricing: body?.boothPricing,
+                selection: body?.selection ?? null,
                 locale: body?.locale,
                 sources: body?.sources ?? [],
                 messages: messages.slice(-24).map((message) => ({ role: message.role, parts: message.parts.filter((part) => part.type === "text").map((part) => ({ type: "text", text: part.text })) })),
@@ -165,7 +166,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     setInterpretError(`${localizeMessage(locale, outcome.errors[0])} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
-                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
+                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
                 const assertCurrent = () => {
                     abortController.signal.throwIfAborted();
                     if (!mounted.current || currentContext.current.document !== base || currentContext.current.sources !== sources) throw new DOMException("Stale design", "AbortError");
@@ -237,7 +238,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 if (!mounted.current) return;
                 abortController.signal.throwIfAborted();
                 handedOff = true;
-                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, boothPricing, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
+                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, boothPricing, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
             } else {
                 handedOff = true;
                 setMessages(previous => [...previous,
@@ -328,9 +329,9 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
       </ConversationContent>
       <ConversationScrollButton aria-label={t("Scroll to latest message")} title={t("Scroll to latest message")} />
       </Conversation>
+      {document && !document.scaleConfirmed && onDrawingSetup && <Button type="button" variant="outline" size="sm" onClick={onDrawingSetup}>{t("Confirm scale")}</Button>}
       {selection && <div className="ps-muse-selection" aria-label={t("Selected item")}>
         <div><span>{t("Selected item")}</span><strong>{selection.label}</strong></div>
-        <Button type="button" size="sm" variant="ghost" disabled={!onRemoveSelection} onClick={onRemoveSelection}><Trash2Icon aria-hidden="true" data-icon="inline-start" />{t("Delete")}</Button>
         <Button type="button" size="icon-sm" variant="ghost" onClick={onClearSelection} aria-label={t("Clear selection")} title={t("Clear selection")}><XIcon aria-hidden="true" /></Button>
         <Button type="button" size="sm" variant="outline" onClick={() => { setInput(value => { const target = t("About “{name}”: ", { name: selection.label }); return value.startsWith(target) ? value : `${target}\n${value}`; }); composer.current?.focus(); }}><MessageCircleIcon aria-hidden="true" data-icon="inline-start" />{t("Ask about this")}</Button>
       </div>}

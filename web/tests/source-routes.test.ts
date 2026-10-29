@@ -36,6 +36,10 @@ describe("source-aware Muse routes", () => {
     expect(input.instructions).toContain(locale === "ko" ? "in Korean" : "in English");
     expect(input.messages.at(-1).content).toBe("Keep my original words");
   });
+  it("passes the selected element ID to conversation context", async () => {
+    await chat(request({ selection: { id: "partition-n0", label: "North partition" }, messages: [{ role: "user", parts: [{ type: "text", text: "Explain this element" }] }] }));
+    expect(JSON.stringify(calls.stream.mock.calls[0][0].messages)).toContain('partition-n0');
+  });
   it("rejects unsupported UI languages before calling Muse", async () => {
     const response = await chat(request({ locale: "fr", messages: [{ role: "user", parts: [{ type: "text", text: "Hi" }] }] }));
     expect(response.status).toBe(400);
@@ -55,10 +59,11 @@ describe("source-aware Muse routes", () => {
       options.prepareStep({ messages: options.messages, stepNumber: 1 });
       return { toolCalls: [{ toolName: "submit_design", input: {revision:1,summary:proposal.summary} }] };
     });
-    const response = await design(request({ document, drawingSelected: false, brief: "Keep open", sources: [source("chosen", true), source("excluded", false)] }));
+    const response = await design(request({ document, selection: {id:"selected-booth",label:"Booth"}, drawingSelected: false, brief: "Keep open", sources: [source("chosen", true), source("excluded", false)] }));
     expect(response.status).toBe(200);
     const modelInput = JSON.stringify(calls.generate.mock.calls[0][0].messages);
     expect(modelInput).toContain("chosen content");
+    expect(modelInput).toContain("selected-booth");
     expect(modelInput).not.toContain("excluded content");
     expect(modelInput).not.toContain("Keep original text");
     expect((await response.json()).document.texts).toEqual(document.texts);
