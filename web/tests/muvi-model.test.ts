@@ -45,14 +45,18 @@ describe("shipped Muvi GLB", () => {
         model.scene.updateMatrixWorld(true);
         const arm = model.scene.getObjectByName("ArmR")!;
         const windupHand = arm.localToWorld(new Vector3(0.1, -0.32, 0.07));
+        expect(windupHand.y).toBeGreaterThan(1.5);
+        const windupHead = model.scene.getObjectByName("HammerFace")!.getWorldPosition(new Vector3());
+        expect(windupHead.y).toBeGreaterThan(2.1);
         const windupRotation = arm.quaternion.clone();
         const windupBodyZ = model.scene.getObjectByName("Body")!.position.z;
         mixer.setTime(0.275 * clip.duration);
         model.scene.updateMatrixWorld(true);
         const contactHand = arm.localToWorld(new Vector3(0.1, -0.32, 0.07));
         expect(contactHand.z - windupHand.z).toBeGreaterThan(0.3);
+        expect(windupHand.y - contactHand.y).toBeGreaterThan(0.35);
         expect(arm.quaternion.angleTo(windupRotation)).toBeGreaterThan(0.8);
-        expect(model.scene.getObjectByName("Body")!.position.z).toBeLessThan(windupBodyZ - 0.1);
+        expect(model.scene.getObjectByName("Body")!.position.z).toBeLessThan(windupBodyZ - 0.25);
         const contacts: Vector3[] = [];
         for (const phase of [0.275, 0.475, 0.735]) {
           mixer.setTime(phase * clip.duration);

@@ -3,7 +3,7 @@ import type { DesignerPose } from "./types";
 type Beat = readonly [time: number, value: number];
 export const hammerHits = [0.275, 0.475, 0.735] as const;
 const launches = [0.235, 0.435, 0.69] as const;
-const contactWrist = -Math.PI + 0.16 + 1.75;
+const contactWrist = -Math.PI + 0.28 + 1.75;
 
 function ease(from: number, to: number, t: number) {
   const u = Math.max(0, Math.min(1, (t - from) / (to - from)));
@@ -47,17 +47,17 @@ export function hammerPhase(t: number) {
 }
 
 /**
- * At contact: body -.16 + shoulder -1.75 + wrist = -PI. This turns the
+ * At contact: body -.28 + shoulder -1.75 + wrist = -PI. This turns the
  * hammer's local -Z striking face toward world +Z, against a FRONT wall.
  */
 export function hammerWristAngle(t: number) {
   const { hold, pullback, recoil } = hammerPhase(t);
-  return contactWrist * hold - 0.55 * pullback + 0.22 * recoil;
+  return contactWrist * hold + (0.64 - contactWrist) * pullback + 0.22 * recoil;
 }
 
 /**
  * Broad cartoon anticipation, forward strike and follow-through in five seconds.
- * Raise and retract the working arm, hold that silhouette, then swing forward
+ * Shoot the working arm above and behind the head, hold, then swing down
  * while the torso withdraws from the wall. Three contacts share one exact pose and one forward-facing target.
  * The body and stepping foot exaggerate weight transfer; the root never navigates.
  */
@@ -67,15 +67,15 @@ export function arrangePose(t: number): DesignerPose {
   const stretch = 0.085 * flight;
   return {
     Body: {
-      position: [-0.035 * pullback, -0.018 * pullback - 0.015 * recoil, -0.18 * drive + 0.03 * pullback],
-      rotation: [-0.16 * drive - 0.14 * pullback - 0.035 * recoil, 0.28 * pullback, -0.07 * pullback],
-      // Anticipation compression and a fast forward stretch are absent at contact,
+      position: [-0.035 * pullback, 0.06 * pullback - 0.015 * recoil, -0.3 * drive + 0.03 * pullback],
+      rotation: [-0.28 * drive - 0.14 * pullback - 0.035 * recoil, 0.28 * pullback, -0.07 * pullback],
+      // Overhead anticipation stretch and recoil squash are absent at contact,
       // preserving a repeatable target and an exactly forward-facing strike face.
-      scale: [1 + 0.035 * squash, 1 - squash - stretch * 0.35, 1 + squash * 0.5 + stretch],
+      scale: [1 + 0.035 * squash, 1 + 0.04 * pullback - 0.1 * recoil * (1 - pullback) - stretch * 0.35, 1 + squash * 0.5 + stretch],
     },
     ArmR: {
-      position: [-0.12 * drive, 0.32 * pullback + 0.06 * drive, 0.28 * drive - 0.1 * pullback],
-      rotation: [-0.55 * hold - 1.2 * drive + 0.15 * pullback, -0.12 * pullback, 0.1 * pullback],
+      position: [-0.12 * drive, 0.68 * pullback + 0.06 * drive, 0.45 * drive - 0.16 * pullback],
+      rotation: [-0.55 * hold - 1.2 * drive - 2.95 * pullback, -0.12 * pullback, 0.1 * pullback],
     },
     ArmL: {
       position: [0, 0.02 * pullback, 0],
