@@ -6,6 +6,7 @@ import { emptyProject, ProjectState } from "@/lib/projects/schema";
 import { createProject, getProject, saveProject, exportProject, uploadOriginal, getAsset, listProjects } from "@/server/projects/store";
 import { withDatabase } from "@/server/database";
 import { saveMetaKey } from "@/server/settings/store";
+import { activateDrawing, addDrawing, drawingSources, saveDrawing } from "@/lib/projects/drawings";
 import { ProjectSession } from "@/lib/projects/session";
 import { POST, GET } from "@/app/api/projects/route";
 
@@ -90,5 +91,65 @@ describe("autosave sequencing", () => {
     await expect(session.flush()).rejects.toThrow("offline");
     expect(session.pending).toBe(true); expect(session.state.document).not.toBeNull();
     await session.retry(); expect(session.revision).toBe(1); expect(session.pending).toBe(false);
+  });
+});
+
+
+describe("drawing sources", () => {
+  it("upgrades a legacy project and preserves independent edits, selections and PDF pages", () => {
+    const legacy = state();
+    const first = drawingSources(legacy)[0];
+    const second = { id: "page-2", document: { ...first.document, source: { ...first.document.source, page: 2, pages: 2 }, widthMeters: 40 }, originalAssetId: null, selected: true };
+    let next = addDrawing(legacy, second);
+    next = saveDrawing(next, { ...next.document!, wallHeight: 7, lines: [{ id: "wall", a: { x: 0, y: 0 }, b: { x: 1, y: 1 }, kind: "wall", origin: "manual", confidence: 1 }] });
+    next = activateDrawing(next, first.id);
+    expect(next.document).toEqual(legacy.document);
+    expect(next.sources.drawingSelected).toBe(false);
+    next = saveDrawing(next, { ...next.document!, widthMeters: 25, scaleConfirmed: true });
+    next = activateDrawing(next, second.id);
+    expect(next.document?.wallHeight).toBe(7);
+    expect(next.document?.lines[0].id).toBe("wall");
+    expect(next.document?.source.page).toBe(2);
+    expect(next.sources.drawingSelected).toBe(true);
+    next = activateDrawing(next, first.id);
+    expect(next.document?.widthMeters).toBe(25);
+    expect(next.document?.lines).toEqual([]);
+    expect(() => activateDrawing(next, "missing")).toThrow(/not found/);
+  });
+  it("persists every drawing and remaps all originals on export/import", () => {
+    const p = createProject({ name: "Multi", state: state() });
+    const a = uploadOriginal(p.id, "A.pdf", "application/pdf", new Uint8Array([1, 2]));
+    const b = uploadOriginal(p.id, "B.pdf", "application/pdf", new Uint8Array([3, 4]));
+    const initial = { ...p.state, originalDrawingId: a };
+    let next = addDrawing(initial, { id: "b", document: { ...initial.document!, widthMeters: 40 }, originalAssetId: b, selected: true });
+    next = saveDrawing(next, { ...next.document!, wallHeight: 8 });
+    saveProject(p.id, { name: p.name, revision: 0, state: next });
+    expect(getProject(p.id).state).toEqual(next);
+    withDatabase(db => expect(String(db.prepare("SELECT state_json FROM projects WHERE id = ?").get(p.id)?.state_json)).not.toContain("base64"));
+    const bundle = exportProject(p.id);
+    expect(bundle.assets).toHaveLength(2);
+    const copy = createProject(bundle);
+    expect(copy.state.drawings).toHaveLength(2);
+    expect(copy.state.drawings?.map(item => item.document)).toEqual(next.drawings?.map(item => item.document));
+    expect(copy.state.originalDrawingId).toBe(copy.state.drawings?.[1].originalAssetId);
+    const copiedA = copy.state.drawings![0].originalAssetId!;
+    expect(copiedA).not.toBe(a);
+    expect(getAsset(copy.id, copiedA).data).toEqual(new Uint8Array([1, 2]));
+    const switched = activateDrawing(copy.state, "legacy-drawing");
+    saveProject(copy.id, { name: copy.name, revision: 0, state: switched });
+    expect(getProject(copy.id).state.document).toEqual(initial.document);
+    expect(getProject(copy.id).state.drawings?.[1].document.wallHeight).toBe(8);
+  });
+  it("validates inactive asset ownership, active IDs and the drawing limit", () => {
+    const a = createProject({ name: "A" });
+    const foreign = uploadOriginal(a.id, "A.pdf", "application/pdf", new Uint8Array([1]));
+    const multi = addDrawing({ ...state(), originalDrawingId: foreign }, { id: "b", document: state().document!, originalAssetId: null, selected: true });
+    expect(() => createProject({ name: "B", state: multi })).toThrow(/not found/);
+    expect(ProjectState.safeParse({ ...multi, activeDrawingId: "missing" }).success).toBe(false);
+    expect(ProjectState.safeParse({ ...multi, drawings: [multi.drawings![1], multi.drawings![1]] }).success).toBe(false);
+    let full = state();
+    for (let i = 1; i < 12; i++) full = addDrawing(full, { id: `drawing-${i}`, document: state().document!, originalAssetId: null, selected: true });
+    expect(() => addDrawing(full, { id: "overflow", document: state().document!, originalAssetId: null, selected: true })).toThrow(/12 drawings/);
+    expect(ProjectState.parse(emptyProject()).document).toBeNull();
   });
 });

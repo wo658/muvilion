@@ -13,13 +13,16 @@ import type { PlanDocument } from "@/lib/plans/schema";
 import { SourceLibrarySchema, type SourceLibrary, type ReferenceSource } from "@/lib/sources/schema";
 import { readReference } from "@/lib/sources/files";
 
+import type { DrawingSource } from "@/lib/projects/schema";
+
 type Props = {
+  drawings: DrawingSource[]; activeDrawingId?: string; onSwitchDrawing: (id: string) => void;
   library: SourceLibrary; ready: boolean; document: PlanDocument | null; busy: boolean;
   onChange: (update: (current: SourceLibrary) => SourceLibrary) => void;
   onDrawing: () => void;
   onUploadOriginal: (file: File) => Promise<string>;
 };
-export function SourcesPanel({ library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
+export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const { t, locale } = useI18n();
@@ -32,6 +35,7 @@ export function SourcesPanel({ library, ready, document, busy, onChange, onDrawi
   const [error, setError] = useState<string | null>(null);
   const concept = useRef<HTMLInputElement>(null), brief = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const drawingPreview = preview === activeDrawingId ? document : drawings.find(source => source.id === preview)?.document;
   const item = library.items.find(item => item.id === preview);
   useEffect(() => { if (preview) dialog.current?.showModal(); else dialog.current?.close(); }, [preview]);
   const selectedCount = library.items.filter(item => item.selected).length + Number(Boolean(document && library.drawingSelected));
@@ -53,9 +57,9 @@ export function SourcesPanel({ library, ready, document, busy, onChange, onDrawi
     finally { setUploading(false); }
   }
   return <section className="ps-sources" aria-label={t("Project sources")}>
-    <header><span>{library.items.length + Number(Boolean(document))} {t("materials")}</span><span>{selectedCount} {t("selected for Muse")}</span></header>
+    <header><span>{library.items.length + drawings.length} {t("materials")}</span><span>{selectedCount} {t("selected for Muse")}</span></header>
     <div className="ps-source-actions">
-      <Button disabled={busy || !ready} onClick={onDrawing}>{t("＋ Drawing")}</Button>
+      <Button disabled={busy || !ready || drawings.length >= 12} onClick={onDrawing}>{t("＋ Drawing")}</Button>
       <Button disabled={uploading || !ready || library.items.length >= 12} onClick={() => concept.current?.click()}>{t("＋ Concept image")}</Button>
       <Button disabled={!ready || library.items.length >= 12} onClick={() => setAddingBrand(value => !value)}>{t("＋ Brand URL")}</Button>
       <Button disabled={uploading || !ready || library.items.length >= 12} onClick={() => brief.current?.click()}>{t("＋ Brief")}</Button>
@@ -75,13 +79,17 @@ export function SourcesPanel({ library, ready, document, busy, onChange, onDrawi
       } catch (error) { setError(error instanceof Error ? error.message : t("Check this URL.")); }
     }}><FieldGroup><Field><FieldLabel htmlFor="source-brand-name">{t("Brand name")}</FieldLabel><Input id="source-brand-name" value={brandName} maxLength={255} onChange={event => setBrandName(event.target.value)}/></Field><Field><FieldLabel htmlFor="source-brand-url">{t("Brand URL")}</FieldLabel><Input id="source-brand-url" type="url" placeholder="https://brand.com" required value={url} maxLength={2000} onChange={event => setUrl(event.target.value)}/></Field><Field><FieldLabel htmlFor="source-brand-notes">{t("Brand notes")}</FieldLabel><Textarea id="source-brand-notes" placeholder={t("Colours, tone, guidelines to reference…")} maxLength={6000} value={brandNotes} onChange={event => setBrandNotes(event.target.value)}/></Field></FieldGroup><p className="ps-help">{t("Link only. Add brand details in notes.")}</p><Button type="submit">{t("Add brand")}</Button> <Button type="button" variant="ghost" onClick={() => setAddingBrand(false)}>{t("Cancel")}</Button></form>}
     <ul className="ps-source-list">
-      {document && <li><button className="ps-source-preview-button" onClick={() => setPreview("drawing")}><span>{t("DRAWING")}</span><strong>{document.source.name}</strong><small>{t("Page {page} of {pages}", { page: document.source.page, pages: document.source.pages })}</small></button><Field orientation="horizontal"><FieldLabel htmlFor="source-drawing-toggle">{t("Use with Muse")}</FieldLabel><Switch id="source-drawing-toggle" checked={library.drawingSelected} disabled={!ready} onCheckedChange={checked => onChange(current => ({ ...current, drawingSelected: checked }))}/></Field></li>}
+      {drawings.map(source => <li key={source.id}>
+        <button className="ps-source-preview-button" onClick={() => setPreview(source.id)}><span>{t("DRAWING")}</span><strong>{source.document.source.name}</strong><small>{t("Page {page} of {pages}", { page: source.document.source.page, pages: source.document.source.pages })}</small></button>
+        <Button disabled={busy || source.id === activeDrawingId} aria-current={source.id === activeDrawingId ? "true" : undefined} onClick={() => onSwitchDrawing(source.id)}>{source.id === activeDrawingId ? t("Current drawing") : t("Open drawing")}</Button>
+        {source.id === activeDrawingId && <Field orientation="horizontal"><FieldLabel htmlFor="source-drawing-toggle">{t("Use with Muse")}</FieldLabel><Switch id="source-drawing-toggle" checked={library.drawingSelected} disabled={!ready} onCheckedChange={checked => onChange(current => ({ ...current, drawingSelected: checked }))}/></Field>}
+      </li>)}
       {library.items.map(source => <li key={source.id}><button className="ps-source-preview-button" onClick={() => setPreview(source.id)}><span>{source.kind === "concept" ? t("CONCEPT IMAGE") : source.kind === "brand" ? t("BRAND LINK") : t("PLANNING DOCUMENT")}</span><strong>{source.name}</strong><small>{source.url ? new URL(source.url).hostname : source.images.length ? t("{count} previews", { count: source.images.length }) : t("{count} characters", { count: source.text.length })}</small></button><Field orientation="horizontal"><FieldLabel htmlFor={`source-${source.id}`}>{t("Use with Muse")}</FieldLabel><Switch id={`source-${source.id}`} checked={source.selected} disabled={!ready} onCheckedChange={selected => updateItem(source.id, { selected })}/></Field><Button variant="ghost" aria-label={t("Remove {name}", { name: source.name })} onClick={() => { onChange(current => ({ ...current, items: current.items.filter(item => item.id !== source.id) })); if (preview === source.id) setPreview(null); }}>{t("Remove")}</Button></li>)}
     </ul>
     {!document && !library.items.length && <p className="ps-help">{t("Add a drawing, image, link or brief.")}</p>}
     <dialog ref={dialog} className="ps-source-dialog" onCancel={() => setPreview(null)} onClose={() => setPreview(null)} aria-labelledby="source-preview-title">
-      <header><h2 id="source-preview-title">{preview === "drawing" ? document?.source.name : item?.name}</h2><Button onClick={() => setPreview(null)} aria-label={t("Close source preview")}>{t("Close")}</Button></header>
-      {preview === "drawing" && document && <><p>{t("Original drawing preview · page")}{document.source.page}</p><img src={document.preview} alt={t("Original drawing: {name}", { name: document.source.name })}/></>}
+      <header><h2 id="source-preview-title">{drawingPreview?.source.name ?? item?.name}</h2><Button onClick={() => setPreview(null)} aria-label={t("Close source preview")}>{t("Close")}</Button></header>
+      {drawingPreview && <><p>{t("Original drawing preview · page")}{drawingPreview.source.page}</p><img src={drawingPreview.preview} alt={t("Original drawing: {name}", { name: drawingPreview.source.name })}/></>}
       {item && <div className="ps-source-preview-content">
         {item.url && <><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-accent break-all">{item.url} ↗</a><p>{t("Muse uses the link and notes; webpage content is not imported.")}</p></>}
         {item.images.map((image, i) => <figure key={i}><img src={image} alt={t("{name} — page {page}", { name: item.name, page: i + 1 })}/><figcaption>{item.images.length > 1 ? t("Page {page}", { page: i + 1 }) : item.name}</figcaption></figure>)}

@@ -639,5 +639,8 @@
   "Basic shapes": "Basic shapes",
   "Asset unavailable · basic shape": "Asset unavailable · basic shape",
   "Scroll to latest message": "Scroll to latest message",
-  "Image unavailable": "Image unavailable"
+  "Image unavailable": "Image unavailable",
+  "Current drawing": "Current drawing",
+  "Open drawing": "Open drawing",
+  "A project supports up to 12 drawings.": "A project supports up to 12 drawings."
 }

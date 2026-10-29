@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { ProjectState, ProjectExport, emptyProject, type Project, type ProjectSummary } from "@/lib/projects/schema";
 import { createProject, createSampleProject, exportProject, listProjects, loadProject, saveProject, uploadOriginal } from "@/lib/projects/client";
 import { ProjectStart } from "./project-start";
+import { projectOriginalIds } from "@/lib/projects/drawings";
 import { ProjectSession } from "@/lib/projects/session";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 
@@ -137,13 +138,13 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
       // Export the current editor snapshot even after a failed save/conflict.
       const current = session.current!;
       const bundle = await exportProject(project.id);
-      const ids = [...new Set([current.state.originalDrawingId, ...current.state.sources.items.map(item => item.originalAssetId)].filter((id): id is string => Boolean(id)))];
+      const ids = projectOriginalIds(current.state);
       for (const id of ids) if (!bundle.assets.some(file => file.id === id)) {
         const response = await fetch(`/api/projects/${project.id}/assets/${id}`);
         if (!response.ok) throw new Error("Could not export an original file.");
         const blob = await response.blob();
         const data = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(",")[1]); reader.onerror = reject; reader.readAsDataURL(blob); });
-        bundle.assets.push({ id, name: current.state.sources.items.find(item => item.originalAssetId === id)?.name ?? current.state.document?.source.name ?? "original", mimeType: blob.type, data });
+        bundle.assets.push({ id, name: current.state.drawings?.find(item => item.originalAssetId === id)?.document.source.name ?? current.state.sources.items.find(item => item.originalAssetId === id)?.name ?? current.state.document?.source.name ?? "original", mimeType: blob.type, data });
       }
       download({ ...bundle, name: current.name, state: current.state, assets: bundle.assets.filter(file => ids.includes(file.id)) });
     },
