@@ -9,9 +9,9 @@ import sharp from "sharp";
 
 function context(): DesignToolContext {
   const base = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'hall', format: 'pdf', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', widthMeters: 20, heightMeters: 20, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: 'pdf-vector' });
-  return { base, draft: base, phase: 'initial', revision: 0, sources: [], env: {}, signal: new AbortController().signal, artifacts: [], pendingImages: [], calls: new Map() };
+  return { brief: {scope:'interior',direction:'Stage focal point',requirements:[{id:'stage',label:'Stage',target:'objects',kinds:['stage'],minimum:1}]}, base, draft: base, phase: 'initial', revision: 0, sources: [], env: {}, signal: new AbortController().signal, artifacts: [], pendingImages: [], calls: new Map() };
 }
-const proposal = { summary: 'Focal point', objects: [{ id:'stage', kind:'stage', label:'Stage', x:.5,y:.5,width:5,depth:3,height:1,rotation:0,color:'#335577' }], assumptions: [] };
+const proposal = { coverage:[{requirementId:'stage',ids:['stage'],decision:'Stage focal point.'}], summary: 'Focal point', objects: [{ id:'stage', kind:'stage', label:'Stage', x:.5,y:.5,width:5,depth:3,height:1,rotation:0,color:'#335577' }], assumptions: [] };
 const options = { toolCallId: 'test', messages: [], context: {} };
 
 describe('shared Designer Muse tools', () => {
@@ -52,4 +52,14 @@ describe('shared Designer Muse tools', () => {
     await expect(review.execute!(proposal,options)).rejects.toThrow();
     expect(c.revision).toBe(0);
   });
+  it('keeps the original brief fixed and rejects review before a brief', async () => {
+    const c=context(); c.brief=undefined;
+    const tools=createDesignTools(c);
+    await expect(tools.review_design.execute!(proposal,options)).rejects.toThrow('set_design_brief');
+    const brief=context().brief!;
+    await tools.set_design_brief.execute!(brief,options);
+    await expect(tools.set_design_brief.execute!({...brief,direction:'Shrink the scope'},options)).rejects.toThrow('budget');
+    expect(c.brief).toEqual(brief);
+  });
+
 });

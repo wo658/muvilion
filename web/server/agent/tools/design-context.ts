@@ -4,6 +4,8 @@ import type { ReferenceSource } from "@/lib/sources/schema";
 import type { DesignArtifact } from "@/lib/plans/design-artifacts";
 import type { Env } from "@/lib/env";
 import type { DesignPhase } from "./registry";
+import type { DesignBrief, DesignReviewSchema } from "@/lib/plans/design-review";
+import type { z } from "zod";
 
 export type DesignToolContext = {
   base: PlanDocument;
@@ -16,6 +18,8 @@ export type DesignToolContext = {
   artifacts: DesignArtifact[];
   pendingImages: DesignArtifact[];
   calls: Map<string, number>;
+  brief?: DesignBrief;
+  review?: z.infer<typeof DesignReviewSchema>;
 };
 
 export function reserveToolCall(context: DesignToolContext, name: string, limit: number) {

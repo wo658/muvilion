@@ -4,10 +4,22 @@ Initial design and revision both use `designPlan` and the same request-scoped
 `ToolLoopAgent`. A document with existing objects or zones is a revision; an empty
 space is initial design. There is no separate post-processing agent.
 
+Muse prioritizes editable interiors and brand expression; existing-wall scanning is
+optional supporting evidence, not a prerequisite. Scale and usable boundaries still
+constrain the design. Selected references are facts; proposed brand directions and
+unverified heights must be identified as assumptions.
+
 ## Tools
 
+- `set_design_brief`: records a fixed model-authored direction and deliverables before
+  drafting. Interior briefs must include physical installations, not just zoning.
+  User quantities and requested furnishings must be preserved.
+
 - `review_design`: stages a complete candidate without changing the user's document,
-  computes existing geometry warnings, and renders plan and isometric PNG evidence.
+  computes geometry warnings and requirement coverage separately, and renders plan
+  and isometric PNG evidence. Coverage links requirement IDs to real object/zone IDs
+  and checks kind/count; missing or invalid links prevent submission. It does not
+  score aesthetics or independently establish faithfulness of the model-written brief.
 - `generate_design_concept`: calls Meta Muse Image using selected reference images
   and the latest draft schematic. Uses the key saved in Settings, falling back to `MODEL_API_KEY`. Available with a key unless
   `MUSE_IMAGE_ENABLED=false`. `META_IMAGE_MODEL` defaults to `muse-image-1.0`.
@@ -40,11 +52,14 @@ imply those capabilities are available. Adding metadata alone does not enable to
 
 ## Limits and verification
 
-Runs have 8 model steps, a shared 75-second abort deadline, sequential tool execution,
+Runs have 10 model steps, a shared 180-second abort deadline, sequential tool execution,
 3 candidate reviews and at most 2 concept generations. Image requests have a
 45-second deadline and bounded response bytes/pixels. Failed tools are returned to
 the model by the SDK; failures never count as reviews. Final submitted objects/zones
 must match the last candidate whose images were sent to a subsequent model step.
+Failures log only a run ID, reason, elapsed time, completed step count and tool names,
+never prompts, references, keys or raw provider errors. Timeout, cancellation and
+provider/tool failure have distinct responses; the brief is never silently reduced.
 The original user Apply and stale-proposal checks remain in force.
 
 Tests cover extension availability, state isolation, PNG output, invalid input,

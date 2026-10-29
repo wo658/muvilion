@@ -50,7 +50,8 @@ describe("source-aware Muse routes", () => {
   it("does not destroy drawing evidence when drafting with its reference deselected", async () => {
     calls.generate.mockImplementation(async options => {
       const proposal = { summary: "Concept", objects: [], assumptions: [] };
-      await options.tools.review_design.execute(proposal);
+      await options.tools.set_design_brief.execute({scope:'zoning',direction:'Preserve open space',requirements:[{id:'open',label:'Open space',target:'objects',kinds:[],minimum:0}]});
+      await options.tools.review_design.execute({...proposal,coverage:[{requirementId:'open',ids:[],decision:'Open space preserved.'}]});
       options.prepareStep({ messages: options.messages, stepNumber: 1 });
       return { toolCalls: [{ toolName: "submit_design", input: proposal }] };
     });
