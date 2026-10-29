@@ -17,6 +17,8 @@ import { planRegions, regionDocument, combineRegionalResults } from "@/lib/plans
 import { runRegionalBatches, globalWallAuditBatches, applyGlobalWallAudit, type RegionalProgress } from "@/lib/plans/regional-client";
 import { emptySources, type SourceLibrary } from "@/lib/sources/schema";
 import { selectedReferences } from "@/lib/sources/files";
+import { DesignReviewSchema } from "@/lib/plans/design-review";
+import type { z } from "zod";
 import { DesignArtifactsSchema, type DesignArtifact } from "@/lib/plans/design-artifacts";
 import Image from "next/image";
 import { getModelAsset, getMaterialAsset } from "@/lib/assets/catalog";
@@ -25,6 +27,7 @@ import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { MuviGreeting } from "@/components/muvi/muvi";
 type Proposal = {
     artifacts?: DesignArtifact[];
+    designReview?: z.infer<typeof DesignReviewSchema>;
     sources: SourceLibrary;
     document: PlanDocument;
     summary: string;
@@ -161,7 +164,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     throw new Error(body.error ?? t("Muse could not draft a layout."));
                 const result = PlanDocumentSchema.parse(body.document);
                 if (mounted.current)
-                    setProposal({ sources, document: result, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), summary: typeof body.summary === "string" ? body.summary : t("Review the proposed changes."), base, mode });
+                    setProposal({ sources, document: result, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), designReview: body.designReview ? DesignReviewSchema.parse(body.designReview) : undefined, summary: typeof body.summary === "string" ? body.summary : t("Review the proposed changes."), base, mode });
             }
         }
         catch (err) {
@@ -244,7 +247,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const changed = proposal?.document.lines.filter((line, i) => line.kind !== proposal.base.lines[i]?.kind).length ?? 0;
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
     const tools = interpreting || progress || interpretError || proposal || notice;
-    const suggestions = [t("Widen the path from the entrance to the stage"), t("Price the booths based on their size and location")];
+    const suggestions = [t("Design a furnished booth with partitions and displays"), t("Plan an interior around my brand references")];
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="ps-conversation-head">
         <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><MuviAvatar size={32}/></Link>
@@ -277,6 +280,15 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
           {interpretError && <p role="alert" className="text-xs leading-relaxed text-bad">{localizeMessage(locale, interpretError)}</p>}
           {proposal && <div className="ps-proposal">
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
+            {proposal.mode === "design" && proposal.designReview && <div className="mt-3 text-xs leading-relaxed" aria-label={t("Interior design review")}>
+              <p className="font-medium">{t("Interior design review")}</p>
+              <p className="mt-1">{proposal.designReview.direction}</p>
+              <ul className="mt-2 list-disc pl-4">{proposal.designReview.requirements.map(requirement => <li key={requirement.id} className="mt-2">
+                {requirement.label} · {t("{count}/{minimum} elements linked", { count: requirement.count, minimum: requirement.minimum })}
+                <p className="text-muted">{requirement.decision}</p>
+              </li>)}</ul>
+              <p className="mt-2 text-muted">{t("Linked elements are checked separately from geometry. Brand fit and visual quality still need your review.")}</p>
+            </div>}
             {!!proposal.artifacts?.length && <details className="mt-3"><summary className="cursor-pointer text-xs">{t("Design review images ({count})", { count: proposal.artifacts.length })}</summary><div className="mt-2 flex flex-col gap-3">
               {proposal.artifacts.map(artifact => <figure key={artifact.id}>
                 <Image src={artifact.image} alt={artifact.title} width={960} height={720} unoptimized className="h-auto w-full rounded" />
@@ -289,7 +301,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             <div className="mt-3 flex gap-2"><Button type="button" size="sm" disabled={Boolean(stale)} variant="default" className="ps-ink-button" onClick={() => { if (!stale) {
               onDocumentChange(proposal.document);
               setProposal(null);
-              setNotice(t("Proposal applied. Review the geometry against your source."));
+              setNotice(t(proposal.mode === "design" ? "Interior proposal applied. Review the furnishings and brand expression in 3D." : "Proposal applied. Review the geometry against your source."));
           } }}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Apply changes")}</Button><Button type="button" size="sm" variant="outline" onClick={() => setProposal(null)}>{t("Cancel")}</Button></div>
           </div>}
           {notice && <p role="status" className="text-xs text-accent">{localizeMessage(locale, notice)}</p>}

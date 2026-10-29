@@ -642,5 +642,15 @@
   "Image unavailable": "이미지를 표시할 수 없어요.",
   "Current drawing": "현재 도면",
   "Open drawing": "도면 열기",
-  "A project supports up to 12 drawings.": "프로젝트에는 도면을 최대 12개까지 추가할 수 있어요."
+  "A project supports up to 12 drawings.": "프로젝트에는 도면을 최대 12개까지 추가할 수 있어요.",
+  "Design a furnished booth with partitions and displays": "가벽과 전시물이 있는 부스 내부를 디자인해줘",
+  "Plan an interior around my brand references": "브랜드 자료에 맞춰 내부 공간을 디자인해줘",
+  "Interior design review": "내부 디자인 검토",
+  "{count}/{minimum} elements linked": "요소 {count}/{minimum}개 연결",
+  "Linked elements are checked separately from geometry. Brand fit and visual quality still need your review.": "요소 구성과 배치 충돌은 별도로 확인합니다. 브랜드 적합성과 시각적 완성도는 직접 검토해 주세요.",
+  "Interior proposal applied. Review the furnishings and brand expression in 3D.": "내부 디자인을 적용했어요. 3D에서 가구 구성과 브랜드 표현을 확인해 주세요.",
+  "The interior design is missing requested elements. No changes were applied. Retry with the same brief.": "요청한 내부 디자인 요소가 누락되어 적용하지 않았어요. 같은 요청으로 다시 시도해 주세요.",
+  "Design cancelled. Your drawing is unchanged.": "설계를 취소했어요. 도면은 변경되지 않았어요.",
+  "Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.": "내부 디자인 검토가 제한 시간 안에 끝나지 않았어요. 도면은 변경되지 않았어요. 같은 요청으로 다시 시도해 주세요.",
+  "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.": "내부 디자인 모델 또는 도구 호출에 실패했어요. 도면은 변경되지 않았어요. 같은 요청으로 다시 시도해 주세요."
 }

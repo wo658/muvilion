@@ -6,11 +6,20 @@ import { objectBounds } from "@/lib/plans/design";
 /** Deterministic geometry preview, not a photoreal render or an eye-level view. */
 export async function renderDesign(document: PlanDocument, view: "plan" | "isometric") {
   const width = document.widthMeters!, depth = document.heightMeters!;
+  // Keep the full venue in the plan view, but inspect the designed interior up close.
+  // A small booth in a large hall would otherwise be only a few pixels across.
+  const bounds = (document.objects ?? []).map(object => objectBounds(object, document));
+  const focused = view === "isometric" && bounds.length > 0;
+  const minX = focused ? Math.max(0, Math.min(...bounds.map(b => b.x * width)) - 3) : 0;
+  const minY = focused ? Math.max(0, Math.min(...bounds.map(b => b.y * depth)) - 3) : 0;
+  const maxX = focused ? Math.min(width, Math.max(...bounds.map(b => (b.x + b.width) * width)) + 3) : width;
+  const maxY = focused ? Math.min(depth, Math.max(...bounds.map(b => (b.y + b.height) * depth)) + 3) : depth;
+  const frameWidth = Math.max(1, maxX - minX), frameDepth = Math.max(1, maxY - minY);
   const maxHeight = Math.max(document.wallHeight ?? 0, ...(document.objects ?? []).map(o => o.height + (o.elevation ?? 0)), 1);
-  const scale = Math.min(840 / (view === "plan" ? width : width + depth), 600 / (view === "plan" ? depth : (width + depth) * .5 + maxHeight));
-  const originX = view === "plan" ? 60 : 60 + depth * scale;
+  const scale = Math.min(840 / (view === "plan" ? width : frameWidth + frameDepth), 600 / (view === "plan" ? depth : (frameWidth + frameDepth) * .5 + maxHeight));
+  const originX = view === "plan" ? 60 : 60 + frameDepth * scale;
   const originY = view === "plan" ? 60 : 60 + maxHeight * scale;
-  const project = (x: number, y: number, z = 0) => view === "plan" ? [originX + x * scale, originY + y * scale] : [originX + (x - y) * scale, originY + ((x + y) * .5 - z) * scale];
+  const project = (x: number, y: number, z = 0) => view === "plan" ? [originX + x * scale, originY + y * scale] : [originX + ((x - minX) - (y - minY)) * scale, originY + (((x - minX) + (y - minY)) * .5 - z) * scale];
   const polygon = (points: number[][], fill: string, opacity = 1) => `<polygon points="${points.map(p => p.join(',')).join(' ')}" fill="${fill}" fill-opacity="${opacity}" stroke="#64748b" stroke-width="1"/>`;
   const pieces: string[] = [];
   const floor = document.floorBoundary ?? [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];
@@ -37,7 +46,7 @@ export async function renderDesign(document: PlanDocument, view: "plan" | "isome
     const [x,y] = project(entrance.x*width,entrance.y*depth);
     pieces.push(`<circle cx="${x}" cy="${y}" r="5" fill="#ef4444"/>`);
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720"><rect width="960" height="720" fill="white"/>${pieces.join('')}<text x="24" y="700" font-size="14" fill="#334155">${view} schematic — geometry, color and massing only; red dots: entrances</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720"><rect width="960" height="720" fill="white"/><svg x="0" y="0" width="960" height="680">${pieces.join('')}</svg><text x="24" y="700" font-size="14" fill="#334155">${focused ? "interior detail" : view} schematic — geometry, color and massing only; red dots: entrances</text></svg>`;
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
   return `data:image/png;base64,${png.toString('base64')}`;
 }

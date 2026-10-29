@@ -642,5 +642,15 @@
   "Image unavailable": "Image unavailable",
   "Current drawing": "Current drawing",
   "Open drawing": "Open drawing",
-  "A project supports up to 12 drawings.": "A project supports up to 12 drawings."
+  "A project supports up to 12 drawings.": "A project supports up to 12 drawings.",
+  "Design a furnished booth with partitions and displays": "Design a furnished booth with partitions and displays",
+  "Plan an interior around my brand references": "Plan an interior around my brand references",
+  "Interior design review": "Interior design review",
+  "{count}/{minimum} elements linked": "{count}/{minimum} elements linked",
+  "Linked elements are checked separately from geometry. Brand fit and visual quality still need your review.": "Linked elements are checked separately from geometry. Brand fit and visual quality still need your review.",
+  "Interior proposal applied. Review the furnishings and brand expression in 3D.": "Interior proposal applied. Review the furnishings and brand expression in 3D.",
+  "The interior design is missing requested elements. No changes were applied. Retry with the same brief.": "The interior design is missing requested elements. No changes were applied. Retry with the same brief.",
+  "Design cancelled. Your drawing is unchanged.": "Design cancelled. Your drawing is unchanged.",
+  "Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.": "Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.",
+  "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.": "The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief."
 }

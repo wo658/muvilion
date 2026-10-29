@@ -15,6 +15,8 @@ const document: PlanDocument = {
 };
 const chair = { id: "chair", kind: "furniture", label: "라운지 의자", x: .4, y: .5, width: 1, depth: 1, height: 1, rotation: 0, color: "#aaaaaa", modelAssetId: "modern_arm_chair_01" };
 const wall = { ...chair, id: "partition", kind: "partition", modelAssetId: undefined, materialAssetId: "Wood051" };
+const brief = { scope:'interior', direction:'Wood lounge', requirements:[{id:'furniture',label:'Lounge furniture',target:'objects',kinds:['furniture'],minimum:1}] };
+const coverage = [{requirementId:'furniture',ids:['chair'],decision:'Wood-framed lounge chair.'}];
 const usage = { inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 5, text: 5, reasoning: undefined } };
 const call = (name: string, input: unknown) => ({ content: [{ type: "tool-call" as const, toolCallId: name, toolName: name, input: JSON.stringify(input) }], finishReason: { unified: "tool-calls" as const, raw: undefined }, usage, warnings: [] });
 const request = () => new Request("http://localhost/api/plans/design", { method: "POST", body: JSON.stringify({ document, brief: "라운지 의자와 목재 가벽을 제안해줘" }) });
@@ -59,24 +61,26 @@ describe("Muse asset references", () => {
   });
   it("executes asset lookup, feeds its results back to the model and returns a proposal at the HTTP boundary", async () => {
     const model = new MockLanguageModelV4({ doGenerate: [
+      call("set_design_brief", brief),
       call("search_design_assets", { category: "all", query: "" }),
-      call("review_design", { summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
+      call("review_design", { coverage, summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
       call("submit_design", { summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
     ] });
     vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(200);
     expect((await response.json()).document.objects[0].modelAssetId).toBe("modern_arm_chair_01");
-    expect(model.doGenerateCalls).toHaveLength(3);
+    expect(model.doGenerateCalls).toHaveLength(4);
     // Muse's provider supports auto only; restrict advertised tools rather than forcing tool_choice.
     expect(model.doGenerateCalls[0].toolChoice).toEqual({ type: "auto" });
-    expect(model.doGenerateCalls[0].tools?.map(tool => tool.name)).toContain("search_design_assets");
-    const toolMessages = model.doGenerateCalls[1].prompt.filter(message => message.role === "tool");
+    expect(model.doGenerateCalls[1].tools?.map(tool => tool.name)).toContain("search_design_assets");
+    const toolMessages = model.doGenerateCalls[2].prompt.filter(message => message.role === "tool");
     expect(JSON.stringify(toolMessages)).toContain("modern_arm_chair_01");
     expect(JSON.stringify(toolMessages)).toContain("Wood051");
   });
   it("rejects an invalid asset in model output without returning an edited document", async () => {
     const model = new MockLanguageModelV4({ doGenerate: [
+      call("set_design_brief", brief),
       call("search_design_assets", { category: "all", query: "" }),
       call("submit_design", { summary: "bad", objects: [{ ...chair, modelAssetId: "invented" }], assumptions: [] }),
     ] });
@@ -90,7 +94,7 @@ describe("Muse asset references", () => {
     vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(502);
-    expect(model.doGenerateCalls.length).toBeLessThanOrEqual(8);
+    expect(model.doGenerateCalls.length).toBeLessThanOrEqual(10);
     expect(await response.json()).not.toHaveProperty("document");
   });
 });

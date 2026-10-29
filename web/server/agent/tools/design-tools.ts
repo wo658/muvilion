@@ -8,26 +8,41 @@ import { createToolRegistry, type ToolRegistration } from "./registry";
 import { addArtifact, reserveToolCall, type DesignToolContext } from "./design-context";
 import { renderDesign } from "./render-design";
 import { generateConceptImage } from "./meta-image";
+import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
 
 const phases = ["initial", "revision"] as const;
 
 /** Shared tools for initial design and revisions. */
 export const designToolRegistrations: readonly ToolRegistration<DesignToolContext>[] = [
+  {
+    name: "set_design_brief", category: "design", phases,
+    create: context => tool({
+      description: "First record the requested interior design deliverables and brand direction. Preserve requested quantities. Separate physical installations from zoning. This brief is fixed for this run; do not reduce scope to make checks pass.",
+      inputSchema: DesignBriefSchema,
+      execute: async brief => {
+        reserveToolCall(context, "set_design_brief", 1);
+        context.brief = DesignBriefSchema.parse(brief);
+        return { brief: context.brief, next: "Discover suitable assets, compose the full interior, then review_design with evidence IDs for every requirement. Existing wall analysis is optional." };
+      },
+    }),
+  },
   { name: "search_design_assets", category: "asset", phases, create: () => assetTools.search_design_assets },
   {
     name: "review_design", category: "design", phases,
     create: context => tool({
       description: "Stage a complete candidate in an isolated draft, check geometry, and render plan and isometric schematic views for visual review. Does not apply changes. Inspect the returned images before submit_design. Call again after changing a candidate.",
-      inputSchema: PlanDesignProposal,
+      inputSchema: PlanDesignProposal.extend({ coverage: DesignCoverageSchema }),
       execute: async proposal => {
+        if (!context.brief) throw new Error("Call set_design_brief before reviewing a candidate.");
         reserveToolCall(context, "review_design", 3);
         const draft = applyDesignProposal(context.base, proposal);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
         context.signal.throwIfAborted();
         context.draft = draft;
         context.revision++;
-        const artifacts = images.map((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Isometric massing review" : "Plan composition review", image }));
-        return { revision: context.revision, warnings: designWarnings(draft), artifacts, limitations: "Schematic masses only. No material detail, photometric lighting, eye-level sightline verification, or mesh asset geometry. Source walls are floor lines; ceiling is checked numerically, not rendered." };
+        context.review = reviewDesignCoverage(context.brief, draft, proposal.coverage);
+        const artifacts = images.map((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Interior detail massing review" : "Plan composition review", image }));
+        return { revision: context.revision, designReview: context.review, warnings: designWarnings(draft), artifacts, limitations: "Coverage checks only verify referenced elements and counts, not aesthetic quality or faithfulness to the original request. Geometry warnings are separate. Schematic masses only; no material detail, photometric lighting, eye-level sightline verification or mesh asset geometry." };
       },
     }),
   },
