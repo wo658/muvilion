@@ -24,6 +24,13 @@ export function withDatabase<T>(read: (db: DatabaseSync) => T): T {
         state_json TEXT NOT NULL, legacy_key TEXT UNIQUE,
         created_at TEXT NOT NULL, updated_at TEXT NOT NULL
       ) STRICT;
+      CREATE TABLE IF NOT EXISTS project_merges (
+        source_id TEXT PRIMARY KEY REFERENCES projects(id),
+        target_id TEXT NOT NULL REFERENCES projects(id),
+        drawing_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        CHECK(source_id <> target_id)
+      ) STRICT;
       CREATE TABLE IF NOT EXISTS assets (
         id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT NOT NULL, mime_type TEXT NOT NULL, content BLOB NOT NULL,

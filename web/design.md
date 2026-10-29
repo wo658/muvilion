@@ -24,6 +24,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - The sample picker lists venue projects, showing included drawing names and counts. Creating a sample copies all originals and extracts the listed PDF pages into separate drawings before opening; do not create partial projects on extraction failure or silently omit missing files. The header immediately switches among the included drawings. Existing user projects are not regrouped.
 
+- The sidebar lists projects, not legacy sample drawings. Explicitly consolidated sample projects appear once; old links open the corresponding drawing in the retained project. Preserve the old rows and originals for recovery, and reject writes from stale tabs until they reload. Independently designed projects remain separate even when they share a venue.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.

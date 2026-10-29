@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { withDatabase } from "@/server/database";
 import { CreateProject, SaveProject, ProjectState, type Project, type ProjectSummary } from "@/lib/projects/schema";
-import { projectOriginalIds } from "@/lib/projects/drawings";
+import { activateDrawing, projectOriginalIds } from "@/lib/projects/drawings";
 
 export class ProjectError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
@@ -61,8 +61,38 @@ function load(db: DatabaseSync, id: string): Project {
   const value = row(db, id);
   return { ...summary(value), state: unpack(db, id, String(value.state_json)) };
 }
-export const listProjects = () => withDatabase(db => db.prepare("SELECT id, name, revision, updated_at FROM projects ORDER BY updated_at DESC, id").all().map(summary));
-export const getProject = (id: string) => withDatabase(db => load(db, id));
+function mergedProject(db: DatabaseSync, id: string) {
+  return db.prepare("SELECT target_id, drawing_id FROM project_merges WHERE source_id = ?").get(id);
+}
+function assertWritable(db: DatabaseSync, id: string) {
+  if (mergedProject(db, id)) throw new ProjectError("This project was consolidated. Reload to open its drawing in the shared project; export unsaved edits first.", 409);
+}
+export const listProjects = () => withDatabase(db => db.prepare("SELECT id, name, revision, updated_at FROM projects WHERE NOT EXISTS (SELECT 1 FROM project_merges WHERE source_id = projects.id) ORDER BY updated_at DESC, id").all().map(summary));
+export const getProject = (id: string) => withDatabase(db => {
+  const merged = mergedProject(db, id);
+  if (!merged) return load(db, id);
+  const target = load(db, String(merged.target_id));
+  const drawingId = String(merged.drawing_id);
+  return target.state.drawings?.some(item => item.id === drawingId)
+    ? { ...target, state: activateDrawing(target.state, drawingId) } : target;
+});
+
+/** Register an explicitly consolidated project after its originals have been copied.
+ * Original rows/assets remain available for recovery and export; never group by name at read time.
+ */
+export function linkMergedProject(sourceId: string, targetId: string, drawingId: string, sourceRevision: number, targetRevision: number) {
+  return withDatabase(db => transaction(db, () => {
+    if (sourceId === targetId) throw new ProjectError("Cannot merge a project into itself.");
+    assertWritable(db, sourceId); assertWritable(db, targetId);
+    if (db.prepare("SELECT 1 FROM project_merges WHERE target_id = ?").get(sourceId)) throw new ProjectError("Cannot create chained project links.");
+    const source = load(db, sourceId), target = load(db, targetId);
+    if (source.revision !== sourceRevision || target.revision !== targetRevision) throw new ProjectError("Project changed during consolidation.", 409);
+    if (!target.state.drawings?.some(item => item.id === drawingId)) throw new ProjectError("Target drawing not found.");
+    const targetDigests = new Set(projectOriginalIds(target.state).map(id => String(asset(db, targetId, id).digest)));
+    if (projectOriginalIds(source.state).some(id => !targetDigests.has(String(asset(db, sourceId, id).digest)))) throw new ProjectError("Copy all original files before consolidating projects.");
+    db.prepare("INSERT INTO project_merges VALUES (?, ?, ?, ?)").run(sourceId, targetId, drawingId, new Date().toISOString());
+  }));
+}
 export function createProject(input: unknown) {
   const parsed = CreateProject.parse(input);
   return withDatabase(db => transaction(db, () => {
@@ -85,6 +115,7 @@ export function createProject(input: unknown) {
 export function saveProject(id: string, input: unknown) {
   const parsed = SaveProject.parse(input);
   return withDatabase(db => transaction(db, () => {
+    assertWritable(db, id);
     const existing = row(db, id);
     if (Number(existing.revision) !== parsed.revision) throw new ProjectError("This project changed in another tab. Export your edits before reloading the saved version.", 409);
     db.prepare("UPDATE projects SET name = ?, state_json = ?, revision = revision + 1, updated_at = ? WHERE id = ?")
@@ -94,7 +125,7 @@ export function saveProject(id: string, input: unknown) {
 }
 export function uploadOriginal(id: string, name: string, mime: string, bytes: Uint8Array) {
   if (!bytes.length || bytes.length > 20 * 1024 * 1024) throw new ProjectError("Choose a file between 1 byte and 20 MB.");
-  return withDatabase(db => transaction(db, () => { row(db, id); return addAsset(db, id, name.slice(0, 255), mime.slice(0, 100), bytes, "original"); }));
+  return withDatabase(db => transaction(db, () => { assertWritable(db, id); row(db, id); return addAsset(db, id, name.slice(0, 255), mime.slice(0, 100), bytes, "original"); }));
 }
 export function getAsset(id: string, assetId: string) {
   return withDatabase(db => { const file = asset(db, id, assetId); return { name: String(file.name), mimeType: String(file.mime_type), data: new Uint8Array(file.content as Uint8Array) }; });
