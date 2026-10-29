@@ -3,7 +3,7 @@ import type { DesignerPose } from "./types";
 type Beat = readonly [time: number, value: number];
 export const hammerHits = [0.275, 0.475, 0.735] as const;
 const launches = [0.235, 0.435, 0.69] as const;
-const contactWrist = -Math.PI - 0.16 + 1.45;
+const contactWrist = -Math.PI + 0.16 + 1.75;
 
 function ease(from: number, to: number, t: number) {
   const u = Math.max(0, Math.min(1, (t - from) / (to - from)));
@@ -47,7 +47,7 @@ export function hammerPhase(t: number) {
 }
 
 /**
- * At contact: body .16 + shoulder -1.45 + wrist = -PI. This turns the
+ * At contact: body -.16 + shoulder -1.75 + wrist = -PI. This turns the
  * hammer's local -Z striking face toward world +Z, against a FRONT wall.
  */
 export function hammerWristAngle(t: number) {
@@ -57,8 +57,8 @@ export function hammerWristAngle(t: number) {
 
 /**
  * Broad cartoon anticipation, forward strike and follow-through in five seconds.
- * Pull the arm and torso back together, hold that silhouette, then thrust forward
- * much faster. Three contacts share one exact pose and one forward-facing target.
+ * Raise and retract the working arm, hold that silhouette, then swing forward
+ * while the torso withdraws from the wall. Three contacts share one exact pose and one forward-facing target.
  * The body and stepping foot exaggerate weight transfer; the root never navigates.
  */
 export function arrangePose(t: number): DesignerPose {
@@ -67,15 +67,15 @@ export function arrangePose(t: number): DesignerPose {
   const stretch = 0.085 * flight;
   return {
     Body: {
-      position: [-0.035 * pullback, -0.018 * pullback - 0.015 * recoil, 0.2 * drive - 0.08 * pullback],
-      rotation: [0.16 * drive - 0.14 * pullback - 0.035 * recoil, -0.28 * pullback, -0.07 * pullback],
+      position: [-0.035 * pullback, -0.018 * pullback - 0.015 * recoil, -0.18 * drive + 0.03 * pullback],
+      rotation: [-0.16 * drive - 0.14 * pullback - 0.035 * recoil, 0.28 * pullback, -0.07 * pullback],
       // Anticipation compression and a fast forward stretch are absent at contact,
       // preserving a repeatable target and an exactly forward-facing strike face.
       scale: [1 + 0.035 * squash, 1 - squash - stretch * 0.35, 1 + squash * 0.5 + stretch],
     },
     ArmR: {
-      position: [0, 0.035 * pullback, 0.085 * drive - 0.035 * pullback],
-      rotation: [-0.55 * hold - 0.9 * drive + 0.15 * pullback, -0.12 * pullback, 0.1 * pullback],
+      position: [-0.12 * drive, 0.32 * pullback + 0.06 * drive, 0.28 * drive - 0.1 * pullback],
+      rotation: [-0.55 * hold - 1.2 * drive + 0.15 * pullback, -0.12 * pullback, 0.1 * pullback],
     },
     ArmL: {
       position: [0, 0.02 * pullback, 0],

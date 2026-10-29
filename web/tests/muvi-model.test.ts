@@ -40,6 +40,19 @@ describe("shipped Muvi GLB", () => {
         }
       }
       if (clip.name === "arrange") {
+        // The arm must carry the swing while the torso retreats from the wall.
+        mixer.setTime(0.235 * clip.duration);
+        model.scene.updateMatrixWorld(true);
+        const arm = model.scene.getObjectByName("ArmR")!;
+        const windupHand = arm.localToWorld(new Vector3(0.1, -0.32, 0.07));
+        const windupRotation = arm.quaternion.clone();
+        const windupBodyZ = model.scene.getObjectByName("Body")!.position.z;
+        mixer.setTime(0.275 * clip.duration);
+        model.scene.updateMatrixWorld(true);
+        const contactHand = arm.localToWorld(new Vector3(0.1, -0.32, 0.07));
+        expect(contactHand.z - windupHand.z).toBeGreaterThan(0.3);
+        expect(arm.quaternion.angleTo(windupRotation)).toBeGreaterThan(0.8);
+        expect(model.scene.getObjectByName("Body")!.position.z).toBeLessThan(windupBodyZ - 0.1);
         const contacts: Vector3[] = [];
         for (const phase of [0.275, 0.475, 0.735]) {
           mixer.setTime(phase * clip.duration);
