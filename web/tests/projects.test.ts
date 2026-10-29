@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { emptyProject, ProjectState } from "@/lib/projects/schema";
-import { createProject, getProject, saveProject, exportProject, uploadOriginal, getAsset, listProjects } from "@/server/projects/store";
+import { createProject, getProject, saveProject, exportProject, uploadOriginal, getAsset, listProjects, linkMergedProject } from "@/server/projects/store";
 import { withDatabase } from "@/server/database";
 import { saveMetaKey } from "@/server/settings/store";
 import { activateDrawing, addDrawing, drawingSources, saveDrawing } from "@/lib/projects/drawings";
@@ -151,5 +151,34 @@ describe("drawing sources", () => {
     for (let i = 1; i < 12; i++) full = addDrawing(full, { id: `drawing-${i}`, document: state().document!, originalAssetId: null, selected: true });
     expect(() => addDrawing(full, { id: "overflow", document: state().document!, originalAssetId: null, selected: true })).toThrow(/12 drawings/);
     expect(ProjectState.parse(emptyProject()).document).toBeNull();
+  });
+});
+
+
+describe("consolidated project navigation", () => {
+  it("lists a project once, opens legacy links at their drawing, and retains originals for export", () => {
+    const source=createProject({name:"Hall 2",state:state()});
+    const targetState=addDrawing(emptyProject(),{id:"hall-1",document:state().document!,originalAssetId:null,selected:true});
+    const grouped=addDrawing(targetState,{id:"hall-2",document:{...state().document!,source:{...state().document!.source,name:"second.png"}},originalAssetId:null,selected:true});
+    const target=createProject({name:"Venue",state:activateDrawing(grouped,"hall-1")});
+    linkMergedProject(source.id,target.id,"hall-2",source.revision,target.revision);
+    expect(listProjects().map(p=>p.id)).toEqual([target.id]);
+    const oldLink=getProject(source.id);
+    expect(oldLink.id).toBe(target.id);expect(oldLink.state.activeDrawingId).toBe("hall-2");
+    expect(getProject(target.id).state.activeDrawingId).toBe("hall-1");
+    expect(exportProject(source.id).state).toEqual(source.state);
+    expect(()=>saveProject(source.id,{name:source.name,revision:source.revision,state:source.state})).toThrow(/consolidated/);
+    expect(()=>uploadOriginal(source.id,"x.pdf","application/pdf",new Uint8Array([1]))).toThrow(/consolidated/);
+    expect(()=>linkMergedProject(target.id,source.id,"hall-1",0,0)).toThrow();
+  });
+  it("rejects stale plans, missing drawings and uncopied originals before hiding anything", () => {
+    const source=createProject({name:"Source",state:state()});
+    const id=uploadOriginal(source.id,"source.pdf","application/pdf",new Uint8Array([1,2,3]));
+    saveProject(source.id,{name:source.name,revision:0,state:{...source.state,originalDrawingId:id}});
+    const target=createProject({name:"Target",state:addDrawing(emptyProject(),{id:"hall",document:state().document!,originalAssetId:null,selected:true})});
+    expect(()=>linkMergedProject(source.id,target.id,"hall",0,0)).toThrow(/changed/);
+    expect(()=>linkMergedProject(source.id,target.id,"missing",1,0)).toThrow(/not found/);
+    expect(()=>linkMergedProject(source.id,target.id,"hall",1,0)).toThrow(/Copy all/);
+    expect(listProjects()).toHaveLength(2);
   });
 });
