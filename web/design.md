@@ -20,7 +20,7 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - While Muse designs, grouped installation edits and review corrections appear in the same 3D/2D viewport with “Live draft · not saved”. This ephemeral overlay never enters project persistence or undo history. Apply commits only the final reviewed proposal. Cancel, failures, changed drawing/references and unmount discard the preview; camera navigation stays available.
 
-- Editing is conversational: no manual editing menu in the workspace header and no immediate Delete action in the selection card. Keep canvas selection, the selected-element context card, Clear selection and Ask about this. Send selected IDs and labels to intent routing, conversation and design requests; changes remain reviewed proposals. For an unconfirmed drawing, expose Confirm scale in the conversation as prerequisite setup.
+- Editing is conversational: no manual editing menu in the workspace header and no immediate Delete action in the selection card. Keep canvas selection, the selected-element context card, Clear selection and Ask about this. Send selected IDs and labels to intent routing, conversation and design requests; changes remain reviewed proposals. Do not show a standalone Confirm scale button in the conversation. Keep manual scale calibration in Drawing settings.
 
 - The sample picker lists venue projects, showing included drawing names and counts. Creating a sample copies all originals and extracts the listed PDF pages into separate drawings before opening; do not create partial projects on extraction failure or silently omit missing files. The header immediately switches among the included drawings. Existing user projects are not regrouped.
 

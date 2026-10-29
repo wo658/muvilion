@@ -395,7 +395,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {!document && <div className="p-5"><Button onClick={() => showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: boothExample(), originalAssetId: null, selected: true }))}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onDrawingSetup={() => setDetails(true)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          <StudioChat onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
           {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}
