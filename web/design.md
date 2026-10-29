@@ -20,6 +20,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - While Muse designs, grouped installation edits and review corrections appear in the same 3D/2D viewport with “Live draft · not saved”. This ephemeral overlay never enters project persistence or undo history. Apply commits only the final reviewed proposal. Cancel, failures, changed drawing/references and unmount discard the preview; camera navigation stays available.
 
+- Editing is conversational: no manual editing menu in the workspace header and no immediate Delete action in the selection card. Keep canvas selection, the selected-element context card, Clear selection and Ask about this. Send selected IDs and labels to intent routing, conversation and design requests; changes remain reviewed proposals. For an unconfirmed drawing, expose Confirm scale in the conversation as prerequisite setup.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.

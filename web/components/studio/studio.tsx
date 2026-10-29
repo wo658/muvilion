@@ -23,8 +23,7 @@ import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-wo
 import { ProjectDialog } from "./project-dialog";
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { EllipsisIcon, FileImageIcon, SettingsIcon, StoreIcon } from "lucide-react";
+import { FileImageIcon, SettingsIcon, StoreIcon } from "lucide-react";
 
 
 import { designWarnings } from "@/lib/plans/design";
@@ -242,16 +241,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const selection = selectedItem ? { id: selectedItem.id, label: selectedItem.label }
         : selectedLine ? { id: selectedLine.id, label: selectedLine.kind === "wall" ? t("Wall") : t("Drawing element") } : null;
     const issues = document ? designWarnings(document, locale) : [];
-    const removeSelection = () => {
-        if (!document || !selected) return;
-        change({ ...document,
-            lines: document.lines.filter(line => line.id !== selected),
-            entrances: document.entrances?.filter(item => item.id !== selected),
-            zones: document.zones?.filter(item => item.id !== selected),
-            objects: document.objects?.filter(item => item.id !== selected).map(item => item.zoneId === selected ? { ...item, zoneId: undefined } : item),
-        });
-        setSelected(null);
-    };
     const cropSpace = async (a: Point, b: Point) => {
         if (!document || busy)
             return;
@@ -377,14 +366,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         <div className="ps-canvas-toolbar">
           {roleToggle}
           {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: t("My booth") }, { id: "venue", label: t("Whole venue") }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label={t("Booth work scope")}/></>}
-          {spaceMode && document && <Popover>
-            <PopoverTrigger render={<Button variant="ghost" className="ps-icon-button" aria-label={t("More tools")} title={t("More tools")}/>}><EllipsisIcon/></PopoverTrigger>
-            <PopoverContent align="end" className="ps-tools-menu">
-              <Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("Undo")}</Button>
-              <Button variant="ghost" aria-expanded={details} aria-controls="drawing-details" onClick={() => { setDetails(value => !value); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{calibrated ? t("Drawing settings") : t("Confirm scale")}</Button>
-              <Button variant={markingEntrance ? "primary" : "ghost"} disabled={busy || (document.entrances?.length ?? 0) >= 30} onClick={() => { setMarkingEntrance(value => !value); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); }}>{markingEntrance ? t("Choose position · cancel") : t("Mark entrance")}</Button>
-            </PopoverContent>
-          </Popover>}
           {spaceMode && document && <>
             <Button variant="ghost" onClick={() => setSourcesOpen(true)}><FileImageIcon/><span>{t("Sources")}</span></Button>
             <Button variant="ghost" onClick={() => setBoothsOpen(true)}><StoreIcon/><span>{t("Booth pricing · applications")}</span></Button>
@@ -407,7 +388,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {!document && <div className="p-5"><Button onClick={() => showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: boothExample(), originalAssetId: null, selected: true }))}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSourcesOpen(true)} selection={selection} onClearSelection={() => setSelected(null)} onRemoveSelection={busy ? undefined : removeSelection} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          <StudioChat onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSourcesOpen(true)} selection={selection} onClearSelection={() => setSelected(null)} onDrawingSetup={() => setDetails(true)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
           {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}

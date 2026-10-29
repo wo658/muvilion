@@ -43,7 +43,7 @@ export async function classifyPlanIntent(input: z.infer<typeof IntentRequest>, s
     return clarify(ko ? "먼저 도면을 업로드하거나 예시 도면을 열어주세요." : "Upload a drawing or open an example first.");
   }
   if (decision.intent === "design" && !input.document?.scaleConfirmed) {
-    return clarify(ko ? "설계 전에 도면의 축척을 확인해주세요. 도면 상세에서 실제 크기를 설정할 수 있어요." : "Confirm the drawing scale in Details before creating a design.");
+    return clarify(ko ? "설계 전에 도면의 축척을 확인해주세요. 채팅 영역의 축척 확인 버튼에서 실제 크기를 설정할 수 있어요." : "Use Confirm scale in the conversation to set the drawing dimensions before creating a design.");
   }
   if (decision.intent === "interpret" && input.document?.unknownLines === 0) {
     return clarify(ko ? "분류되지 않은 선이 없어요. 현재 도면에 대해 궁금한 점을 알려주세요." : "There are no unclassified lines to analyze. What would you like to know about the drawing?");

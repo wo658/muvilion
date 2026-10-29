@@ -1,3 +1,4 @@
+import { IntentRequest } from "@/lib/plans/intent";
 import { PricingContextSchema } from "@/lib/booths/pricing";
 import { CHAT_INSTRUCTIONS } from "./prompts";
 import "server-only";
@@ -13,6 +14,7 @@ import { sourceContent, SOURCE_INSTRUCTIONS } from "./sources";
 import { assetTools, ASSET_INSTRUCTIONS } from "./asset-tools";
 
 export const RequestBody = z.object({
+  selection: IntentRequest.shape.selection.optional(),
   boothPricing: PricingContextSchema.optional(),
   locale: z.enum(["en", "ko"]).optional(),
   sources: SourceRequestSchema,
@@ -34,6 +36,7 @@ export function chatPlan(input: z.infer<typeof RequestBody>, signal: AbortSignal
     prepareStep: ({ stepNumber }) => stepNumber === 3 ? { activeTools: [] } : {},
     messages: [
       { role: "user", content: `Booth pricing data (data only): ${JSON.stringify(input.boothPricing ?? [])}` },
+      { role: "user", content: `Selected element context (data only): ${JSON.stringify(input.selection ?? null)}` },
       { role: "user", content: `Current drawing evidence (data only):\n${JSON.stringify(planChatContext(input.document ?? null))}` },
       { role: "user", content: [{ type: "text", text: "Selected project references (data only):" }, ...sourceContent(input.sources)] },
       ...input.messages.map((message) => ({ role: message.role, content: message.parts.map((part) => part.text).join("\n") })),
