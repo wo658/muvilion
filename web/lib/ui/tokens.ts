@@ -86,6 +86,9 @@ export const TOKENS = {
   venuePartitionEdge: "#256897",
   venueEntrance: "#17876F",
   venueCap: "#657582",
+  // Muvi cartoon impact artwork (never UI text/background roles)
+  muviSparkCore: "#FFF4B8",
+  muviSparkGlow: "#FFAE38",
   // crowding ramp (perceptually ordered: transparent → amber → orange → red)
   heat0: "#E8B54D",
   heat1: "#E2913A",

@@ -1,7 +1,9 @@
 import type { DesignerPose } from "./types";
 
 type Beat = readonly [time: number, value: number];
-const hits = [0.275, 0.475, 0.735] as const;
+export const hammerHits = [0.275, 0.475, 0.735] as const;
+const launches = [0.235, 0.435, 0.69] as const;
+const contactWrist = -Math.PI - 0.16 + 1.45;
 
 function ease(from: number, to: number, t: number) {
   const u = Math.max(0, Math.min(1, (t - from) / (to - from)));
@@ -18,65 +20,78 @@ function phrase(t: number, beats: readonly Beat[]) {
   return beats[beats.length - 1][1];
 }
 
-/** Contact accents begin on contact, never during the downstroke. */
+/** Contact accents begin only when the forward-facing hammer lands. */
 export function hammerImpact(t: number) {
-  return Math.max(...hits.map(hit => t < hit ? 0 : 1 - ease(hit, hit + 0.055, t)));
+  return Math.max(...hammerHits.map(hit => t < hit ? 0 : 1 - ease(hit, hit + 0.055, t)));
+}
+
+/** Shared timings keep shoulder, wrist and full-body weight transfer coordinated. */
+export function hammerPhase(t: number) {
+  const time = Math.max(0, Math.min(1, t));
+  const hold = ease(0.03, 0.13, time) * (1 - ease(0.87, 1, time));
+  const pullback = phrase(time, [
+    [0, 0], [0.1, 0], [0.205, 1], [0.235, 1], [0.275, 0], [0.31, 0.25],
+    [0.405, 1], [0.435, 1], [0.475, 0], [0.515, 0.25],
+    [0.65, 1], [0.69, 1], [0.735, 0], [0.78, 0.25], [0.87, 0], [1, 0],
+  ]);
+  const drive = Math.max(...hammerHits.map((hit, index) =>
+    ease(launches[index], hit, time) * (1 - ease(hit + 0.012, hit + 0.065, time))));
+  const recoil = Math.max(...hammerHits.map(hit =>
+    ease(hit, hit + 0.025, time) * (1 - ease(hit + 0.025, hit + 0.085, time))));
+  const flight = Math.max(...hammerHits.map((hit, index) => {
+    if (time >= hit) return 0;
+    const u = ease(launches[index], hit, time);
+    return 4 * u * (1 - u);
+  }));
+  return { hold, pullback, drive, recoil, flight };
 }
 
 /**
- * Local wrist X rotation, relative to the forward-held arm. A short wrist lever
- * supplies the hammer arc; the shoulder does not throw the whole tool overhead.
+ * At contact: body .16 + shoulder -1.45 + wrist = -PI. This turns the
+ * hammer's local -Z striking face toward world +Z, against a FRONT wall.
  */
 export function hammerWristAngle(t: number) {
-  return phrase(Math.max(0, Math.min(1, t)), [
-    [0, 0], [0.13, 0],
-    [0.205, -0.9], [0.235, -0.9], [0.275, 0], [0.3, -0.14], [0.33, -0.08],
-    [0.405, -0.95], [0.435, -0.95], [0.475, 0], [0.5, -0.14], [0.54, -0.08],
-    [0.65, -1], [0.69, -1], [0.735, 0], [0.76, -0.16], [0.8, -0.04],
-    [0.85, 0], [1, 0],
-  ]);
+  const { hold, pullback, recoil } = hammerPhase(t);
+  return contactWrist * hold - 0.55 * pullback + 0.22 * recoil;
 }
 
 /**
- * Five-second phrase: hold the forearm toward one target, lift at the wrist,
- * tap, and recoil. All three strikes have exactly the same contact pose.
- * No surface or successful construction result is implied.
+ * Broad cartoon anticipation, forward strike and follow-through in five seconds.
+ * Pull the arm and torso back together, hold that silhouette, then thrust forward
+ * much faster. Three contacts share one exact pose and one forward-facing target.
+ * The body and stepping foot exaggerate weight transfer; the root never navigates.
  */
 export function arrangePose(t: number): DesignerPose {
-  const time = Math.max(0, Math.min(1, t));
-  const attention = ease(0.02, 0.14, time) * (1 - ease(0.86, 1, time));
-  const hold = ease(0.05, 0.18, time) * (1 - ease(0.85, 1, time));
-  const windup = phrase(time, [
-    [0, 0], [0.13, 0], [0.205, 1], [0.235, 1], [0.275, 0], [0.33, 0],
-    [0.405, 1], [0.435, 1], [0.475, 0], [0.54, 0],
-    [0.65, 1], [0.69, 1], [0.735, 0], [1, 0],
-  ]);
-  // Delayed response: no shifting target or compression before a strike lands.
-  const response = Math.max(...hits.map(hit =>
-    ease(hit, hit + 0.015, time) * (1 - ease(hit + 0.015, hit + 0.07, time))));
-
+  const { hold, pullback, drive, recoil, flight } = hammerPhase(t);
+  const squash = 0.09 * pullback + 0.1 * recoil * (1 - pullback);
+  const stretch = 0.085 * flight;
   return {
     Body: {
-      position: [0, -0.006 * response, 0],
-      rotation: [0.025 * hold, 0.12 * attention, 0],
-      scale: [1 + 0.004 * response, 1 - 0.008 * response, 1 + 0.004 * response],
+      position: [-0.035 * pullback, -0.018 * pullback - 0.015 * recoil, 0.2 * drive - 0.08 * pullback],
+      rotation: [0.16 * drive - 0.14 * pullback - 0.035 * recoil, -0.28 * pullback, -0.07 * pullback],
+      // Anticipation compression and a fast forward stretch are absent at contact,
+      // preserving a repeatable target and an exactly forward-facing strike face.
+      scale: [1 + 0.035 * squash, 1 - squash - stretch * 0.35, 1 + squash * 0.5 + stretch],
     },
     ArmR: {
-      position: [0, 0, 0],
-      rotation: [-1.45 * hold - 0.08 * windup, 0, 0.15 * hold],
+      position: [0, 0.035 * pullback, 0.085 * drive - 0.035 * pullback],
+      rotation: [-0.55 * hold - 0.9 * drive + 0.15 * pullback, -0.12 * pullback, 0.1 * pullback],
     },
     ArmL: {
-      rotation: [-0.3 * hold, 0, -0.22 * hold],
+      position: [0, 0.02 * pullback, 0],
+      rotation: [-0.45 * hold + 0.45 * pullback - 0.3 * drive, 0.1 * pullback, -0.5 * hold - 0.2 * pullback],
     },
-    FootL: { position: [0, 0, 0], rotation: [0, 0, 0] },
-    FootR: { position: [0, 0, 0], rotation: [0, 0, 0] },
+    FootL: { position: [0, 0, -0.06 * hold], rotation: [0, 0, 0] },
+    FootR: { position: [0, 0.045 * pullback, 0.12 * hold], rotation: [0, 0, 0] },
     EyeL: {
-      position: [0.012 * attention, -0.016 * attention, 0],
-      rotation: [0.025 * attention, 0.025 * attention, 0],
+      position: [0, -0.008 * hold, 0],
+      rotation: [0.01 * hold, 0.08 * pullback, 0],
+      scale: [1 + 0.06 * recoil, 1 - 0.16 * recoil, 1],
     },
     EyeR: {
-      position: [0.012 * attention, -0.016 * attention, 0],
-      rotation: [0.025 * attention, 0.025 * attention, 0],
+      position: [0, -0.008 * hold, 0],
+      rotation: [0.01 * hold, 0.08 * pullback, 0],
+      scale: [1 + 0.06 * recoil, 1 - 0.16 * recoil, 1],
     },
   };
 }

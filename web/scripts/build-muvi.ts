@@ -1,13 +1,13 @@
 /** Original Muvi geometry and reusable rigid-part animation rig. No external assets. */
 import { mkdir, writeFile } from "node:fs/promises";
-import { AnimationMixer, BoxGeometry, AnimationClip, BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry, Shape, Vector3, QuadraticBezierCurve3, TubeGeometry, Quaternion, Euler, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
+import { MeshBasicMaterial, ShapeGeometry, DoubleSide, OctahedronGeometry, AnimationMixer, BoxGeometry, AnimationClip, BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry, Shape, Vector3, QuadraticBezierCurve3, TubeGeometry, Quaternion, Euler, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { MUVI_MOTIONS, MUVI_DESIGNER_DURATION, type MuviMotion } from "../lib/muvi/motions";
 
 import { TOKENS } from "../lib/ui/tokens";
 import { inspectPose } from "./muvi-motions/inspect";
 import { measurePose, measureExtension } from "./muvi-motions/measure";
-import { arrangePose, hammerImpact, hammerWristAngle } from "./muvi-motions/arrange";
+import { arrangePose, hammerWristAngle, hammerHits } from "./muvi-motions/arrange";
 import { paintPose } from "./muvi-motions/paint";
 import type { DesignerPose } from "./muvi-motions/types";
 
@@ -94,7 +94,7 @@ function block(parent: Group, size: [number, number, number], at: [number, numbe
 }
 const hammer = tool("Hammer", model.getObjectByName("ArmR") as Group);
 // Rotate at the grip, not the shoulder. The head's striking faces lie in the
-// swing plane (local +/-Z), so the lower face points down at contact.
+// swing plane (local +/-Z), so the striking face points forward at wall contact.
 hammer.position.set(0.1, -0.32, 0.07);
 block(hammer, [0.075, 0.43, 0.075], [0, -0.22, 0], TOKENS.evidenceDimension);
 block(hammer, [0.20, 0.22, 0.48], [0, -0.47, 0], TOKENS.modelEdge);
@@ -109,17 +109,31 @@ const tape = tool("MeasuringTape");
 block(tape, [1, 0.055, 0.035], [0.5, 0, 0], TOKENS.evidenceDimension);
 for (let i = 1; i < 20; i++) block(tape, [0.006, i % 5 === 0 ? 0.05 : 0.028, 0.04], [i / 20, 0, 0], TOKENS.ink);
 const impact = tool("HammerImpact");
-for (let i = 0; i < 5; i++) {
-  const angle = i * Math.PI * 2 / 5;
-  const ray = block(impact, [0.045, 0.2, 0.04], [Math.sin(angle) * 0.22, Math.cos(angle) * 0.22, 0], TOKENS.evidenceDimension);
-  ray.rotation.z = -angle;
+function star(points: number, outer: number, inner: number, color: string) {
+  const shape = new Shape();
+  for (let i = 0; i < points * 2; i++) {
+    const a = i * Math.PI / points, r = i % 2 ? inner : outer;
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return new Mesh(new ShapeGeometry(shape), new MeshBasicMaterial({ color, side: DoubleSide }));
 }
+const flash = star(8, 0.3, 0.10, TOKENS.muviSparkGlow); flash.name = "ImpactFlash"; impact.add(flash);
+const core = star(6, 0.19, 0.06, TOKENS.muviSparkCore); core.name = "ImpactCore"; core.position.z = -0.012; impact.add(core);
+const sparks = Array.from({ length: 9 }, (_, i) => {
+  const spark = new Mesh(new OctahedronGeometry(1, 0), new MeshBasicMaterial({ color: i % 3 ? TOKENS.muviSparkCore : TOKENS.muviSparkGlow }));
+  spark.name = `ImpactSpark${i}`; impact.add(spark); return spark;
+});
+const hammerContactTimes = hammerHits;
+
 
 function clip(motion: MuviMotion) {
   const designer = designerPoses[motion];
   const duration = designer ? MUVI_DESIGNER_DURATION : motion === "run" ? 0.6 : motion === "walk" ? 1 : 3;
   const steps = designer ? 120 : 60;
-  const times = Array.from({ length: steps + 1 }, (_, i) => i / steps * duration);
+  // Preserve exact contact frames as well as uniformly sampled motion.
+  const times = [...new Set([...Array.from({ length: steps + 1 }, (_, i) => i / steps * duration), ...(motion === "arrange" ? hammerContactTimes.flatMap(t => [t - 0.00001, t, t + 0.008, t + 0.018, t + 0.035, t + 0.075].map(p => p * duration)) : [])].map(t => Math.round(t * 1e6) / 1e6))].sort((a, b) => a - b);
   const tracks = [];
   for (const name of ["Body", "ArmL", "ArmR", "FootL", "FootR", "EyeL", "EyeR"]) {
     const node = model.getObjectByName(name)!;
@@ -176,6 +190,12 @@ function clip(motion: MuviMotion) {
   const action = mixer.clipAction(new AnimationClip("tool-bake", duration, tracks)).play();
   const tapePositions: number[] = [], tapeRotations: number[] = [], tapeScales: number[] = [];
   const impactPositions: number[] = [], impactScales: number[] = [];
+  const flashScales: number[] = [], coreScales: number[] = [];
+  const sparkPositions = sparks.map(() => [] as number[]), sparkScales = sparks.map(() => [] as number[]);
+  const contactPoints = hammerContactTimes.map(phase => {
+    action.time = phase * duration; mixer.update(0); model.updateMatrixWorld(true);
+    return hammer.localToWorld(new Vector3(0, -0.47, -0.305));
+  });
   for (const time of times) {
     action.time = time; mixer.update(0); model.updateMatrixWorld(true);
     const right = model.getObjectByName("ArmR")!.localToWorld(new Vector3(0.1, -0.5, 0.2));
@@ -185,14 +205,35 @@ function clip(motion: MuviMotion) {
     tapePositions.push(...right.toArray());
     tapeRotations.push(...new Quaternion().setFromUnitVectors(new Vector3(1, 0, 0), delta.normalize()).toArray());
     tapeScales.push(length * extension, extension > 0 ? 1 : 0, extension > 0 ? 1 : 0);
-    const hit = hammer.localToWorld(new Vector3(0, -0.47, -0.305));
-    impactPositions.push(...hit.toArray());
-    const flash = motion === "arrange" ? hammerImpact(time / duration) : 0;
-    impactScales.push(flash, flash, flash);
+    const phase = time / duration;
+    const contactIndex = hammerContactTimes.findLastIndex(t => phase >= t);
+    const age = contactIndex < 0 ? 1 : (phase - hammerContactTimes[contactIndex]) * duration;
+    const visible = motion === "arrange" && age >= 0 && age < 0.375;
+    const anchor = motion === "arrange" ? contactPoints[Math.max(0, contactIndex)] : new Vector3();
+    impactPositions.push(...anchor.toArray());
+    impactScales.push(visible ? 1 : 0, visible ? 1 : 0, visible ? 1 : 0);
+    const flashSize = visible ? Math.max(0, 1 - age / 0.15) * (1 + Math.min(age / 0.035, 1) * 0.6) : 0;
+    flashScales.push(flashSize, flashSize, flashSize);
+    const coreSize = visible ? Math.max(0, 1 - age / 0.075) : 0;
+    coreScales.push(coreSize, coreSize, coreSize);
+    sparks.forEach((_, i) => {
+      const progress = visible ? Math.max(0, Math.min(1, (age - (i % 3) * 0.012) / 0.34)) : 0;
+      const angle = i * Math.PI * 2 / sparks.length + 0.2;
+      const travel = 0.12 + (0.35 + (i % 3) * 0.12) * (1 - (1 - progress) ** 2);
+      sparkPositions[i].push(Math.cos(angle) * travel, Math.sin(angle) * travel - progress * progress * 0.08, -0.04 - progress * (0.08 + (i % 2) * 0.08));
+      const size = visible ? Math.max(0, 1 - progress) : 0;
+      sparkScales[i].push(0.06 * size, 0.085 * size, 0.025 * size);
+    });
   }
   mixer.stopAllAction(); mixer.uncacheRoot(model);
-  tracks.push(new VectorKeyframeTrack("MeasuringTape.position", times, tapePositions), new QuaternionKeyframeTrack("MeasuringTape.quaternion", times, tapeRotations), new VectorKeyframeTrack("MeasuringTape.scale", times, tapeScales), new VectorKeyframeTrack("HammerImpact.position", times, impactPositions), new VectorKeyframeTrack("HammerImpact.scale", times, impactScales));
-  return new AnimationClip(motion, duration, tracks);
+  const fxTimes = motion === "arrange" ? times : [0, duration];
+  const fxValues = (values: number[]) => motion === "arrange" ? values : [...values.slice(0, 3), ...values.slice(-3)];
+  tracks.push(new VectorKeyframeTrack("MeasuringTape.position", times, tapePositions), new QuaternionKeyframeTrack("MeasuringTape.quaternion", times, tapeRotations), new VectorKeyframeTrack("MeasuringTape.scale", times, tapeScales), new VectorKeyframeTrack("HammerImpact.position", fxTimes, fxValues(impactPositions)), new VectorKeyframeTrack("HammerImpact.scale", fxTimes, fxValues(impactScales)));
+  tracks.push(new VectorKeyframeTrack("ImpactFlash.scale", fxTimes, fxValues(flashScales)), new VectorKeyframeTrack("ImpactCore.scale", fxTimes, fxValues(coreScales)));
+  sparks.forEach((spark, i) => {
+    tracks.push(new VectorKeyframeTrack(`${spark.name}.position`, fxTimes, fxValues(sparkPositions[i])), new VectorKeyframeTrack(`${spark.name}.scale`, fxTimes, fxValues(sparkScales[i])));
+  });
+  return new AnimationClip(motion, duration, tracks).optimize();
 }
 async function main() {
   const animations = MUVI_MOTIONS.map(clip);

@@ -11,10 +11,10 @@ import { useMotionPaused } from "./use-motion-paused";
 
 const Canvas = dynamic(() => import("./muvi-canvas"), { ssr: false });
 const studies = [
-  { motion: "inspect", title: "Inspect space", description: "Look around, compare areas, and lean toward a detail.", number: "01" },
-  { motion: "measure", title: "Measure", description: "Pull the tape, check the marks, and zip it back.", number: "02" },
-  { motion: "arrange", title: "Hammer", description: "Lift at the wrist, tap the same spot, and rebound.", number: "03" },
-  { motion: "paint", title: "Paint", description: "Swish, swish! Big brush strokes with a little bounce.", number: "04" },
+  { motion: "inspect", title: "Inspect space", description: "Look left, look right, lean in, and spring back with an idea.", number: "01" },
+  { motion: "measure", title: "Measure", description: "Lean back and pull! The tape snaps back with a surprised bounce.", number: "02" },
+  { motion: "arrange", title: "Hammer", description: "Wind up, drive the hammer into the wall ahead, and burst into sparks.", number: "03" },
+  { motion: "paint", title: "Paint", description: "Big swooshes, stamping feet, and a triumphant brush flourish.", number: "04" },
 ] as const;
 
 export function MuviGallery() {

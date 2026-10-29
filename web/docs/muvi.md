@@ -36,30 +36,34 @@ assets above are tracked and require no private files to build or render.
 
 ## Spatial designer studies
 
-Preview `/muvi/gallery`: inspect (survey and focus), measure (compare spacing), arrange
-(cartoon hammering), and paint (three broad brush strokes). Each is a five-second,
-in-place phrase with neutral entry/exit. These replace the sketch and partition studies.
-Staged result geometry was removed: gestures must work with any real-space output.
-Hand tools remain: a toy hammer, a retracting marked tape measure, and an oversized
-brush. Hammer uses a grip-centered wrist pivot with its striking faces aligned to the swing
-plane. Three downward taps share a target; the shoulder stays forward. Brief contact
-bursts mark impacts without creating a result object. Tools
-are hidden in unrelated clips. Tape and impact transforms are baked from rig poses.
-The style is intentionally cartoon-like: large anticipation, fast strikes, bouncy
-recoil, uneven rhythms and small squash/stretch. Feet stay planted. Individual authored poses live in `scripts/muvi-motions/`.
+Preview `/muvi/gallery`: inspect (big survey and excited presentation), measure
+(full-body tug and spring recoil), arrange (front-wall hammering), and paint
+(broad brush sweeps, foot taps and a triumphant flourish). All four are five-second
+in-place cartoon phrases with neutral loop entry/exit. Large anticipatory poses,
+fast actions, delayed recovery and up to 12% squash/stretch are intentional.
+Feet can tap/rock with floor clearance. Individual poses live in `scripts/muvi-motions/`.
 
-The shared `MuviModel` accepts `workHeading` (radians, local +Z work direction).
-This orients the whole phrase in scene coordinates without camera-facing behavior.
-An embedding scene can supply the direction of work without supplying result geometry.
-The gallery previews left/right/away headings; its floor ring is an orientation aid only.
-No heading, mascot, prop or gesture enters the plan document, persistence or engine.
+Tools include a toy hammer, marked retracting tape and broad brush. No staged result
+geometry is included. Hammer arm and torso pull back, then drive toward local +Z;
+the striking face is oriented toward a vertical wall and all three contacts coincide.
+A short star-shaped flash and shrinking diamond sparks burst from each fixed contact.
+The unlit effect uses dedicated artwork tokens and no borrowed textures. It does not
+follow the recoiling hammer and cannot enter the document or be mistaken for saved debris.
+Tool/FX transforms are baked in the same GLB; constant animation keys are optimized.
 
-These are prepared animation assets for Muse activity presentation. Live Muse event
-wiring is not implemented by this gallery. A future caller should choose inspect for
-examining context, measure for comparing spacing, arrange for general making/building, or
-paint for applying appearance, and return to idle when work stops. Playback is not an
-indication that a proposal has been applied or a result validated. Existing drawing
-roaming is unchanged. Pause, reduced-motion, hidden-page behavior and fallback remain.
+`MuviModel.workHeading` rotates a phrase into the scene's work direction. The gallery
+previews left/right/away headings with a floor marker. Existing drawing roaming and
+its small companion scale are unchanged. Live Muse event wiring is still separate:
+these assets do not imply a proposal has been applied or validated. Pause, reduced
+motion, hidden-page handling and WebGL/model fallback remain in effect.
+
+### Motion references (reviewed 2026-10-29)
+
+- [Animation Mentor / Chris Hurtt: Anticipation](https://www.animationmentor.com/blog/anticipation-the-12-basic-principles-of-animation/): opposing preparation and sufficient energy build-up before fast actions; applied to all four motions.
+- [Atif: stylized explosion breakdown](https://realtimevfx.com/t/stylized-frag-launcher-explosion-overwatch-inspiration-breakdown-posted/1894?page=2): separating instant flash, burst and outward sparks with different lifetimes; adapted into a much smaller cartoon hammer impact.
+
+References inform timing and structure only. All motion functions, effect meshes and
+tools here are original; no reference images, videos, meshes or textures are bundled.
 
 ## In-space size
 

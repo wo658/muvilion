@@ -33,10 +33,10 @@ describe("shipped Muvi GLB", () => {
           // Work gestures stay in place so callers can orient them beside any result.
           for (const name of ["FootL", "FootR"]) {
             const foot = model.scene.getObjectByName(name)!;
-            expect(foot.position.y).toBeCloseTo(0.19, 5);
-            expect(foot.position.z).toBeCloseTo(0, 5);
+            expect(new Box3().setFromObject(foot, true).min.y).toBeGreaterThanOrEqual(-0.001);
+            expect(Math.abs(foot.position.z)).toBeLessThan(0.35);
           }
-          expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.1);
+          expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.35);
         }
       }
       if (clip.name === "arrange") {
@@ -47,9 +47,20 @@ describe("shipped Muvi GLB", () => {
           const face = model.scene.getObjectByName("HammerFace")!;
           contacts.push(face.getWorldPosition(new Vector3()));
           const normal = new Vector3(0, 0, -1).applyQuaternion(face.getWorldQuaternion(new Quaternion()));
-          expect(normal.y).toBeLessThan(-0.9);
+          expect(normal.z).toBeGreaterThan(0.9);
+          expect(model.scene.getObjectByName("ImpactCore")!.scale.x).toBeGreaterThan(0.9);
         }
         for (const contact of contacts) expect(contact.distanceTo(contacts[0])).toBeLessThan(0.015);
+        mixer.setTime(0.275 * clip.duration);
+        const effect = model.scene.getObjectByName("HammerImpact")!;
+        const anchor = effect.position.clone();
+        const spark = model.scene.getObjectByName("ImpactSpark0")!;
+        const initialRadius = spark.position.length();
+        mixer.setTime(0.30 * clip.duration);
+        expect(effect.position.distanceTo(anchor)).toBeLessThan(0.0001);
+        expect(spark.position.length()).toBeGreaterThan(initialRadius);
+        mixer.setTime(0.40 * clip.duration);
+        expect(effect.scale.x).toBe(0);
       }
       expect(model.scene.getObjectByName("PaintBrush")!.scale.x).toBe(clip.name === "paint" ? 1 : 0);
       expect(model.scene.getObjectByName("Hammer")!.scale.x).toBe(clip.name === "arrange" ? 1 : 0);

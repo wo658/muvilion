@@ -17,44 +17,52 @@ function phrase(t: number, beats: readonly Beat[]) {
 }
 
 /**
- * Five-second cartoon brush phrase: wind up, three unmistakable "swish" passes,
- * then inspect and release. The tool follows the hand; no wall/result is assumed.
- * +Z is the working direction. Feet stay planted; gaze never tracks the camera.
+ * Five-second cartoon brush phrase: a big opposing wind-up, three unequal swishes,
+ * a proud high-brush finish, then overlapping settle. No wall/result is assumed.
+ * Attention leads the action; body and free arm trail the brush, never the camera.
  */
 export function paintPose(t: number): DesignerPose {
   const time = Math.max(0, Math.min(1, t));
-  const attention = phrase(time, [[0, 0], [0.1, 1], [0.85, 1], [1, 0]]);
-  const reach = phrase(time, [[0, 0], [0.08, 0], [0.2, 1], [0.81, 1], [0.97, 0], [1, 0]]);
-  const anticipation = phrase(time, [[0, 0], [0.1, 1], [0.2, 0], [1, 0]]);
-  // Uneven accents keep the broad passes readable: long, quick, small finishing pass.
-  const stroke = phrase(time, [[0, 0], [0.1, 0], [0.23, 1], [0.39, -1], [0.51, 0.85], [0.62, -0.8], [0.72, 0.55], [0.81, -0.5], [0.96, 0], [1, 0]]);
-  // Eyes lead the brush; torso arrives a beat later, producing visible follow-through.
-  const gazeHeight = phrase(time, [[0, 0], [0.19, 1], [0.35, -1], [0.47, 0.85], [0.58, -0.8], [0.68, 0.55], [0.77, -0.5], [0.89, 0], [1, 0]]);
-  const follow = phrase(time, [[0, 0], [0.26, 1], [0.42, -1], [0.54, 0.85], [0.65, -0.8], [0.75, 0.55], [0.84, -0.5], [0.98, 0], [1, 0]]);
-  const compression = phrase(time, [[0, 0], [0.1, 1], [0.23, -0.5], [0.4, 0.65], [0.52, -0.35], [0.63, 0.45], [0.73, -0.2], [0.82, 0.25], [1, 0]]);
+  const attention = phrase(time, [[0, 0], [0.11, 1], [0.88, 1], [1, 0]]);
+  const reach = phrase(time, [[0, 0], [0.12, 0], [0.21, 1], [0.85, 1], [0.98, 0], [1, 0]]);
+  const anticipation = phrase(time, [[0, 0], [0.11, 1], [0.15, 1], [0.23, 0], [1, 0]]);
+  // Held high poses give way to quick, long brush passes; the last pass flicks up.
+  const stroke = phrase(time, [[0, 0], [0.14, 0], [0.24, 1], [0.29, 1], [0.38, -1], [0.48, 0.8], [0.52, 0.8], [0.59, -0.85], [0.67, 0.6], [0.74, -0.6], [0.82, 1], [0.86, 1], [0.98, 0], [1, 0]]);
+  const gazeHeight = phrase(time, [[0, 0], [0.2, 1], [0.34, -1], [0.44, 0.8], [0.55, -0.85], [0.63, 0.6], [0.7, -0.6], [0.78, 1], [0.87, 1], [0.98, 0], [1, 0]]);
+  // Delayed torso overshoots make the same hand action read as whole-body effort.
+  const follow = phrase(time, [[0, 0], [0.13, -0.65], [0.27, 1], [0.41, -1], [0.51, 0.8], [0.62, -0.85], [0.7, 0.6], [0.77, -0.6], [0.85, 1], [0.92, -0.22], [1, 0]]);
+  const compression = phrase(time, [[0, 0], [0.13, 1], [0.25, -1], [0.4, 0.85], [0.5, -0.8], [0.61, 0.7], [0.69, -0.6], [0.76, 0.65], [0.85, -1], [0.93, 0.3], [1, 0]]);
+  const leftTap = phrase(time, [[0, 0], [0.16, 0], [0.23, 1], [0.31, 0], [0.74, 0], [0.83, 0.8], [0.91, 0], [1, 0]]);
+  const rightTap = phrase(time, [[0, 0], [0.48, 0], [0.57, 1], [0.65, 0], [1, 0]]);
 
   return {
     Body: {
-      position: [0.025 * reach, -0.012 * anticipation, 0.025 * reach],
-      rotation: [0.035 * reach - 0.075 * gazeHeight, 0.34 * attention, 0.045 * follow - 0.02 * reach],
-      scale: [1 + 0.025 * compression, 1 - 0.035 * compression, 1 + 0.015 * compression],
+      position: [0.075 * follow, 0.015 * reach, 0.055 * reach - 0.035 * anticipation],
+      rotation: [0.045 * reach - 0.12 * gazeHeight - 0.09 * anticipation, 0.36 * attention + 0.2 * follow, 0.23 * follow],
+      scale: [1 + 0.055 * compression, 1 - 0.1 * compression, 1 + 0.04 * compression],
     },
     ArmR: {
-      position: [0, 0.015 * reach, 0.025 * reach],
-      rotation: [-1.7 * reach - 0.6 * stroke + 0.23 * anticipation, 0.08 * reach, 0.33 * reach + 0.12 * stroke],
+      position: [0.015 * reach, 0.025 * reach, 0.03 * reach],
+      rotation: [-1.7 * reach - 0.82 * stroke + 0.45 * anticipation, 0.12 * reach, 0.47 * reach + 0.16 * stroke + 0.25 * anticipation],
     },
     ArmL: {
-      rotation: [-0.3 * reach + 0.12 * anticipation - 0.09 * follow, 0, -0.2 * reach + 0.06 * follow],
+      rotation: [-0.55 * reach + 0.3 * anticipation - 0.22 * follow, 0, -0.55 * reach + 0.28 * follow],
     },
-    FootL: { rotation: [0, 0.055 * attention, 0] },
-    FootR: { rotation: [0, 0.11 * attention, 0] },
+    FootL: {
+      position: [0, 0.1 * leftTap, 0.035 * leftTap],
+      rotation: [0, 0.09 * attention, 0],
+    },
+    FootR: {
+      position: [0, 0.085 * rightTap, 0.03 * rightTap],
+      rotation: [0, 0.16 * attention, 0],
+    },
     EyeL: {
-      position: [0.02 * attention, 0.02 * gazeHeight, 0],
-      rotation: [-0.055 * gazeHeight, 0.055 * attention, 0],
+      position: [0.025 * attention, 0.024 * gazeHeight, 0],
+      rotation: [-0.07 * gazeHeight, 0.06 * attention, 0],
     },
     EyeR: {
-      position: [0.02 * attention, 0.02 * gazeHeight, 0],
-      rotation: [-0.055 * gazeHeight, 0.055 * attention, 0],
+      position: [0.025 * attention, 0.024 * gazeHeight, 0],
+      rotation: [-0.07 * gazeHeight, 0.06 * attention, 0],
     },
   };
 }
