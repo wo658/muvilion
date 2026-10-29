@@ -6,7 +6,6 @@ import { createPortal } from "react-dom";
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
 import { MuviRoaming } from "@/components/muvi/muvi-roaming";
 import { useMotionPaused } from "@/components/muvi/use-motion-paused";
-import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { SceneLabel } from "./scene-label";
 import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
@@ -21,7 +20,7 @@ import { Popover, PopoverTrigger, PopoverContent, PopoverTitle } from "../ui/pop
 import { NativeSelect } from "../ui/native-select";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Switch } from "../ui/switch";
-import { LayersIcon, InfoIcon, FocusIcon, RotateCcwIcon } from "lucide-react";
+import { SettingsIcon } from "lucide-react";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { deriveWalls } from "@/lib/plans/walls";
 import { DoubleSide, Shape } from "three";
@@ -54,7 +53,6 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   const world=useMemo(()=>navigationWorld({...document,wallHeight}),[document,wallHeight]);
   const [exploreStatus,setExploreStatus]=useState<MessageKey>(EXPLORE_HINT);
   const overviewCeiling=useRef("hidden");
-  const selectedItem=document.objects?.some(o=>o.id===selected)||document.zones?.some(z=>z.id===selected);
   const changeView=(next:CameraView)=>{
     if(next==="interior" && view!=="interior") {overviewCeiling.current=ceilingMode;if(document.ceiling)setCeilingMode("solid");}
     if(next!=="interior" && view==="interior") setCeilingMode(overviewCeiling.current);
@@ -74,17 +72,22 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     <ToggleGroup aria-label={t("Camera view")} value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
       <ToggleGroupItem value="overview">{t("Overview")}</ToggleGroupItem><ToggleGroupItem value="top">{t("Top")}</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?t("Review scale and floor boundary; a clear interior viewpoint is required."):t("Click the floor to move; drag to look around")}>{t("Explore")}</ToggleGroupItem>
     </ToggleGroup>
-    <Button variant="outline" size="icon-sm" aria-label={t("Focus selected area or element")} title={t("Focus selection")} disabled={!selectedItem} onClick={()=>changeView("selection")}><FocusIcon/></Button>
-    <Button variant="outline" size="icon-sm" aria-label={t("Reset camera")} title={t("Reset camera")} onClick={()=>changeView(view)}><RotateCcwIcon/></Button>
-    <Button variant={cutaway ? "secondary" : "outline"} size="sm" aria-pressed={cutaway} disabled={view === "interior"} onClick={() => setCutaway(value => !value)}>{t("Cutaway")}</Button>
-    <Button variant="outline" size="sm" aria-pressed={!muviPaused && !systemPaused} disabled={!showMuvi || systemPaused} onClick={() => setMuviPaused(value => !value)}><MuviAvatar size={18}/>{(muviPaused || systemPaused ? t("Resume Muvi") : t("Pause Muvi"))}</Button>
-    <Popover><PopoverTrigger render={<Button variant="outline" size="icon-sm" aria-label={t("Display layers")} title={t("Display layers")}/>}><LayersIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Display layers")}</PopoverTitle><FieldGroup>
-      <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
-      <Field orientation="horizontal"><FieldLabel htmlFor="muvi-display">{t("Show Muvi")}</FieldLabel><Switch id="muvi-display" checked={showMuvi} onCheckedChange={setShowMuvi}/></Field>
-      <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
-      <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
-    </FieldGroup></PopoverContent></Popover>
-    <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View help and model information")}/>}><InfoIcon/></PopoverTrigger><PopoverContent align="start"><PopoverTitle>{t("Viewing the space")}</PopoverTitle><p>{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.")}</p><p>{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p><p>{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p></PopoverContent></Popover>
+    <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View settings")} title={t("View settings")}/>}><SettingsIcon/></PopoverTrigger>
+      <PopoverContent align="end"><PopoverTitle>{t("View settings")}</PopoverTitle><FieldGroup>
+        <Field orientation="horizontal"><FieldLabel htmlFor="cutaway-display">{t("Cutaway")}</FieldLabel><Switch id="cutaway-display" checked={cutaway} disabled={view === "interior"} onCheckedChange={setCutaway}/></Field>
+        <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
+        <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
+        <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
+        <Field orientation="horizontal"><FieldLabel htmlFor="muvi-display">{t("Show Muvi")}</FieldLabel><Switch id="muvi-display" checked={showMuvi} onCheckedChange={setShowMuvi}/></Field>
+        <Button variant="outline" size="sm" disabled={!showMuvi || systemPaused} onClick={() => setMuviPaused(value => !value)}>{(muviPaused || systemPaused ? t("Resume Muvi") : t("Pause Muvi"))}</Button>
+        <Button variant="outline" size="sm" onClick={()=>changeView(view)}>{t("Reset camera")}</Button>
+      </FieldGroup>
+      <details className="mt-4 text-xs text-muted"><summary className="cursor-pointer">{t("View help and model information")}</summary>
+        <p className="mt-2">{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom.")}</p>
+        <p className="mt-2">{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p>
+        <p className="mt-2">{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p>
+      </details></PopoverContent>
+    </Popover>
   </div>;
   return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
 

@@ -23,7 +23,7 @@ import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-wo
 import { ProjectDialog } from "./project-dialog";
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
-import { FileImageIcon, SettingsIcon, StoreIcon } from "lucide-react";
+import { FolderCogIcon, SettingsIcon } from "lucide-react";
 
 
 import { designWarnings } from "@/lib/plans/design";
@@ -69,8 +69,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const [designPreview, setDesignPreview] = useState<{ base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null>(null);
     const activePreview = spaceMode && designPreview?.base === document && designPreview?.sources === sources ? designPreview : null;
     const [details, setDetails] = useState(false);
-    const [sourcesOpen, setSourcesOpen] = useState(false);
-    const [boothsOpen, setBoothsOpen] = useState(false);
+    const [projectSettings, setProjectSettings] = useState<"sources" | "booths" | null>(null);
     const [floorDraft, setFloorDraft] = useState<Point[] | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
     const [history, setHistory] = useState<PlanDocument[]>([]);
@@ -163,7 +162,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setDrawings(drawingSources(next)); setActiveDrawingId(next.activeDrawingId);
         setSourceFile(null); setError(null); setNotice(null);
         setPublishedId(null); setPublicProject(null); setBoothDocument(null); setBoothPricing([]);
-        setBoothSelection(null); setBoothsOpen(false);
+        setBoothSelection(null); setProjectSettings(null);
         openDocument(next.document!);
         const edits = next.activeDrawingId && drawingEdits.current.get(next.activeDrawingId);
         if (edits) { setHistory(edits.history); setWidth(edits.width); setHeight(edits.height); }
@@ -323,13 +322,19 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </div> },
     ] : []}/>
 
-    <ProjectDialog open={sourcesOpen} title={t("Sources")} onClose={() => setSourcesOpen(false)}>
-      <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={switchDrawing} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setSourcesOpen(false); input.current?.click(); }}/>
-      {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
+    <ProjectDialog open={projectSettings !== null} title={t("Project settings")} onClose={() => setProjectSettings(null)}>
+      <nav aria-label={t("Project settings sections")} className="flex gap-2 border-b border-hairline px-4 py-3">
+        <Button variant={projectSettings === "sources" ? "secondary" : "ghost"} aria-current={projectSettings === "sources" ? "page" : undefined} onClick={() => setProjectSettings("sources")}>{t("Sources")}</Button>
+        {spaceMode && document && <Button variant={projectSettings === "booths" ? "secondary" : "ghost"} aria-current={projectSettings === "booths" ? "page" : undefined} onClick={() => setProjectSettings("booths")}>{t("Booth pricing · applications")}</Button>}
+      </nav>
+      <div hidden={projectSettings !== "sources"}>
+        <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={id => { switchDrawing(id); setProjectSettings(null); }} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setProjectSettings(null); input.current?.click(); }}/>
+        {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
+      </div>
+      {spaceMode && document && <div hidden={projectSettings !== "booths"}>
+        <OrganizerBooths key={activeDrawingId} document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
+      </div>}
     </ProjectDialog>
-    {spaceMode && document && <ProjectDialog open={boothsOpen} title={t("Booth pricing · applications")} onClose={() => setBoothsOpen(false)}>
-      <OrganizerBooths key={activeDrawingId} document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
-    </ProjectDialog>}
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
     <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 400 * 1024 * 1024)
@@ -367,8 +372,10 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
           {roleToggle}
           {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: t("My booth") }, { id: "venue", label: t("Whole venue") }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label={t("Booth work scope")}/></>}
           {spaceMode && document && <>
-            <Button variant="ghost" onClick={() => setSourcesOpen(true)}><FileImageIcon/><span>{t("Sources")}</span></Button>
-            <Button variant="ghost" onClick={() => setBoothsOpen(true)}><StoreIcon/><span>{t("Booth pricing · applications")}</span></Button>
+            <NativeSelect aria-label={t("Switch drawing")} className="min-w-0 max-w-64 flex-1" value={activeDrawingId ?? drawings[0]?.id ?? ""} disabled={busy} onChange={event => switchDrawing(event.target.value)}>
+              {drawings.map(item => <option key={item.id} value={item.id}>{item.document.source.name}{item.document.source.pages > 1 ? ` · ${t("Page {page}", { page: item.document.source.page })}` : ""}</option>)}
+            </NativeSelect>
+            <Button variant="ghost" className="ps-icon-button" aria-label={t("Project settings")} title={t("Project settings")} onClick={() => setProjectSettings("sources")}><FolderCogIcon/></Button>
           </>}
           <div ref={setToolbarEnd} className="ps-toolbar-end"/>
         </div>
@@ -377,7 +384,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
           {activePreview && <p role="status" className="pointer-events-none absolute left-3 right-3 top-16 z-10 max-w-md line-clamp-2 rounded bg-surface px-3 py-2 text-xs text-ink">{t("Live draft · not saved")} · {activePreview.label}</p>}
-          {document ? !planTools ? <><SceneView toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={activePreview ? () => {} : selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={activePreview ? () => {} : selectCanvas} sourceOnly={false} showOriginal={false} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {document ? !planTools ? <><SceneView key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={activePreview ? () => {} : selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={activePreview ? () => {} : selectCanvas} sourceOnly={false} showOriginal={false} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
           {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? t("Cropping your space") : t("Reading your drawing")}</strong><span>{cropping ? t("Keeping geometry inside the selected area.") : t("Extracting geometry and preparing the source preview.")}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>{t("Cancel")}</Button>}</div>}
         </div>
         <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details || !spaceMode}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || !planTools || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : !planTools ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
@@ -388,7 +395,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div hidden={!spaceMode} className="ps-role-panel">
           {!document && <div className="p-5"><Button onClick={() => showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: boothExample(), originalAssetId: null, selected: true }))}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setSourcesOpen(true)} selection={selection} onClearSelection={() => setSelected(null)} onDrawingSetup={() => setDetails(true)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          <StudioChat onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onDrawingSetup={() => setDetails(true)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
         <div hidden={spaceMode} className="ps-role-panel">
           {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}
