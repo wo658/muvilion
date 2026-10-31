@@ -1,4 +1,5 @@
 "use client";
+import { MUVI_OPERATION_LABELS, type MuviOperation } from "@/lib/muvi/operations";
 import type { PricingContext } from "@/lib/booths/pricing";
 import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
@@ -35,7 +36,8 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, boothPricing, onDesignPreview }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, boothPricing, onDesignPreview, onMuviOperation }: {
+    onMuviOperation?: (activity: { base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null) => void;
     onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
     boothPricing?: PricingContext;
     onCollapse?: () => void;
@@ -66,6 +68,9 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const [proposal, setProposal] = useState<Proposal | null>(null);
     const [liveDraft, setLiveDraft] = useState<{ base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null>(null);
     useEffect(() => { onDesignPreview?.(liveDraft); return () => onDesignPreview?.(null); }, [liveDraft, onDesignPreview]);
+    const [muviActivity, setMuviActivity] = useState<{ base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null>(null);
+    const activeOperation = interpreting && muviActivity?.base === document && muviActivity?.sources === sources ? muviActivity : null;
+    useEffect(() => { onMuviOperation?.(activeOperation); return () => onMuviOperation?.(null); }, [activeOperation, onMuviOperation]);
     const [notice, setNotice] = useState<string | null>(null);
     const controller = useRef<AbortController | null>(null);
     const mounted = useRef(true);
@@ -92,6 +97,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         setInterpretError(null);
         setProposal(null);
         setLiveDraft(null);
+        setMuviActivity(null);
         setNotice(null);
         setProgress(null);
         setCancelRequested(false);
@@ -165,9 +171,10 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     setInterpretError(`${localizeMessage(locale, outcome.errors[0])} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
-                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: abortController.signal });
+                const designSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(430_000)]);
+                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: designSignal });
                 const assertCurrent = () => {
-                    abortController.signal.throwIfAborted();
+                    designSignal.throwIfAborted();
                     if (!mounted.current || currentContext.current.document !== base || currentContext.current.sources !== sources) throw new DOMException("Stale design", "AbortError");
                 };
                 let draft = base;
@@ -175,6 +182,9 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     assertCurrent();
                     draft = previewDocument(draft, event);
                     setLiveDraft({ base, sources, document: draft, label: event.label });
+                }, operation => {
+                    assertCurrent();
+                    setMuviActivity({ base, sources, operation });
                 });
                 assertCurrent();
                 const result = PlanDocumentSchema.parse(body.document);
@@ -193,8 +203,10 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             setInterpretError(err instanceof Error ? err.message : t("Muse could not review the drawing."));
         }
         finally {
-            if (mounted.current)
+            if (mounted.current) {
+                setMuviActivity(null);
                 setInterpreting(false);
+            }
         }
     }
     async function send(text: string) {
@@ -267,7 +279,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       <header className="ps-conversation-head">
         <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><MuviAvatar size={32}/></Link>
-        {busy && <h2 className="ps-muse-status">{t("Muse is replying…")}</h2>}
+        {busy && <h2 className="ps-muse-status">{activeOperation ? t(MUVI_OPERATION_LABELS[activeOperation.operation.operation]) : t("Muse is replying…")}</h2>}
 
         {onCollapse && <Button type="button" size="icon-sm" variant="ghost" className="ml-auto" onClick={onCollapse} aria-label={t("Minimize Muse")} title={t("Minimize Muse")} aria-expanded={true} aria-controls="muse-panel"><PanelRightCloseIcon aria-hidden="true" /></Button>}
 
@@ -292,7 +304,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             <progress aria-label={reviewPhase === "walls" ? t("Long wall context batches reviewed") : t("Regions reviewed")} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
             <p className="mt-1">{progress.completed} / {progress.total} {reviewPhase === "walls" ? t("long wall context batches reviewed") : t("regions reviewed")}{progress.failed > 0 ? t(" · {count} failed", { count: progress.failed }) : ""}{cancelRequested ? t(" · stopped") : ""}</p>
           </div>}
-          {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="self-start" onClick={() => { setCancelRequested(true); setLiveDraft(null); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
+          {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="self-start" onClick={() => { setCancelRequested(true); setLiveDraft(null); setMuviActivity(null); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
           {interpretError && <p role="alert" className="text-xs leading-relaxed text-bad">{localizeMessage(locale, interpretError)}</p>}
           {proposal && <div className="ps-proposal">
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
@@ -343,7 +355,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 <PromptInputButton size="icon-sm" variant="ghost" onClick={onSources} aria-label={t("Add sources")} title={t("Add sources")}>
                   <PaperclipIcon aria-hidden="true" />
                 </PromptInputButton>
-                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setLiveDraft(null); controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
+                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setLiveDraft(null); setMuviActivity(null); controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
                   <SquareIcon aria-hidden="true" />
                 </PromptInputButton>}
                 <PromptInputSubmit type="submit" size="icon-sm" variant="default" className={`ps-send${busy ? "" : " ml-auto"}`} disabled={busy || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>

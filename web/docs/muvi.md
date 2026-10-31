@@ -71,3 +71,9 @@ Drawing-space Muvi uses a maximum scale of 0.4, about 0.85 scene units tall.
 Venue dimensions never enlarge it; tiny spaces can reduce it further. It is visually
 about half the 1.8-unit walking reference, with no physical or simulation meaning.
 The standalone motion gallery and chat avatar retain their close-up framing.
+
+## Live designer operations
+
+The existing `/api/plans/design` NDJSON stream includes `operation` events before tool execution, with a request UUID, monotonic sequence, and one of `inspect`, `measure`, `arrange`, `paint`. `edit_design` lets the model choose the gesture per atomic group; omitted cues default to arrange. Brief/asset tools inspect, review measures, and concept generation paints. These are activity cues, not successful execution receipts. No extra model request or animation tool call is needed.
+
+The browser validates sequence/run identity separately from draft revisions and holds the latest cue while the model proceeds. Studio scopes it to the current drawing/references and clears it on completion, cancellation, failure, context change and unmount. The stream has a client deadline as well as the server deadline. The mascot stays at its current patrol position while performing a gesture; no navigation or collision target is inferred. Existing pause/hide/reduced-motion/visibility rules take priority. Operation state is never serialized into plans, undo, exports or SQLite. Chat and booth-specialist transports do not yet emit these cues.

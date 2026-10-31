@@ -1,3 +1,4 @@
+import { operationForTool, type MuviOperation } from "@/lib/muvi/operations";
 import { IntentRequest } from "@/lib/plans/intent";
 import "server-only";
 import { storedMetaKey } from "@/server/settings/store";
@@ -16,7 +17,7 @@ import { PlanServiceError } from "./errors";
 
 export const DesignRequest = z.object({ selection: IntentRequest.shape.selection.optional(), locale: z.enum(["en", "ko"]).optional(), sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
 
-export async function designPlan(input: z.infer<typeof DesignRequest>, signal: AbortSignal, emitPreview?: DesignToolContext["emitPreview"]) {
+export async function designPlan(input: z.infer<typeof DesignRequest>, signal: AbortSignal, emitPreview?: DesignToolContext["emitPreview"], emitOperation?: (event: MuviOperation) => void) {
   const { document, brief } = input;
   const model = getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
@@ -29,6 +30,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
   };
   let seenRevision = 0;
   let completedSteps = 0;
+  let operationSequence = 0;
   const runId = crypto.randomUUID();
   const started = Date.now();
   const usedTools: string[] = [];
@@ -60,6 +62,9 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
           // Only submit_design remains on the last step; the model still chooses it under auto.
           ...(last ? { activeTools: ["submit_design"] } : !context.brief ? { activeTools: ["set_design_brief"] } : { activeTools: Object.keys(createDesignTools(context)).filter(name => name !== "set_design_brief") }),
         };
+      },
+      onToolExecutionStart: ({ toolCall }) => {
+        if (!runSignal.aborted) emitOperation?.({ type: "operation", runId, sequence: ++operationSequence, operation: operationForTool(toolCall.toolName, toolCall.input) });
       },
       onStepEnd: ({ toolCalls }) => { completedSteps++; usedTools.push(...toolCalls.map(call => call.toolName)); },
       temperature: 0.2, maxRetries: 1,

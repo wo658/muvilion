@@ -3,6 +3,7 @@
 import { Component, Suspense, useRef, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
+import { operationMotion, type MuviOperation } from "@/lib/muvi/operations";
 import { MuviModel } from "./muvi-model";
 
 // Optional decoration must never take down the drawing if the mascot fails to load.
@@ -12,7 +13,7 @@ class MascotBoundary extends Component<{ children: ReactNode }, { failed: boolea
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-function Patrol({ width, depth, paused }: { width: number; depth: number; paused: boolean }) {
+function Patrol({ width, depth, paused, operation }: { width: number; depth: number; paused: boolean; operation?: MuviOperation | null }) {
   const root = useRef<Group>(null);
   const elapsed = useRef(0);
   const radiusX = width * 0.2, radiusZ = depth * 0.2;
@@ -21,6 +22,7 @@ function Patrol({ width, depth, paused }: { width: number; depth: number; paused
   const scale = Math.min(0.4, Math.min(width, depth) * 0.12);
   useFrame(({ invalidate }, delta) => {
     if (paused || !root.current) return;
+    if (operation) { invalidate(); return; }
     elapsed.current += Math.min(delta, 0.05);
     const angle = elapsed.current * 0.24;
     root.current.position.set(radiusX * Math.cos(angle), 0.03, radiusZ * Math.sin(angle));
@@ -28,11 +30,11 @@ function Patrol({ width, depth, paused }: { width: number; depth: number; paused
     invalidate();
   });
   return <group ref={root} name="MuviDecoration" position={[radiusX, 0.03, 0]} scale={scale}>
-    <MuviModel motion="walk" paused={paused}/>
+    <MuviModel motion={operationMotion(operation ?? null)} paused={paused}/>
   </group>;
 }
 
 /** Dimensions frame an illustrative loop only. No document, engine or navigation inputs. */
-export function MuviRoaming(props: { width: number; depth: number; paused: boolean }) {
+export function MuviRoaming(props: { width: number; depth: number; paused: boolean; operation?: MuviOperation | null }) {
   return <MascotBoundary><Suspense fallback={null}><Patrol {...props}/></Suspense></MascotBoundary>;
 }

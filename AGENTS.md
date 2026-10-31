@@ -108,7 +108,8 @@ attribution behavior built into the tool.
   periwinkle body and dark eyes consistent across 2D and 3D; omit cheek blush.
 - The 3D drawing viewer includes optional decorative Muvi roaming. For now this is
   an illustrative animation only: do not connect it to wall collision, pathfinding,
-  physical scale, occupancy/simulation, AI actions or design validation.
+  physical scale, occupancy/simulation or design validation. Agent operation events may
+  select decorative work animations only; they never apply geometry or imply completed work.
 - Muvi must not become a `PlanDocument` object or enter project persistence, exports,
   undo history or engine requests. Viewing dimensions may frame its demonstration
   path; its position and controls remain ephemeral browser state.
