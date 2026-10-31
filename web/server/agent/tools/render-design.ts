@@ -1,6 +1,7 @@
 import "server-only";
 import sharp from "sharp";
 import type { PlanDocument } from "@/lib/plans/schema";
+import { isSeat, seatDirection } from "@/lib/plans/usability";
 import { objectBounds } from "@/lib/plans/design";
 
 /** Deterministic geometry preview, not a photoreal render or an eye-level view. */
@@ -41,12 +42,16 @@ export async function renderDesign(document: PlanDocument, view: "plan" | "isome
       for (const [i,j] of [[1,2],[2,3]]) pieces.push(polygon([project(corners[i][0]*width,corners[i][1]*depth,bottom),project(corners[j][0]*width,corners[j][1]*depth,bottom),project(corners[j][0]*width,corners[j][1]*depth,top),project(corners[i][0]*width,corners[i][1]*depth,top)], object.color, .75));
     }
     pieces.push(polygon(corners.map(([x,y]) => project(x*width,y*depth,top)),object.color));
+    if (isSeat(object)) {
+      const f = seatDirection(object.rotation), c = project(object.x*width,object.y*depth,top+.01), tip = project(object.x*width+f.x*object.depth*.45,object.y*depth+f.y*object.depth*.45,top+.01);
+      pieces.push(`<line x1="${c[0]}" y1="${c[1]}" x2="${tip[0]}" y2="${tip[1]}" stroke="#ef4444" stroke-width="2"/><circle cx="${tip[0]}" cy="${tip[1]}" r="2" fill="#ef4444"/>`);
+    }
   }
   for (const entrance of document.entrances ?? []) {
     const [x,y] = project(entrance.x*width,entrance.y*depth);
     pieces.push(`<circle cx="${x}" cy="${y}" r="5" fill="#ef4444"/>`);
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720"><rect width="960" height="720" fill="white"/><svg x="0" y="0" width="960" height="680">${pieces.join('')}</svg><text x="24" y="700" font-size="14" fill="#334155">${focused ? "interior detail" : view} schematic — geometry, color and massing only; red dots: entrances</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720"><rect width="960" height="720" fill="white"/><svg x="0" y="0" width="960" height="680">${pieces.join('')}</svg><text x="24" y="700" font-size="14" fill="#334155">${focused ? "interior detail" : view} schematic — geometry, color and massing only; red marks: entrances and seat fronts</text></svg>`;
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
   return `data:image/png;base64,${png.toString('base64')}`;
 }

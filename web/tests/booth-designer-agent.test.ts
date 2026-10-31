@@ -17,7 +17,7 @@ const toolResult = (name: string, input: unknown) => ({
 beforeEach(() => mocked.getModel.mockReset());
 describe("Muse booth subagent", () => {
   it("looks up bundled assets before validating and submitting the selected model", async () => {
-    const chair = { ...object, modelAssetId: "modern_arm_chair_01" as const };
+    const chair = { ...object, width: 0.820344, depth: 0.986562, height: 1.022852, modelAssetId: "modern_arm_chair_01" as const };
     const model = new MockLanguageModelV4({ doGenerate: [
       toolResult("delegate_booth_design", {}),
       toolResult("search_design_assets", { query: "chair", category: "furniture" }),

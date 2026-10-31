@@ -13,8 +13,8 @@ const document: PlanDocument = {
   preview: "data:image/png;base64,AA==", widthMeters: 20, heightMeters: 20, scaleConfirmed: true,
   lines: [], texts: [], warnings: [], method: "opencv", wallHeight: 4,
 };
-const chair = { id: "chair", kind: "furniture", label: "라운지 의자", x: .4, y: .5, width: 1, depth: 1, height: 1, rotation: 0, color: "#aaaaaa", modelAssetId: "modern_arm_chair_01" };
-const wall = { ...chair, id: "partition", kind: "partition", modelAssetId: undefined, materialAssetId: "Wood051" };
+const chair = { id: "chair", kind: "furniture", label: "라운지 의자", x: .4, y: .5, width: 0.820344, depth: 0.986562, height: 1.022852, rotation: 0, color: "#aaaaaa", modelAssetId: "modern_arm_chair_01" };
+const wall = { ...chair, x: .7, id: "partition", kind: "partition", modelAssetId: undefined, materialAssetId: "Wood051" };
 const brief = { scope:'interior', direction:'Wood lounge', requirements:[{id:'furniture',label:'Lounge furniture',target:'objects',kinds:['furniture'],minimum:1}] };
 const coverage = [{requirementId:'furniture',ids:['chair'],decision:'Wood-framed lounge chair.'}];
 const usage = { inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 5, text: 5, reasoning: undefined } };
@@ -60,16 +60,17 @@ describe("Muse asset references", () => {
     expect(PlanDocumentSchema.parse(JSON.parse(JSON.stringify(next))).objects?.[0]).toMatchObject({ kind: "partition", modelAssetId: "gallery_wall" });
   });
   it("executes asset lookup, feeds its results back to the model and returns a proposal at the HTTP boundary", async () => {
+    const coffee = { ...chair, label: "커피 테이블", modelAssetId: "modern_coffee_table_01", width: .6, depth: 1.201830, height: .39 };
     const model = new MockLanguageModelV4({ doGenerate: [
       call("set_design_brief", brief),
       call("search_design_assets", { category: "all", query: "" }),
-      call("review_design", { coverage, summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
+      call("review_design", { coverage, summary: "CC0 라운지", objects: [coffee, wall], assumptions: [] }),
       call("submit_design", { revision:1, summary: "CC0 라운지" }),
     ] });
     vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect((await response.json()).document.objects[0].modelAssetId).toBe("modern_arm_chair_01");
+    expect((await response.json()).document.objects[0].modelAssetId).toBe("modern_coffee_table_01");
     expect(model.doGenerateCalls).toHaveLength(4);
     // Muse's provider supports auto only; restrict advertised tools rather than forcing tool_choice.
     expect(model.doGenerateCalls[0].toolChoice).toEqual({ type: "auto" });

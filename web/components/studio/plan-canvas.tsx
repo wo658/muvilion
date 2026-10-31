@@ -1,4 +1,5 @@
 "use client";
+import { isSeat, seatDirection } from "@/lib/plans/usability";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "../ui";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -116,7 +117,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
             </g>;
         })}
       {!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.objects ?? []).map((object) => {
-            const w = (object.rotation === 90 ? object.depth : object.width) / document.widthMeters! * width, h = (object.rotation === 90 ? object.width : object.depth) / document.heightMeters! * height;
+            const w = (object.rotation % 180 === 90 ? object.depth : object.width) / document.widthMeters! * width, h = (object.rotation % 180 === 90 ? object.width : object.depth) / document.heightMeters! * height;
             const partition = object.kind === "partition";
             const overhead = ["beam", "light", "hanging-sign", "canopy"].includes(object.kind);
             const plant = object.appearance === "plant";
@@ -126,6 +127,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
               <title>{object.label}{partition ? object.provenance === "ai" ? t(" · AI-proposed partition") : t(" · Planned partition") : ""}</title>
               <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={partition || overhead ? 0 : plant ? Math.min(w, h) / 2 : Math.min(w, h) * .12} fill={overhead ? "none" : fill} stroke={selected === object.id ? "var(--accent)" : partition ? "var(--venue-partition-edge)" : "var(--edge)"} strokeDasharray={overhead ? "3 4" : undefined} strokeOpacity={overhead && selected !== object.id ? .35 : 1} strokeWidth={selected === object.id ? 3 : 1} vectorEffect="non-scaling-stroke"/>
               {!overhead && !partition && !plant && (object.appearance === "sofa" || object.appearance === "seat" || object.kind === "booth") && <path d={`M${-w*.4},${h*.35}V${-h*.35}H${w*.4}V${h*.35}`} fill="none" stroke="var(--edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none"/>}
+              {isSeat(object) && <line x1={0} y1={0} x2={seatDirection(object.rotation).x*w*.45} y2={seatDirection(object.rotation).y*h*.45} stroke="var(--accent)" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none"/>}
               {labeled && <text textAnchor="middle" dominantBaseline="central" fontSize={labelSize} fill={object.kind === "stage" ? "var(--surface)" : "var(--ink-soft)"} paintOrder="stroke" stroke={fill} strokeWidth={2 / scale} pointerEvents="none">{selected === object.id ? object.label : object.label.length > Math.floor(w * scale / 7) ? `${object.label.slice(0, Math.max(3, Math.floor(w * scale / 7)-1))}…` : object.label}</text>}
             </g>;
         })}

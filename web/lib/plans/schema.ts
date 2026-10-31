@@ -2,8 +2,12 @@ import { z } from "zod";
 import { isSimpleFootprint } from "./footprint";
 import { MODEL_ASSET_IDS, MATERIAL_ASSET_IDS, getModelAsset } from "@/lib/assets/catalog";
 
+import { FIXTURE_TYPES, FIXTURES } from "@/lib/assets/fixtures";
+
 const PointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 export const DesignObjectSchema = z.object({
+  useTargetId: z.string().min(1).max(100).optional().describe("For seating: ID of the table or stage this seat faces and serves. Required for event-chair and lounge-sofa usability review."),
+  fixtureType: z.enum(FIXTURE_TYPES).optional().describe("Purpose-built schematic fixture; use its exact dimensions from search_design_assets. No modelAssetId or materialAssetId."),
   modelAssetId: z.enum(MODEL_ASSET_IDS).optional().describe("Downloaded CC0 model ID from search_design_assets. Use the matching kind returned by the catalog; omit for schematic geometry. Wall modules use partition, not booth."),
   materialAssetId: z.enum(MATERIAL_ASSET_IDS).optional().describe("Downloaded PBR material ID for a schematic installation such as a partition. Do not combine with modelAssetId."),
   provenance: z.enum(["ai", "manual"]).optional(),
@@ -12,9 +16,11 @@ export const DesignObjectSchema = z.object({
   x: z.number().min(0).max(1), y: z.number().min(0).max(1),
   width: z.number().positive().max(100), depth: z.number().positive().max(100), height: z.number().positive().max(30),
   elevation: z.number().min(0).max(30).optional(), zoneId: z.string().min(1).max(100).optional(),
-  rotation: z.union([z.literal(0), z.literal(90)]), color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]), color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 }).superRefine((object, ctx) => {
   const model = getModelAsset(object.modelAssetId);
+  if (object.fixtureType && (object.modelAssetId || object.materialAssetId || object.kind !== FIXTURES[object.fixtureType].kind))
+    ctx.addIssue({ code: "custom", path: ["fixtureType"], message: "Use the fixture's kind and no model/material asset." });
   if (model && model.kind !== object.kind)
     ctx.addIssue({ code: "custom", path: ["modelAssetId"], message: "Model asset does not match the installation kind." });
   if (object.modelAssetId && object.materialAssetId)

@@ -30,6 +30,12 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - App Settings uses a centered dialog and a centered content column up to 640px wide. Each section has a heading; setting rows pair left-aligned labels/descriptions with right-aligned controls. Use separators between API key actions and stack rows on narrow screens. Keep the section navigation, scrollable content and keyboard dismissal.
 
+## Physical dimensions
+
+One scene unit is one metre. Object width/depth/height are local outer bounds before rotation; rotation swaps the footprint axes, never the stored dimensions. Model objects use catalog native metre bounds (5 mm input rounding is normalized); changed proportions are rejected by design tools. A mismatched legacy asset is shown as its declared-size box with a warning, never as a silently shrunken model. Schematic fixtures use the declared assumption sizes in `lib/assets/fixtures.ts`; mesh outer bounds, 2D footprints and collision boxes share those sizes. Partitions of arbitrary length use exact schematic geometry or multiple native-size modules. Never relabel a truss as a phone stand or a coffee table as a work desk.
+
+Confirm the cropped drawing extent or a known measured distance before design. A scale confirmation establishes the coordinate conversion, not surveyed geometry. The KINTEX demo uses the printed 1B extent (90 × 63 m); floor outline and the selected event footprint must be reviewed independently. See `docs/dimensions.md` for assumptions and limits.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.
@@ -61,7 +67,7 @@ Language changes preserve the conversation, composer, loaded drawing, undo histo
 
 ## Verification
 
-For Source manager review, capture desktop only in English UI; mobile screenshots are not required. This capture preference does not change the application’s default language. Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web and engine checks before merging.
+For UI review across this project, capture one representative desktop view in English (1920 × 1080) per task. Do not produce mobile captures or additional screenshots unless explicitly requested. This capture preference does not change the application’s default language or functional test coverage. Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web and engine checks before merging.
 
 ## Chat components
 
@@ -78,3 +84,15 @@ approval remain owned by StudioChat. File attachments remain in the Sources dial
 `/muvi/gallery` is a standalone motion review page: one large orbitable preview, four selectable designer studies, pause, replay, hide and language controls. Work gestures contain no staged result geometry. Recognizable hand tools (hammer, tape measure, broad brush) and brief impact accents are encouraged; they must never imply a particular surface or completed result. Motion is deliberately cartoon-like: bold anticipation, brisk action, squash/stretch and rebound, rather than subtle physical realism. A direction control and floor marker preview their local work orientation, independent of the camera. Use broad whole-body anticipation and fast action, with trailing recovery. Feet can rock and tap within the local stage but must not penetrate the floor. The hammer and working arm rise overhead and behind the head, then swing down toward the wall while the torso gives a small backward recoil over the planted feet; it must not visibly separate from them. Hammer strikes face forward into an implied vertical wall; no wall mesh is baked in. Impact accents are bright unlit star flashes and outward-travelling diamond sparks anchored at the contact, never wooden debris or an effect dragged by the recoiling hammer. Reduced motion and hidden pages stop animation.
 
 Designer tool operations stream as ephemeral Muvi cues: inspect, measure, arrange and paint. The agent selects a cue per grouped edit; other tools have deterministic cues. The existing reply status shows the current work gesture. Muvi pauses its illustrative patrol while working and resumes when the design ends, fails, is cancelled or the drawing/references change. Pause/hide, reduced motion and hidden-page behavior remain authoritative. Cues never claim successful construction or apply, save or export changes.
+
+## AI photography
+
+Chat photography requests produce a semantic shooting intent, actual 16:9 scene candidates, and an image-based model review with at most three rounds. Unsupported or unsuitable results remain errors, never approved substitutes. Photographing never changes drawing geometry. Muvi roaming, selection highlights and editor controls are excluded from photographs.
+
+The selected photograph opens its exact camera pose and display settings in a letterboxed 16:9 viewer. Users can orbit/pan/zoom or expand fine adjustments, reopen the saved angle, retake and download the photograph. The original AI explanation describes its selected composition; a manually retaken photograph is labelled as user adjusted, not AI re-reviewed. Photos are session-only and this is stated beside download. Switching or editing drawings, changing references, cancellation and closing discard pending work. PDF export is not part of this flow.
+
+On narrow screens, photography keeps the 16:9 live frame above an independently scrolling adjustment panel. Ordinary camera presets/settings are hidden during photography on these screens; closing photography restores them.
+
+## Seating usability
+
+Physical object rotations support 0/90/180/270 degrees; zones retain 0/90. Fixture seating faces local -Y (north at 0°) and stores its served table/stage via useTargetId. The plan view and generated review drawings mark seat fronts. Generated seating must pass the explicit reach, pullback, legroom and connected internal approach checks in `lib/plans/usability.ts`, in addition to collision checks, before visual review/submission. Existing layouts remain readable and show localized usability issues in Items to review. Checks are concept planning allowances, not accessibility, egress or crowd certification; details and omissions are documented in `docs/dimensions.md`.

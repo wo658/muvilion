@@ -15,6 +15,14 @@ const proposal = { coverage:[{requirementId:'stage',ids:['stage'],decision:'Stag
 const options = { toolCallId: 'test', messages: [], context: {} };
 
 describe('shared Designer Muse tools', () => {
+  it('blocks unusable collision-free seats without consuming review budget', async () => {
+    const c=context(), review=createDesignTools(c).review_design;
+    const seat={id:'chair',kind:'furniture' as const,label:'Chair',fixtureType:'event-chair' as const,x:.5,y:.3,width:.5,depth:.55,height:.85,rotation:0 as const,color:'#335577',useTargetId:'stage'};
+    const result=await review.execute!({...proposal,objects:[proposal.objects[0],seat]},options) as {usability:{issues:{code:string}[]}};
+    expect(result.usability.issues.map(i=>i.code)).toContain('seat_facing');
+    expect(c.artifacts).toHaveLength(0);expect(c.calls.get('review_design')).toBeUndefined();
+  });
+
   it('makes the same tools available in initial and revision phases, with asset extensions', () => {
     const c = context();
     const asset = { name:'find_design_asset', category:'asset' as const, phases:['initial','revision'] as const, create: () => tool({inputSchema:z.object({}),execute:async()=>({items:[]})}) };
@@ -53,6 +61,16 @@ describe('shared Designer Muse tools', () => {
     await review.execute!(proposal,options);
     expect(c.review?.complete).toBe(true);
     expect(c.calls.get('review_design')).toBe(1);
+    expect(c.pendingImages).toHaveLength(2);
+  });
+  it('returns overlapping physical envelopes before consuming visual review budget', async () => {
+    const c=context(), review=createDesignTools(c).review_design;
+    const collision={...proposal,objects:[proposal.objects[0],{...proposal.objects[0],id:'other'}]};
+    const failed=await review.execute!(collision,options) as {geometryWarnings?:string[]};
+    expect(failed.geometryWarnings?.join(' ')).toContain('overlaps');
+    expect(c.artifacts).toHaveLength(0);
+    expect(c.calls.get('review_design')).toBeUndefined();
+    await review.execute!({...collision,objects:[proposal.objects[0],{...proposal.objects[0],id:'other',x:.85}]},options);
     expect(c.pendingImages).toHaveLength(2);
   });
   it('does not mutate draft state on invalid proposals or cancelled requests', async () => {

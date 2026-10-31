@@ -10,8 +10,8 @@ const decide = (intent: string, brief = "") => mocks.generate.mockResolvedValue(
 beforeEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); mocks.hasKey = true; });
 
 describe("intent routing boundary", () => {
-  it.each(["chat", "design", "interpret", "clarify"])("returns validated %s decisions without executing a workflow", async intent => {
-    decide(intent, intent === "design" ? "Add a lounge by the entrance" : "");
+  it.each(["chat", "design", "interpret", "clarify", "photography"])("returns validated %s decisions without executing a workflow", async intent => {
+    decide(intent, ["design", "photography"].includes(intent) ? "Show the lounge by the entrance" : "");
     const response = await POST(request({ message: "Help with this space", document }));
     expect(response.status).toBe(200);
     expect((await response.json()).intent).toBe(intent);
@@ -29,7 +29,7 @@ describe("intent routing boundary", () => {
     expect(JSON.parse(options.messages[0].content)).toMatchObject({ locale: "ko", selection: { id: "path-1" }, history: [{ text: "입구 통로를 넓혀줘" }] });
     expect(options.abortSignal).toBe(req.signal);
   });
-  it.each(["design", "interpret"])("requires a drawing for %s even when the model requests execution", async intent => {
+  it.each(["design", "interpret", "photography"])("requires a drawing for %s even when the model requests execution", async intent => {
     decide(intent, "Create a lounge");
     const response = await POST(request({ message: "진행해줘", locale: "ko", document: null }));
     expect(await response.json()).toMatchObject({ intent: "clarify", message: expect.stringContaining("업로드"), brief: "" });

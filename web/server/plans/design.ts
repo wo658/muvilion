@@ -7,6 +7,8 @@ import { z } from "zod";
 import { getModel } from "@/server/agent/model";
 import { createDesignTools, ReviewedDesignSubmission } from "@/server/agent/tools/design-tools";
 import type { DesignToolContext } from "@/server/agent/tools/design-context";
+import { reviewUsability } from "@/lib/plans/usability";
+import { designWarnings } from "@/lib/plans/design";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { planChatContext } from "@/lib/plans/muse";
 import { SourceRequestSchema } from "@/lib/sources/schema";
@@ -21,7 +23,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
   const { document, brief } = input;
   const model = getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
-  const runSignal = AbortSignal.any([signal, AbortSignal.timeout(420_000)]);
+  const runSignal = AbortSignal.any([signal, AbortSignal.timeout(600_000)]);
   const context: DesignToolContext = {
     base: document, draft: document, revision: 0, emitPreview,
     phase: document.objects?.length || document.zones?.length ? "revision" : "initial",
@@ -84,6 +86,8 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
     if (!seenRevision || seenRevision !== context.revision || proposal.revision !== context.revision)
       throw new PlanServiceError("Muse submitted a design that has not been visually reviewed. Please retry.", 502);
     if (!context.review?.complete) throw new PlanServiceError("The interior design is missing requested elements. No changes were applied. Retry with the same brief.", 502);
+    if (designWarnings(context.draft).length) throw new PlanServiceError("The design still has geometry conflicts. No changes were applied.", 502);
+    if (reviewUsability(context.draft).issues.length) throw new PlanServiceError("The design still has seating or circulation usability issues. No changes were applied.", 502);
     return { document: context.draft, summary: proposal.summary, artifacts: context.artifacts, phase: context.phase, designReview: context.review, runId };
   } catch (error) {
     const reason = signal.aborted ? "cancelled" : runSignal.aborted ? "timeout" : error instanceof PlanServiceError ? "review_failed" : "provider_or_tool_failed";

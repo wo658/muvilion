@@ -60,6 +60,12 @@ describe("organizer venue import", () => {
     expect(replaced.objects).toHaveLength(1);
     expect(replaced.objects?.[0].y).toBe(0.5);
   });
+  it("preserves facing and remaps seating targets when importing a rotated booth", () => {
+    const objects = [{...counter,id:"table",x:.25,width:.4,depth:.4}, {...counter,id:"seat",x:.75,width:.4,depth:.4,rotation:180 as const,useTargetId:"table"}];
+    const imported = importBoothDesignIntoVenue(venue, listing, "facing", objects);
+    expect(imported.objects?.[1]).toMatchObject({rotation:270,useTargetId:"participant-facing-0"});
+    expect(() => importBoothDesignIntoVenue(venue, listing, "missing", [{...counter,useTargetId:"absent"}])).toThrow("Seating target is missing");
+  });
   it("rejects changed dimensions and collisions in the venue", () => {
     expect(() => importBoothDesignIntoVenue(venue, { ...listing, width: 5 }, "app-a", [counter])).toThrow();
     const occupied = { ...venue, objects: [counter] };

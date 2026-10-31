@@ -36,7 +36,8 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, boothPricing, onDesignPreview, onMuviOperation }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, boothPricing, onDesignPreview, onMuviOperation, onPhotography }: {
+    onPhotography?: (request: import("@/lib/plans/photography-client").PhotoRequest) => void;
     onMuviOperation?: (activity: { base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null) => void;
     onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
     boothPricing?: PricingContext;
@@ -255,6 +256,10 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 setMessages(previous => [...previous,
                     { id: generateId(), role: "assistant", parts: [{ type: "text", text: decision.message }] },
                 ]);
+                if (decision.intent === "photography") {
+                    if (!onPhotography) throw new Error(t("Open the 3D workspace to take a photo."));
+                    onPhotography({ id: generateId(), brief: decision.brief || message, locale, history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({ role: item.role as "user" | "assistant", text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000) })) });
+                }
                 if (decision.intent === "design" || decision.intent === "interpret") {
                     await interpret(decision.intent, decision.brief);
                 }

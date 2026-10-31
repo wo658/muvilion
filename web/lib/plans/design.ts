@@ -1,3 +1,4 @@
+import { dimensionsMatch } from "@/lib/assets/dimensions";
 import { translate, type Locale } from "@/lib/i18n/messages";
 import type { DesignObject, PlanDocument, SpaceZone } from "./schema";
 
@@ -6,8 +7,8 @@ type Point = { x: number; y: number };
 type Bounds = { x: number; y: number; width: number; height: number };
 const EPS = 1e-9;
 export function objectBounds(object: Footprint, document: PlanDocument) {
-  const width = (object.rotation === 90 ? object.depth : object.width) / (document.widthMeters ?? 1);
-  const depth = (object.rotation === 90 ? object.width : object.depth) / (document.heightMeters ?? 1);
+  const width = (object.rotation % 180 === 90 ? object.depth : object.width) / (document.widthMeters ?? 1);
+  const depth = (object.rotation % 180 === 90 ? object.width : object.depth) / (document.heightMeters ?? 1);
   return { x: object.x - width / 2, y: object.y - depth / 2, width, height: depth };
 }
 export function overlaps(a: Bounds, b: Bounds) {
@@ -59,6 +60,7 @@ export function designWarnings(document: PlanDocument, locale: Locale = "en"): s
   const byZone = new Map<string, SpaceZone>(zones.map(zone => [zone.id, zone]));
   for (let i = 0; i < objects.length; i++) {
     const object = objects[i], a = checkFootprint(object);
+    if (!dimensionsMatch(object)) messages.push(t("{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.", { name: object.label }));
     const bottom = object.elevation ?? 0, top = bottom + object.height;
     if (document.ceiling && top > document.ceiling.height + EPS)
       messages.push(t("{name} exceeds the {status} ceiling height ({height} m).", { name: object.label, status: t(document.ceiling.status), height: document.ceiling.height }));
