@@ -15,7 +15,7 @@ export function ProjectDialog({ open, title, onClose, children }: { open: boolea
     if (open && !element.open) element.showModal();
     else if (!open && element.open) element.close();
   }, [open]);
-  return <dialog ref={dialog} className="ps-source-manager" aria-labelledby={titleId} onClose={onClose}>
+  return <dialog ref={dialog} className="ps-source-manager" aria-labelledby={titleId} onClose={event => { if (event.target === event.currentTarget) onClose(); }}>
     <header><h2 id={titleId}>{title}</h2><Button variant="ghost" size="icon-sm" aria-label={t("Close")} onClick={onClose}><XIcon/></Button></header>
     {children}
   </dialog>;

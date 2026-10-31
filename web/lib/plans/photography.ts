@@ -124,7 +124,7 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
       // Elevated shots may be outside the venue, but never inside an installation or an existing wall.
       const blockedObject = (document.objects ?? []).some(object => {
         if (eye[1] < (object.elevation ?? 0) - .2 || eye[1] > (object.elevation ?? 0) + object.height + .2) return false;
-        const w = object.rotation === 90 ? object.depth : object.width, d = object.rotation === 90 ? object.width : object.depth;
+        const w = object.rotation % 180 === 90 ? object.depth : object.width, d = object.rotation % 180 === 90 ? object.width : object.depth;
         return Math.abs(eye[0] - (object.x - .5) * width) < w / 2 + .2 && Math.abs(eye[2] - (object.y - .5) * depth) < d / 2 + .2;
       });
       if (blockedObject) continue;

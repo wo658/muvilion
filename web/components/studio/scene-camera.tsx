@@ -12,7 +12,7 @@ export function SceneCamera({document,view,revision,selected,photography=false}:
  const width=document.widthMeters??10,depth=document.heightMeters??width*document.source.height/document.source.width,span=Math.max(width,depth);
  const item=document.objects?.find(o=>o.id===selected)??document.zones?.find(z=>z.id===selected);
  const x=item?.x,y=item?.y;
- const w=item?.rotation===90?item.depth:item?.width,d=item?.rotation===90?item.width:item?.depth;
+ const w=(item?.rotation ?? 0)%180===90?item?.depth:item?.width,d=(item?.rotation ?? 0)%180===90?item?.width:item?.depth;
  useEffect(()=>{
   const controls=ref.current;if(!controls)return;
   if(photography) {controls.minDistance=0.1;controls.maxDistance=span*8;return;}

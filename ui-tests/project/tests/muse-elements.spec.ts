@@ -80,5 +80,5 @@ test('AI Elements composer preserves explicit proposal approval and source acces
   await page.getByRole('button', { name: '변경 적용', exact: true }).click();
   expect((await exportPlan(page)).document.objects[0].label).toBe('새 의자');
   await page.getByRole('button', { name: '자료 추가', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '프로젝트 설정', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '자료', exact: true })).toBeVisible();
 });

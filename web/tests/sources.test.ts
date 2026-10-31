@@ -1,9 +1,22 @@
+import { readReference, selectedReferences } from "@/lib/sources/files";
 import { sourceContent } from "@/server/plans/sources";
 import { describe, expect, it } from "vitest";
 import { emptySources, SourceLibrarySchema, ReferenceSourceSchema } from "@/lib/sources/schema";
 const source = (id: string, selected: boolean) => ReferenceSourceSchema.parse({ id, kind: "concept", name: id, selected, images: ["data:image/jpeg;base64,AA=="], notes: `${id} notes` });
 
 describe("project sources", () => {
+  it("uses all project references, including legacy unselected materials, without rewriting stored data", async () => {
+    const library = { ...emptySources(), items: [source("first", true), source("legacy", false)] };
+    const references = await selectedReferences(library, null);
+    expect(references.map(item => item.id)).toEqual(["first", "legacy"]);
+    expect(references.every(item => item.selected)).toBe(true);
+    expect(library.items[1].selected).toBe(false);
+  });
+  it("makes a newly uploaded brief available to Muse without another selection step", async () => {
+    const item = await readReference(new File(["Visitor experience brief"], "brief.txt", { type: "text/plain" }), "brief");
+    expect(item.selected).toBe(true);
+    expect(item.text).toBe("Visitor experience brief");
+  });
   it("includes selected content and image bytes, never deselected references", () => {
     const parts = sourceContent([source("included", true), source("private", false)]);
     expect(parts).toHaveLength(2);

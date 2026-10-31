@@ -7,8 +7,8 @@ type Point = { x: number; y: number };
 type Bounds = { x: number; y: number; width: number; height: number };
 const EPS = 1e-9;
 export function objectBounds(object: Footprint, document: PlanDocument) {
-  const width = (object.rotation === 90 ? object.depth : object.width) / (document.widthMeters ?? 1);
-  const depth = (object.rotation === 90 ? object.width : object.depth) / (document.heightMeters ?? 1);
+  const width = (object.rotation % 180 === 90 ? object.depth : object.width) / (document.widthMeters ?? 1);
+  const depth = (object.rotation % 180 === 90 ? object.width : object.depth) / (document.heightMeters ?? 1);
   return { x: object.x - width / 2, y: object.y - depth / 2, width, height: depth };
 }
 export function overlaps(a: Bounds, b: Bounds) {
