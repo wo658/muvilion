@@ -740,5 +740,11 @@
   "The 3D renderer is unavailable. Reload and try again.": "The 3D renderer is unavailable. Reload and try again.",
   "The photo could not be captured. Try again.": "The photo could not be captured. Try again.",
   "A photo is already being captured.": "A photo is already being captured.",
-  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it."
+  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.",
+  "Composition review history": "Composition review history",
+  "Review {round}": "Review {round}",
+  "Adjust angle and photograph again": "Adjust angle and photograph again",
+  "Photo selected": "Photo selected",
+  "Review {round}, candidate {candidate}": "Review {round}, candidate {candidate}",
+  "Refining the angle and photographing again…": "Refining the angle and photographing again…"
 }

@@ -258,7 +258,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 ]);
                 if (decision.intent === "photography") {
                     if (!onPhotography) throw new Error(t("Open the 3D workspace to take a photo."));
-                    onPhotography({ id: generateId(), brief: decision.brief || message, locale, history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({ role: item.role as "user" | "assistant", text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000) })) });
+                    onPhotography({ id: generateId(), brief: message.slice(0, 6000), locale, history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({ role: item.role as "user" | "assistant", text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000) })) });
                 }
                 if (decision.intent === "design" || decision.intent === "interpret") {
                     await interpret(decision.intent, decision.brief);

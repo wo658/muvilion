@@ -16,6 +16,7 @@ export const PhotoIntentSchema = z.object({
   title: z.string().trim().min(1).max(120), description: z.string().trim().min(1).max(1500),
   targetIds: z.array(z.string().min(1).max(100)).max(8),
   view: z.enum(["overview", "detail", "interior"]),
+  framing: z.enum(["subjects", "venue"]).default("subjects").describe("subjects frames the selected targets, or installed objects when none are selected; venue with no target IDs explicitly frames the whole venue."),
   azimuth: z.number().min(0).max(360).describe("Camera direction around the target in degrees: 0 is positive X; 90 is positive Z."),
   elevation: z.number().min(15).max(75).describe("Downward viewing angle for overview/detail. Interior stays at eye height."),
   distanceScale: z.number().min(0.75).max(2).describe("Increase to show more surrounding context."),
@@ -25,7 +26,7 @@ export const PhotoCandidateSchema = z.object({ shot: PhotoShotSchema, image: z.s
 const Common = { document: PlanDocumentSchema, locale: z.enum(["en", "ko"]).default("en") };
 export const PhotographyRequestSchema = z.discriminatedUnion("phase", [
   z.object({ ...Common, phase: z.literal("plan"), brief: z.string().trim().min(1).max(6000), history: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().max(6000) })).max(24).default([]) }),
-  z.object({ ...Common, phase: z.literal("review"), intent: PhotoIntentSchema, candidates: z.array(PhotoCandidateSchema).min(1).max(4), round: z.number().int().min(0).max(MAX_PHOTO_ROUNDS - 1) }),
+  z.object({ ...Common, phase: z.literal("review"), brief: z.string().trim().max(6000).default(""), intent: PhotoIntentSchema, candidates: z.array(PhotoCandidateSchema).min(1).max(4), round: z.number().int().min(0).max(MAX_PHOTO_ROUNDS - 1), previousReviews: z.array(z.object({intent: PhotoIntentSchema, explanation: z.string().max(1500)})).max(MAX_PHOTO_ROUNDS - 1).default([]) }),
 ]);
 export type PhotographyRequest = z.infer<typeof PhotographyRequestSchema>;
 export const PhotographyPlanSchema = z.object({ intent: PhotoIntentSchema, candidates: z.array(PhotoShotSchema).min(1).max(4) });
@@ -43,30 +44,74 @@ export function validPhotoTargets(document: PlanDocument, intent: PhotoIntent): 
   return new Set(intent.targetIds).size === intent.targetIds.length && intent.targetIds.every(id => ids.has(id)) && (intent.view === "overview" || intent.targetIds.length > 0);
 }
 
-/** Geometric candidates are illustrative viewpoints; the model must inspect their rendered images. */
+type Point3 = PhotoShot["target"];
+
+function subjectCorners(item: PhotographyTarget, width: number, depth: number): Point3[] {
+  const w = item.width ?? 1.5, d = item.depth ?? 1.5;
+  const bottom = item.elevation ?? 0, top = bottom + (item.height ?? 0);
+  const rotation = item.rotation * Math.PI / 180;
+  return [-w / 2, w / 2].flatMap(x => [-d / 2, d / 2].flatMap(z => [bottom, top].map(y => [
+    (item.x - .5) * width + x * Math.cos(rotation) - z * Math.sin(rotation), y,
+    (item.y - .5) * depth + x * Math.sin(rotation) + z * Math.cos(rotation),
+  ] as Point3)));
+}
+
+/** Full footprint containment avoids pulling a neighbouring oversized structure into a small zone shot. */
+function containedInZone(item: PhotographyTarget, zone: NonNullable<PlanDocument["zones"]>[number], width: number, depth: number): boolean {
+  const angle = zone.rotation * Math.PI / 180;
+  const centerX = (zone.x - .5) * width, centerZ = (zone.y - .5) * depth;
+  return subjectCorners(item, width, depth).every(point => {
+    const x = point[0] - centerX, z = point[2] - centerZ;
+    return Math.abs(x * Math.cos(angle) + z * Math.sin(angle)) <= zone.width / 2 + 1e-6
+      && Math.abs(-x * Math.sin(angle) + z * Math.cos(angle)) <= zone.depth / 2 + 1e-6;
+  });
+}
+
+/** Solve each perspective frustum plane for distance along this specific viewing direction. */
+function fittingDistance(points: Point3[], target: Point3, azimuth: number, elevation: number): number {
+  const cosA = Math.cos(azimuth), sinA = Math.sin(azimuth), cosE = Math.cos(elevation), sinE = Math.sin(elevation);
+  const tanV = Math.tan(20 * Math.PI / 180), tanH = tanV * 16 / 9;
+  return Math.max(.5, ...points.map(point => {
+    const x = point[0] - target[0], y = point[1] - target[1], z = point[2] - target[2];
+    const towardEye = x * cosA * cosE + y * sinE + z * sinA * cosE;
+    const horizontal = x * sinA - z * cosA;
+    const vertical = -x * cosA * sinE + y * cosE - z * sinA * sinE;
+    return towardEye + Math.max(Math.abs(horizontal) / tanH, Math.abs(vertical) / tanV);
+  }));
+}
+
+/** These candidates frame geometry, not visibility: the model must inspect the actual rendered images for occlusion. */
 export function generatePhotoCandidates(document: PlanDocument, intent: PhotoIntent, round = 0): PhotoShot[] {
   if (!document.scaleConfirmed || !document.widthMeters || !document.heightMeters || !validPhotoTargets(document, intent)) return [];
   const width = document.widthMeters, depth = document.heightMeters;
-  const targets = photographyTargets(document).filter(item => intent.targetIds.includes(item.id));
-  const bounds = targets.map(item => {
-    const w = item.width && item.depth ? (item.rotation === 90 ? item.depth : item.width) : 1.5;
-    const d = item.width && item.depth ? (item.rotation === 90 ? item.width : item.depth) : 1.5;
-    const h = item.height ? item.height + (item.elevation ?? 0) : 0;
-    return { x: (item.x - .5) * width, z: (item.y - .5) * depth, w, d, h };
-  });
-  const minX = bounds.length ? Math.min(...bounds.map(b => b.x - b.w / 2)) : -width / 2;
-  const maxX = bounds.length ? Math.max(...bounds.map(b => b.x + b.w / 2)) : width / 2;
-  const minZ = bounds.length ? Math.min(...bounds.map(b => b.z - b.d / 2)) : -depth / 2;
-  const maxZ = bounds.length ? Math.max(...bounds.map(b => b.z + b.d / 2)) : depth / 2;
-  const height = bounds.length ? Math.max(...bounds.map(b => b.h)) : (document.wallHeight ?? 3);
-  const target: PhotoShot["target"] = [(minX + maxX) / 2, intent.view === "interior" ? Math.min(EYE_HEIGHT, Math.max(.8, height / 2)) : height / 2, (minZ + maxZ) / 2];
-  const radius = Math.max(1, Math.hypot(maxX - minX, maxZ - minZ, height) / 2);
-  const distance = (radius + .5) / Math.sin(20 * Math.PI / 180) * intent.distanceScale;
+  // A named zone or collection remains authoritative. Only an untargeted overview defaults to installations.
+  const targets = intent.targetIds.length
+    ? photographyTargets(document).filter(item => intent.targetIds.includes(item.id))
+    : intent.framing === "venue" ? [] : document.objects ?? [];
+  const selectedZones = (document.zones ?? []).filter(zone => intent.targetIds.includes(zone.id));
+  const zoneContents = (document.objects ?? []).filter(object => selectedZones.some(zone =>
+    object.zoneId === zone.id || containedInZone(object, zone, width, depth)));
+  // Keep the named footprint while also fitting the real height of its installations.
+  const framedTargets = [...new Map([...targets, ...zoneContents].map(item => [item.id, item])).values()];
+  const points: Point3[] = framedTargets.length ? framedTargets.flatMap(item => subjectCorners(item, width, depth))
+    : [-width / 2, width / 2].flatMap(x => [-depth / 2, depth / 2].flatMap(z => [0, document.wallHeight ?? 3].map(y => [x, y, z] as Point3)));
+  const minX = Math.min(...points.map(p => p[0])), maxX = Math.max(...points.map(p => p[0]));
+  const minY = Math.min(...points.map(p => p[1])), maxY = Math.max(...points.map(p => p[1]));
+  const minZ = Math.min(...points.map(p => p[2])), maxZ = Math.max(...points.map(p => p[2]));
+  const target: Point3 = [(minX + maxX) / 2, intent.view === "interior" ? Math.min(EYE_HEIGHT, Math.max(.8, (minY + maxY) / 2)) : (minY + maxY) / 2, (minZ + maxZ) / 2];
   const world = navigationWorld(document);
   const candidates: PhotoShot[] = [];
-  for (const offset of [0, 35, -35, 180, 90, -90, 135, -135]) {
-    const angle = (intent.azimuth + offset) * Math.PI / 180;
-    const elevation = intent.elevation * Math.PI / 180;
+  const variations = [
+    { angle: 0, elevation: 0, distance: 1.08 }, { angle: 35, elevation: 12, distance: 1.14 },
+    { angle: -35, elevation: -10, distance: 1.04 }, { angle: 180, elevation: 20, distance: 1.1 },
+    { angle: 90, elevation: 0, distance: 1.08 }, { angle: -90, elevation: 12, distance: 1.14 },
+    { angle: 135, elevation: -10, distance: 1.04 }, { angle: -135, elevation: 20, distance: 1.1 },
+  ];
+  for (const variation of variations) {
+    const angle = (intent.azimuth + variation.angle) * Math.PI / 180;
+    const elevation = Math.max(15, Math.min(75, intent.elevation + variation.elevation)) * Math.PI / 180;
+    // distanceScale changes context without cropping required subjects out of elevated views.
+    const distance = fittingDistance(points, target, angle, intent.view === "interior" ? 0 : elevation) * Math.max(1.04, variation.distance * intent.distanceScale);
     let eye: PhotoShot["eye"];
     if (intent.view === "interior") {
       if (!world) return [];
