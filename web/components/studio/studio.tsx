@@ -330,6 +330,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
     <ProjectDialog open={projectSettings !== null} title={t("Project settings")} onClose={() => setProjectSettings(null)}>
       <nav aria-label={t("Project settings sections")} className="flex gap-2 border-b border-hairline px-4 py-3">
+        {spaceMode && document && <Button onClick={() => { setProjectSettings(null); setDetails(true); }}>{t("Drawing settings")}</Button>}
         <Button variant={projectSettings === "sources" ? "secondary" : "ghost"} aria-current={projectSettings === "sources" ? "page" : undefined} onClick={() => setProjectSettings("sources")}>{t("Sources")}</Button>
         {spaceMode && document && <Button variant={projectSettings === "booths" ? "secondary" : "ghost"} aria-current={projectSettings === "booths" ? "page" : undefined} onClick={() => setProjectSettings("booths")}>{t("Booth pricing · applications")}</Button>}
       </nav>

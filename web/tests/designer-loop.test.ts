@@ -57,6 +57,14 @@ describe('Designer Muse SDK loop',()=>{
     expect(final.tools?.map(t=>t.name)).toEqual(['submit_design']);
     expect(JSON.stringify(final.prompt)).toContain('Final step: call submit_design');
   });
+  it('reserves the final reviewed revision for submission when review budget is exhausted',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('review_design',proposal),call('review_design',proposal),call('submit_design',{revision:3,summary:proposal.summary})]});handle.model=model;
+    await designPlan(input(),new AbortController().signal);
+    const final=model.doGenerateCalls[4];
+    expect(final.tools?.map(tool=>tool.name)).toEqual(['submit_design']);
+    expect(JSON.stringify(final.prompt)).toContain('current revision=3');
+    expect(JSON.stringify(final.prompt)).toContain('reviews remaining=0');
+  });
   it('rejects submission without review',async()=>{
     handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('submit_design',{revision:1,summary:proposal.summary})]});
     await expect(designPlan(input(),new AbortController().signal)).rejects.toThrow('not been visually reviewed');

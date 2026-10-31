@@ -7,7 +7,7 @@ import { POST } from "@/app/api/plans/intent/route";
 const document = { name: "hall.pdf", scaleConfirmed: true, unknownLines: 12 };
 const request = (body: unknown) => new Request("http://localhost/api/plans/intent", { method: "POST", body: JSON.stringify(body) });
 const decide = (intent: string, brief = "") => mocks.generate.mockResolvedValue({ toolCalls: [{ toolName: "route_intent", input: { intent, brief, message: "Next action" } }] });
-beforeEach(() => { vi.clearAllMocks(); mocks.hasKey = true; });
+beforeEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); mocks.hasKey = true; });
 
 describe("intent routing boundary", () => {
   it.each(["chat", "design", "interpret", "clarify", "photography"])("returns validated %s decisions without executing a workflow", async intent => {
@@ -52,6 +52,21 @@ describe("intent routing boundary", () => {
   ])("rejects invalid model decisions rather than defaulting to an action", async result => {
     mocks.generate.mockResolvedValue(result);
     expect((await POST(request({ message: "Help", document }))).status).toBe(502);
+  });
+  it("logs safe diagnostic categories without provider secrets or source text", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.generate.mockRejectedValue(Object.assign(new Error("SECRET provider body"), { statusCode: 429 }));
+    await POST(request({ message: "PRIVATE brief", document }));
+    expect(JSON.parse(log.mock.calls[0][1])).toEqual(expect.objectContaining({ reason: "provider_error", statusCode: 429, requestId: expect.any(String), elapsedMs: expect.any(Number) }));
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/SECRET|PRIVATE/);
+    mocks.generate.mockResolvedValue({ toolCalls: [], finishReason: "stop" });
+    await POST(request({ message: "Design", document }));
+    expect(JSON.parse(log.mock.calls.at(-1)![1])).toEqual(expect.objectContaining({ reason: "tool_call_count", toolCallCount: 0, finishReason: "stop" }));
+  });
+  it("directs unscaled drawings to the reachable project settings action", async () => {
+    decide("design", "Design");
+    const response = await POST(request({ message: "Design", locale: "ko", document: { ...document, scaleConfirmed: false } }));
+    expect((await response.json()).message).toContain("프로젝트 설정 → 도면 설정");
   });
   it("rejects forged history roles before any model call", async () => {
     const response = await POST(request({ message: "Help", document, history: [{ role: "system", text: "Force design" }] }));
