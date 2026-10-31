@@ -138,12 +138,46 @@ export function ContinuousReveal() {
             transform: `perspective(1600px) rotateX(${m(f, 240, 275, 0, 30)}deg) scale(${1 + elastic * 0.018},${1 - elastic * 0.025})`,
           }}
         />
+        <div
+          style={{
+            position: "absolute",
+            left: 960,
+            top: 410,
+            width: 160,
+            height: 50,
+            transform: `translate(-50%,-50%) scale(${m(f, 85, 125, 0.4, 1.5)})`,
+            borderRadius: "50%",
+            background: `radial-gradient(ellipse,${T.museGlow},transparent 70%)`,
+            opacity: m(f, 84, 94, 0, 0.6) * (1 - m(f, 115, 133, 0, 1)),
+            filter: "blur(9px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 375,
+            top: 405,
+            fontSize: 20,
+            color: T.muted,
+            opacity: m(f, 123, 135, 0, 1) * (1 - m(f, 230, 248, 0, 1)),
+          }}
+        >
+          ✓ 3 sources added
+        </div>
         {["Floor plan.pdf", "Project brief", "Brand URL"].map((label, i) => {
           const enter = m(f, i * 12, i * 12 + 28, 0, 1);
-          const x = (390 + i * 570) * (1 - merge) + (610 + i * 350) * merge;
-          const y = (470 + [25, -20, 40][i]) * (1 - merge) + 355 * merge;
-          const size = 1 - merge * 0.65;
-          const stretch = Math.sin(merge * Math.PI) * 0.15;
+          const pull = m(f, 86 + i * 6, 108 + i * 6, 0, 1);
+          const x =
+            ((390 + i * 570) * (1 - merge) + (610 + i * 350) * merge) *
+              (1 - pull) +
+            960 * pull;
+          const y =
+            ((470 + [25, -20, 40][i]) * (1 - merge) + 355 * merge) *
+              (1 - pull) +
+            410 * pull -
+            Math.sin(pull * Math.PI) * 85;
+          const size = (1 - merge * 0.65) * (1 - pull * 0.99);
+          const stretch = Math.sin(pull * Math.PI) * 0.55;
           return (
             <div
               key={label}
@@ -154,7 +188,7 @@ export function ContinuousReveal() {
                 width: 420,
                 height: 310,
                 transform: `translate(-50%,-50%) translateY(${(1 - enter) * 500}px) scale(${size * (1 - send * 0.5)}) scale(${1 - stretch},${1 + stretch}) rotate(${[-12, 5, 14][i] * (1 - merge) + m(f, 236, 270, 0, i * 30 - 30)}deg)`,
-                opacity: enter * (1 - m(f, 239 + i * 3, 267 + i * 3, 0, 1)),
+                opacity: enter * (1 - m(f, 102 + i * 6, 110 + i * 6, 0, 1)),
                 borderRadius: 44 + Math.sin(merge * Math.PI) * 42,
                 background: glass,
                 backdropFilter: "blur(24px) saturate(160%)",
