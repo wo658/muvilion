@@ -72,7 +72,7 @@ test('Muse preserves intent routing, IME input, cancellation and bilingual Markd
 test('AI Elements composer preserves explicit proposal approval and source access', async ({ page }) => {
   await importPlan(page);
   await page.route('**/api/plans/intent', route => route.fulfill({ json: { intent: 'design', brief: '공간 제안', message: '배치를 제안합니다.' } }));
-  await page.route('**/api/plans/design', route => route.fulfill({ json: { document: { ...emptyPlan, objects: [{ id: 'chair', kind: 'furniture', label: '새 의자', x: .5, y: .5, width: 1, depth: 1, height: 1, rotation: 0, color: "#887766" }] }, summary: '새 의자 제안' } }));
+  await page.route('**/api/plans/design', route => route.fulfill({ contentType: 'application/x-ndjson', body: JSON.stringify({ type: 'complete', result: { document: { ...emptyPlan, objects: [{ id: 'chair', kind: 'furniture', label: '새 의자', x: .5, y: .5, width: 1, depth: 1, height: 1, rotation: 0, color: "#887766" }] }, summary: '새 의자 제안' } }) + '\n' }));
   await page.getByRole('textbox', { name: 'Muse에게 도면에 관해 질문하기' }).fill('공간 제안');
   await page.getByRole('button', { name: '메시지 보내기', exact: true }).click();
   await expect(page.getByRole('button', { name: '변경 적용', exact: true })).toBeEnabled();
@@ -80,5 +80,5 @@ test('AI Elements composer preserves explicit proposal approval and source acces
   await page.getByRole('button', { name: '변경 적용', exact: true }).click();
   expect((await exportPlan(page)).document.objects[0].label).toBe('새 의자');
   await page.getByRole('button', { name: '자료 추가', exact: true }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '자료', exact: true })).toBeVisible();
 });

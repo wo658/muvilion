@@ -93,6 +93,8 @@ The selected photograph opens its exact camera pose and display settings in a le
 
 On narrow screens, photography keeps the 16:9 live frame above an independently scrolling adjustment panel. Ordinary camera presets/settings are hidden during photography on these screens; closing photography restores them.
 
+Photography frames installed subjects by default; only an explicit whole-venue intent includes the full hall. Candidate fitting uses the actual 16:9 perspective and varies azimuth, elevation and distance. The AI reviews empty-floor proportion, subject readability and foreground obstructions; fixable issues trigger a revised angle with the original user request and previous review reason carried forward. Provisional first-shot instructions must not replace the final composition goal. An expandable composition history retains actual candidate thumbnails and each review reason for the session, including when a later round fails. Camera framing never changes the saved venue dimensions or arrangement.
+
 ## Seating usability
 
 Physical object rotations support 0/90/180/270 degrees; zones retain 0/90. Fixture seating faces local -Y (north at 0°) and stores its served table/stage via useTargetId. The plan view and generated review drawings mark seat fronts. Generated seating must pass the explicit reach, pullback, legroom and connected internal approach checks in `lib/plans/usability.ts`, in addition to collision checks, before visual review/submission. Existing layouts remain readable and show localized usability issues in Items to review. Checks are concept planning allowances, not accessibility, egress or crowd certification; details and omissions are documented in `docs/dimensions.md`.

@@ -25,12 +25,12 @@ export async function draft(page:Page){
  await page.route('**/api/plans/design',async route=>{
   const request=route.request().postDataJSON();
   const objects=[
-   {id:'chair',kind:'furniture',label:'CC0 라운지 의자',x:.25,y:.4,width:1,depth:1,height:1,rotation:0,color:'#887766',modelAssetId:'modern_arm_chair_01'},
+   {id:'chair',kind:'furniture',label:'CC0 라운지 의자',x:.25,y:.4,width:.820344,depth:.986562,height:1.022852,rotation:0,color:'#887766',modelAssetId:'modern_arm_chair_01'},
    {id:'partition',kind:'partition',label:'CC0 목재 가벽',x:.65,y:.5,width:3,depth:.15,height:2.2,rotation:0,color:'#887766',materialAssetId:'Wood051'},
    {id:'gallery-wall',kind:'partition',label:'CC0 전시 가벽',x:.55,y:.22,width:1.999866,depth:.199921,height:3.2,rotation:0,color:'#eeeeee',modelAssetId:'gallery_wall'},
-   {id:'light',kind:'light',label:'CC0 펜던트',x:.4,y:.65,width:.7,depth:.7,height:1,elevation:2,rotation:0,color:'#eeeeee',modelAssetId:'modern_ceiling_lamp_01'},
+   {id:'light',kind:'light',label:'CC0 펜던트',x:.4,y:.65,width:.431649,depth:.431661,height:.951551,elevation:2,rotation:0,color:'#eeeeee',modelAssetId:'modern_ceiling_lamp_01'},
   ];
-  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({summary:'[모델 응답 fixture] CC0 의자·목재 가벽·전시 가벽 모델·펜던트 제안',document:{...request.document,objects:objects.map(o=>({...o,provenance:'ai'}))}})});
+  await route.fulfill({status:200,contentType:'application/x-ndjson',body:JSON.stringify({type:'complete',result:{summary:'[모델 응답 fixture] CC0 의자·목재 가벽·전시 가벽 모델·펜던트 제안',document:{...request.document,objects:objects.map(o=>({...o,provenance:'ai'}))}}})+'\n'});
  });
  await page.getByLabel('Muse에게 도면에 관해 질문하기').fill('CC0 의자, 목재 가벽, 전시용 가벽 모델과 조명을 배치해줘');
  await page.getByRole('button',{name:'메시지 보내기',exact:true}).click();

@@ -107,7 +107,8 @@ describe("공간 촬영",()=>{
   try {
    mocks.generate.mockResolvedValue({toolCalls:[],text:"private scene description",finishReason:"content-filter",usage:{inputTokens:100,outputTokens:50,outputTokenDetails:{reasoningTokens:40},raw:{private:"provider payload"}}});
    await POST(request({phase:"plan",document,brief:"촬영"}));
-   expect(warn).toHaveBeenCalledWith("Muvi photography response omitted a single decision",expect.objectContaining({phase:"plan",attempt:1,finishReason:"content-filter",textCharacters:25,inputTokens:100,outputTokens:50,reasoningTokens:40}));
+   expect(warn.mock.calls[0][0]).toBe("Muvi photography response omitted a single decision");
+   expect(JSON.parse(warn.mock.calls[0][1])).toMatchObject({phase:"plan",attempt:1,finishReason:"content-filter",textCharacters:25,inputTokens:100,outputTokens:50,reasoningTokens:40});
    const serialized=JSON.stringify(warn.mock.calls);expect(serialized).not.toContain("private scene");expect(serialized).not.toContain("provider payload");expect(serialized).not.toContain("base64");
   } finally { warn.mockRestore(); }
  });
