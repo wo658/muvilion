@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n/provider";
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 import { FileTextIcon, ImageIcon, LinkIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
-import { Badge, Button } from "../ui";
+import { Button } from "../ui";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
@@ -69,34 +69,32 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     }
   }
   return <section className="ps-sources" aria-label={t("Project sources")}>
-    <header className="ps-source-summary">
-      <div><h2>{t("Sources")}</h2><p>{t("Choose the materials Muse can use for this project.")}</p></div>
-      <Badge>{selectedCount} {t("selected for Muse")}</Badge>
-    </header>
-    <Field className="ps-source-search">
-      <FieldLabel htmlFor="source-search" className="sr-only">{t("Search sources")}</FieldLabel>
-      <Input ref={search} id="source-search" placeholder={t("Search sources")} value={query} onChange={event => { setQuery(event.target.value); setRemoving(null); }}/>
-    </Field>
+    <div className="ps-source-toolbar">
+      <Field className="ps-source-search">
+        <FieldLabel htmlFor="source-search" className="sr-only">{t("Search sources")}</FieldLabel>
+        <Input ref={search} id="source-search" placeholder={t("Search sources")} value={query} onChange={event => { setQuery(event.target.value); setRemoving(null); }}/>
+      </Field>
+      <span className="ps-source-count">{selectedCount} {t("selected for Muse")}</span>
+    </div>
     <input ref={concept} type="file" accept=".png,.jpg,.jpeg,.webp" hidden aria-label={t("Add concept image")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "concept"); }}/>
     <input ref={brief} type="file" accept=".pdf,.txt,.md" hidden aria-label={t("Add planning document")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "brief"); }}/>
     {uploading && <p role="status" className="ps-source-feedback">{t("Preparing source preview…")}</p>}
     {error && <p role="alert" className="ps-source-error">{localizeMessage(locale, error)}</p>}
     <section className="ps-source-group" aria-labelledby="source-drawings-heading">
       <header className="ps-source-group-heading">
-        <h3 id="source-drawings-heading">{t("Drawings")} <span>{drawings.length}/12</span></h3>
-        <Button disabled={locked || drawings.length >= 12} onClick={onDrawing}>{t("＋ Drawing")}</Button>
+        <h3 id="source-drawings-heading">{t("Drawings")} <span>{drawings.length}</span></h3>
+        <Button variant="ghost" title={t("20 MB/file · PDF up to 12 pages")} disabled={locked || drawings.length >= 12} onClick={onDrawing}>{t("＋ Drawing")}</Button>
       </header>
-      <p className="ps-source-description">{t("Only the current drawing is shared with Muse.")}</p>
       <ul className="ps-source-list">
         {visibleDrawings.map(source => <li key={source.id} data-current={source.id === activeDrawingId || undefined}>
           <div className="ps-source-row">
             <button className="ps-source-preview-button" onClick={() => setPreview(source.id)}>
               <span className="ps-source-thumbnail" aria-hidden="true"><img src={source.document.preview} alt="" loading="lazy"/></span>
-              <span className="ps-source-identity"><strong>{source.document.source.name}</strong><small>{t("DRAWING")} · {t("Page {page} of {pages}", { page: source.document.source.page, pages: source.document.source.pages })}</small></span>
+              <span className="ps-source-identity"><strong>{source.document.source.name}</strong><small className={source.document.source.pages > 1 ? undefined : "sr-only"}>{t("DRAWING")} · {t("Page {page} of {pages}", { page: source.document.source.page, pages: source.document.source.pages })}</small></span>
             </button>
             <div className="ps-source-row-actions">
-              {source.id === activeDrawingId ? <Badge>{t("Current drawing")}</Badge> : <Button disabled={locked} onClick={() => onSwitchDrawing(source.id)}>{t("Open drawing")}</Button>}
-              {source.id === activeDrawingId && <Field orientation="horizontal" className="ps-source-selection"><FieldLabel htmlFor="source-drawing-toggle">{t("Use with Muse")}</FieldLabel><Switch id="source-drawing-toggle" checked={library.drawingSelected} disabled={locked} onCheckedChange={checked => onChange(current => ({ ...current, drawingSelected: checked }))}/></Field>}
+              {source.id === activeDrawingId ? <span className="ps-source-current">{t("Current drawing")}</span> : <Button disabled={locked} onClick={() => onSwitchDrawing(source.id)}>{t("Open drawing")}</Button>}
+              {source.id === activeDrawingId && <Field orientation="horizontal" className="ps-source-selection"><Switch aria-label={t("Use with Muse")} title={t("Use with Muse")} id="source-drawing-toggle" checked={library.drawingSelected} disabled={locked} onCheckedChange={checked => onChange(current => ({ ...current, drawingSelected: checked }))}/></Field>}
             </div>
           </div>
         </li>)}
@@ -105,14 +103,13 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     </section>
     <section className="ps-source-group" aria-labelledby="source-references-heading">
       <header className="ps-source-group-heading">
-        <h3 id="source-references-heading">{t("References")} <span>{library.items.length}/12</span></h3>
+        <h3 id="source-references-heading">{t("References")} <span>{library.items.length}</span></h3>
         <div className="ps-source-actions">
-          <Button disabled={uploading || locked || referencesFull} onClick={() => concept.current?.click()}>{t("＋ Concept image")}</Button>
-          <Button disabled={locked || referencesFull} aria-expanded={addingBrand} aria-controls="source-brand-form" onClick={event => { brandTrigger.current = event.currentTarget; setAddingBrand(value => !value); }}>{t("＋ Brand URL")}</Button>
-          <Button disabled={uploading || locked || referencesFull} onClick={() => brief.current?.click()}>{t("＋ Brief")}</Button>
+          <Button variant="ghost" title={t("20 MB/file · PDF up to 12 pages")} disabled={uploading || locked || referencesFull} onClick={() => concept.current?.click()}>{t("＋ Concept image")}</Button>
+          <Button variant="ghost" disabled={locked || referencesFull} aria-expanded={addingBrand} aria-controls="source-brand-form" onClick={event => { brandTrigger.current = event.currentTarget; setAddingBrand(value => !value); }}>{t("＋ Brand URL")}</Button>
+          <Button variant="ghost" title={t("20 MB/file · PDF up to 12 pages")} disabled={uploading || locked || referencesFull} onClick={() => brief.current?.click()}>{t("＋ Brief")}</Button>
         </div>
       </header>
-      <p className="ps-source-description">{t("Images, brand links and briefs shared across drawings.")}</p>
       {addingBrand && <form id="source-brand-form" className="ps-source-form" onSubmit={event => {
         event.preventDefault();
         if (locked || referencesFull) return;
@@ -124,7 +121,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
           closeBrandForm(); setUrl(""); setBrandName(""); setBrandNotes(""); setQuery("");
         } catch (error) { setError(error instanceof Error ? error.message : t("Check this URL.")); }
       }}>
-        <h4>{t("Add brand")}</h4>
         <FieldGroup>
           <Field><FieldLabel htmlFor="source-brand-url">{t("Brand URL")}</FieldLabel><Input id="source-brand-url" type="url" autoFocus placeholder="https://brand.com" required value={url} maxLength={2000} onChange={event => setUrl(event.target.value)}/></Field>
           <Field><FieldLabel htmlFor="source-brand-name">{t("Brand name")}</FieldLabel><Input id="source-brand-name" value={brandName} maxLength={255} onChange={event => setBrandName(event.target.value)}/></Field>
@@ -138,10 +134,10 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
           <div className="ps-source-row">
             <button className="ps-source-preview-button" onClick={() => setPreview(source.id)}>
               <span className="ps-source-thumbnail" aria-hidden="true">{source.images[0] ? <img src={source.images[0]} alt="" loading="lazy"/> : source.kind === "brand" ? <LinkIcon/> : source.kind === "concept" ? <ImageIcon/> : <FileTextIcon/>}</span>
-              <span className="ps-source-identity"><strong>{source.name}</strong><small>{source.kind === "concept" ? t("CONCEPT IMAGE") : source.kind === "brand" ? t("BRAND LINK") : t("PLANNING DOCUMENT")} · {source.url ? new URL(source.url).hostname : source.images.length ? t("{count} previews", { count: source.images.length }) : t("{count} characters", { count: source.text.length })}</small></span>
+              <span className="ps-source-identity"><strong>{source.name}</strong><small className="sr-only">{source.kind === "concept" ? t("CONCEPT IMAGE") : source.kind === "brand" ? t("BRAND LINK") : t("PLANNING DOCUMENT")} · {source.url ? new URL(source.url).hostname : source.images.length ? t("{count} previews", { count: source.images.length }) : t("{count} characters", { count: source.text.length })}</small></span>
             </button>
             <div className="ps-source-row-actions">
-              <Field orientation="horizontal" className="ps-source-selection"><FieldLabel htmlFor={`source-${source.id}`}>{t("Use with Muse")}</FieldLabel><Switch id={`source-${source.id}`} checked={source.selected} disabled={locked} onCheckedChange={selected => updateItem(source.id, { selected })}/></Field>
+              <Field orientation="horizontal" className="ps-source-selection"><Switch aria-label={t("Use with Muse")} title={t("Use with Muse")} id={`source-${source.id}`} checked={source.selected} disabled={locked} onCheckedChange={selected => updateItem(source.id, { selected })}/></Field>
               <Button variant="ghost" className="ps-source-remove" disabled={locked} aria-expanded={removing === source.id} aria-label={t("Remove {name}", { name: source.name })} onClick={event => { removeTrigger.current = event.currentTarget; setRemoving(source.id); }}><Trash2Icon aria-hidden="true"/></Button>
             </div>
           </div>
@@ -154,7 +150,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
         </li>)}
       </ul>
       {!library.items.length && !term && <p className="ps-source-empty">{t("Add references to give Muse a direction.")}</p>}
-      <p className="ps-source-description ps-source-limits">{t("20 MB/file · PDF up to 12 pages")}</p>
     </section>
     {term && !visibleDrawings.length && !visibleReferences.length && <div className="ps-source-empty" role="status"><SearchIcon aria-hidden="true"/><strong>{t("No sources found")}</strong><Button variant="ghost" onClick={() => { setQuery(""); search.current?.focus(); }}>{t("Clear search")}</Button></div>}
     <dialog ref={dialog} className="ps-source-dialog" onCancel={() => setPreview(null)} onClose={() => setPreview(null)} aria-labelledby="source-preview-title">
