@@ -16,8 +16,9 @@ function Patrol({ width, depth, paused }: { width: number; depth: number; paused
   const root = useRef<Group>(null);
   const elapsed = useRef(0);
   const radiusX = width * 0.2, radiusZ = depth * 0.2;
-  // Display scale only: this mascot is not a measured person or a design object.
-  const scale = Math.min(Math.min(width, depth) * 0.12, Math.max(0.6, Math.max(width, depth) * 0.018));
+  // About 0.85 scene units tall: a small companion, regardless of venue size.
+  // Tiny spaces may shrink it further. This is decorative display scale only.
+  const scale = Math.min(0.4, Math.min(width, depth) * 0.12);
   useFrame(({ invalidate }, delta) => {
     if (paused || !root.current) return;
     elapsed.current += Math.min(delta, 0.05);

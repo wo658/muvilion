@@ -25,7 +25,7 @@ export function MuviGreeting({ thinking = false }: { thinking?: boolean }) {
   </Link>;
 }
 
-const labels = { idle: "Idle", hello: "Hello", walk: "Walk", run: "Run", think: "Think", idea: "Idea", cheer: "Cheer", rest: "Rest" } as const satisfies Record<MuviMotion, MessageKey>;
+const labels = { idle: "Idle", hello: "Hello", walk: "Walk", run: "Run", think: "Think", idea: "Idea", cheer: "Cheer", rest: "Rest", inspect: "Inspect space", measure: "Measure", arrange: "Hammer", paint: "Paint" } as const satisfies Record<MuviMotion, MessageKey>;
 export function MuviPlayground() {
   const { t } = useI18n();
   const [motion, setMotion] = useState<MuviMotion>("hello");
@@ -52,6 +52,7 @@ export function MuviPlayground() {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Button variant="outline" disabled={systemPaused} onClick={() => setStopped(value => !value)}>{stopped ? t("Play") : t("Pause")}</Button>
         <Button variant="outline" onClick={() => { setTarget(null); setMotion("hello"); setRevision(value => value + 1); }}>{t("Reset view")}</Button>
+        <Link href="/muvi/gallery" className="text-sm underline underline-offset-4">{t("View motion gallery")}</Link>
         <a href={MUVI_MODEL} download className="text-sm underline underline-offset-4">{t("Download 3D model")}</a>
         <a href="/mascot/muvi-face.svg" download className="text-sm underline underline-offset-4">{t("Download 2D icon")}</a>
       </div>
