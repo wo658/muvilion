@@ -1,91 +1,51 @@
 1
-00:00:00,000 --> 00:00:06,000
-From an idea. To a space.
+00:00:00,000 --> 00:00:03,000
+Start with a plan. Make it a space.
 
 2
-00:00:06,000 --> 00:00:15,000
-Bring your context. A real venue. A clear intent. Your brand.
+00:00:03,000 --> 00:00:07,000
+Read the room.
 
 3
-00:00:15,000 --> 00:00:23,000
-One workspace. From brief to concept shot.
+00:00:07,000 --> 00:00:11,000
+Start with real context.
 
 4
-00:00:23,000 --> 00:00:31,000
-Keep the drawing, brief and brand together.
+00:00:11,000 --> 00:00:16,000
+Add the purpose.
 
 5
-00:00:31,000 --> 00:00:38,000
-Tell Muse what the space needs to do.
+00:00:16,000 --> 00:00:20,000
+Bring the brand.
 
 6
-00:00:38,000 --> 00:00:45,000
-Give the design a point of view.
+00:00:20,000 --> 00:00:27,000
+Tell Muse what you imagine.
 
 7
-00:00:45,000 --> 00:00:50,000
-Describe the space you have in mind.
+00:00:27,000 --> 00:00:32,000
+Watch it take shape.
 
 8
-00:00:50,000 --> 00:01:02,000
-Watch the design take shape.
+00:00:32,000 --> 00:00:37,000
+Furniture. Flow. Feeling.
 
 9
-00:01:02,000 --> 00:01:14,000
-Real furniture. Editable placements.
+00:00:37,000 --> 00:00:42,000
+Refined in the same space.
 
 10
-00:01:14,000 --> 00:01:18,000
-Review the proposal before applying it.
+00:00:42,000 --> 00:00:47,000
+You make the call.
 
 11
-00:01:18,000 --> 00:01:22,000
-Your design stays yours to edit.
+00:00:47,000 --> 00:00:52,000
+Change your perspective.
 
 12
-00:01:22,000 --> 00:01:32,000
-See how the space comes together.
+00:00:52,000 --> 00:00:58,000
+Look around. Make it yours.
 
 13
-00:01:32,000 --> 00:01:39,000
-A small request. A precise change.
-
-14
-00:01:39,000 --> 00:01:48,000
-Refine the color. Improve the seating.
-
-15
-00:01:48,000 --> 00:01:56,000
-Now, find the shot that tells the story.
-
-16
-00:01:56,000 --> 00:02:05,000
-Muse frames, renders and compares camera angles.
-
-17
-00:02:05,000 --> 00:02:15,000
-A concept shot from the space you designed.
-
-18
-00:02:15,000 --> 00:02:25,000
-Captured from the actual 3D scene.
-
-19
-00:02:25,000 --> 00:02:30,000
-Adjust the angle. Make it yours.
-
-20
-00:02:30,000 --> 00:02:40,000
-Download the concept shot and keep designing.
-
-21
-00:02:40,000 --> 00:02:50,000
-Powered by Meta AI. Grounded in the actual 3D scene.
-
-22
-00:02:50,000 --> 00:02:56,000
-A workspace for exhibitors, too.
-
-23
-00:02:56,000 --> 00:03:00,000
-muvilion. From context to concept.
+00:00:58,000 --> 00:01:00,000
+Your space. Built from your context.
