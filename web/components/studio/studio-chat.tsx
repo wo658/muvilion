@@ -173,7 +173,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             }
             else {
                 const designSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(430_000)]);
-                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: sources.drawingSelected, brief, sources: await selectedReferences(sources, document) }), signal: designSignal });
+                const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: true, brief, sources: await selectedReferences(sources, document) }), signal: designSignal });
                 const assertCurrent = () => {
                     designSignal.throwIfAborted();
                     if (!mounted.current || currentContext.current.document !== base || currentContext.current.sources !== sources) throw new DOMException("Stale design", "AbortError");
@@ -250,7 +250,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 if (!mounted.current) return;
                 abortController.signal.throwIfAborted();
                 handedOff = true;
-                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, boothPricing, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: sources.drawingSelected ? document.texts : [] } : null, sources: references } });
+                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, boothPricing, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: document.texts } : null, sources: references } });
             } else {
                 handedOff = true;
                 setMessages(previous => [...previous,

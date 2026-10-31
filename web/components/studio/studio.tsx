@@ -6,6 +6,7 @@ import type { PricingContext } from "@/lib/booths/pricing";
 
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import dynamic from "next/dynamic";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -75,6 +76,14 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const activePreview = spaceMode && designPreview?.base === document && designPreview?.sources === sources ? designPreview : null;
     const [details, setDetails] = useState(false);
     const [projectSettings, setProjectSettings] = useState<"sources" | "booths" | null>(null);
+    const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+    const projectMenuTrigger = useRef<HTMLButtonElement>(null);
+    const openProjectDialog = (section: "sources" | "booths") => {
+        // Native dialogs restore focus to this persistent trigger, not the closing popover.
+        projectMenuTrigger.current?.focus();
+        setProjectMenuOpen(false);
+        setProjectSettings(section);
+    };
     const [floorDraft, setFloorDraft] = useState<Point[] | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
     const [history, setHistory] = useState<PlanDocument[]>([]);
@@ -329,12 +338,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </div> },
     ] : []}/>
 
-    <ProjectDialog open={projectSettings !== null} title={t("Project settings")} onClose={() => setProjectSettings(null)}>
-      <nav aria-label={t("Project settings sections")} className="flex gap-2 border-b border-hairline px-4 py-3">
-        {spaceMode && document && <Button onClick={() => { setProjectSettings(null); setDetails(true); }}>{t("Drawing settings")}</Button>}
-        <Button variant={projectSettings === "sources" ? "secondary" : "ghost"} aria-current={projectSettings === "sources" ? "page" : undefined} onClick={() => setProjectSettings("sources")}>{t("Sources")}</Button>
-        {spaceMode && document && <Button variant={projectSettings === "booths" ? "secondary" : "ghost"} aria-current={projectSettings === "booths" ? "page" : undefined} onClick={() => setProjectSettings("booths")}>{t("Booth pricing · applications")}</Button>}
-      </nav>
+    <ProjectDialog open={projectSettings !== null} title={t(projectSettings === "booths" ? "Booth pricing · applications" : "Sources")} onClose={() => setProjectSettings(null)}>
       <div hidden={projectSettings !== "sources"}>
         <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={id => { switchDrawing(id); setProjectSettings(null); }} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setProjectSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
@@ -383,7 +387,16 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             <NativeSelect aria-label={t("Switch drawing")} className="min-w-0 max-w-64 flex-1" value={activeDrawingId ?? drawings[0]?.id ?? ""} disabled={busy} onChange={event => switchDrawing(event.target.value)}>
               {drawings.map(item => <option key={item.id} value={item.id}>{item.document.source.name}{item.document.source.pages > 1 ? ` · ${t("Page {page}", { page: item.document.source.page })}` : ""}</option>)}
             </NativeSelect>
-            <Button variant="ghost" className="ps-icon-button" aria-label={t("Project settings")} title={t("Project settings")} onClick={() => setProjectSettings("sources")}><FolderCogIcon/></Button>
+            <Popover open={projectMenuOpen} onOpenChange={setProjectMenuOpen}>
+              <PopoverTrigger ref={projectMenuTrigger} render={<Button variant="ghost" className="ps-icon-button" aria-label={t("Project settings")} title={t("Project settings")}/>}>
+                <FolderCogIcon/>
+              </PopoverTrigger>
+              <PopoverContent align="start" aria-label={t("Project settings")} finalFocus={projectSettings === null}>
+                <Button variant="ghost" className="justify-start" onClick={() => { setProjectMenuOpen(false); setDetails(true); }}>{t("Drawing settings")}</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => openProjectDialog("sources")}>{t("Sources")}</Button>
+                <Button variant="ghost" className="justify-start" onClick={() => openProjectDialog("booths")}>{t("Booth pricing · applications")}</Button>
+              </PopoverContent>
+            </Popover>
           </>}
           <div ref={setToolbarEnd} className="ps-toolbar-end"/>
         </div>

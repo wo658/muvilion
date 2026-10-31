@@ -222,3 +222,11 @@
 .ps-canvas-toolbar .ps-icon-button,.ps-canvas-toolbar [data-slot=button]:has(>svg:only-child),.ps-canvas-toolbar [data-slot=popover-trigger]:has(>svg:only-child){width:34px;padding:0}
 .ps-canvas-toolbar [data-slot=toggle-group-item]:hover:not(:disabled),.ps-canvas-toolbar [data-slot=button]:hover:not(:disabled),.ps-canvas-toolbar [data-slot=popover-trigger]:hover:not(:disabled){background:var(--sunken);color:var(--ink)}
 .ps-canvas-toolbar [data-slot=toggle-group-item][data-pressed],.ps-canvas-toolbar [data-slot=toggle-group-item][aria-pressed=true],.ps-canvas-toolbar [data-slot=button][aria-pressed=true]{background:var(--selected);color:var(--ink);font-weight:600}
+
+/* Keep drawing selection and project settings independently reachable on phones. */
+@media(max-width:680px) {
+  .ps-studio.ps-has-plan .ps-canvas-toolbar { display:grid; grid-template-columns:minmax(0,1fr) 34px; gap:8px; }
+  .ps-canvas-toolbar>[data-slot=toggle-group] { grid-column:1 / -1; justify-self:start; }
+  .ps-canvas-toolbar>[data-slot=native-select-wrapper] { width:100%; max-width:none; }
+  .ps-canvas-toolbar>.ps-toolbar-end { grid-column:1 / -1; margin-left:0; padding-left:0; flex-wrap:wrap; justify-content:flex-start; }
+}
