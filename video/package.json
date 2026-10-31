@@ -10,6 +10,7 @@
   "dependencies": {
     "@react-three/fiber": "9.8.2",
     "@remotion/cli": "4.0.539",
+    "@remotion/media": "4.0.539",
     "@remotion/three": "4.0.539",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -30,7 +31,8 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
-    "render": "remotion render src/index.ts Muvilion-Space out/muvilion-space-10s.mp4 --concurrency=2"
+    "render": "remotion render src/index.ts Muvilion-Space out/muvilion-space-10s.mp4 --concurrency=2",
+    "render:atelier": "remotion render src/index.ts Muvilion-Atelier out/muvilion-atelier-10s.mp4 --concurrency=2"
   },
   "allowScripts": {
     "esbuild": false
