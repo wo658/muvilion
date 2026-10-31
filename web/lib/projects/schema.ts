@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
-import { SourceLibrarySchema, emptySources } from "@/lib/sources/schema";
+import { ReferenceSourceSchema, SourceLibrarySchema, emptySources } from "@/lib/sources/schema";
 
 export const DrawingSourceSchema = z.object({
   id: z.string().min(1).max(100),
@@ -41,6 +41,10 @@ export const CreateProject = z.object({ name: z.string().trim().min(1).max(100),
 export const SaveProject = z.object({ name: z.string().trim().min(1).max(100), revision: z.number().int().nonnegative(), state: ProjectState });
 export const SampleDrawing = z.object({ name: z.string(), file: z.string(), page: z.number().int().positive().optional(), rasterPdf: z.boolean().optional() });
 export type SampleDrawing = z.infer<typeof SampleDrawing>;
-export const SampleProject = z.object({ id: z.string(), name: z.string(), drawings: z.array(SampleDrawing).min(1).max(12) });
+/** Sample inputs contain authored references, never persisted project/asset identifiers. */
+export const SampleSource = ReferenceSourceSchema.omit({ id: true, originalAssetId: true }).extend({
+  kind: z.enum(["brand", "brief"]),
+}).refine(source => source.kind !== "brief" || source.text.trim().length > 0, "Sample briefs need document text");
+export const SampleProject = z.object({ id: z.string(), name: z.string(), drawings: z.array(SampleDrawing).min(1).max(12), sources: z.array(SampleSource).max(12).optional() });
 export type SampleProject = z.infer<typeof SampleProject>;
 export const ProjectExport = z.object({ projectVersion: z.literal(2), name: z.string(), state: ProjectState, assets: z.array(AssetBundle) });
