@@ -12,7 +12,7 @@ export const IntentRequest = z.object({
 });
 
 export const IntentDecision = z.object({
-  intent: z.enum(["chat", "design", "interpret", "clarify"]),
+  intent: z.enum(["chat", "design", "interpret", "clarify", "photography"]),
   message: z.string().trim().min(1).max(1000),
   brief: z.string().max(6000),
 });

@@ -1,12 +1,16 @@
 "use client";
 import { dimensionsMatch } from "@/lib/assets/dimensions";
 import { FixtureObject } from "./fixture-object";
+import { ScenePhotography, type PhotoRenderer } from "./scene-photography";
+import { PhotographyPanel } from "./photography-panel";
+import type { PhotoRequest } from "@/lib/plans/photography-client";
+import type { PhotoShot } from "@/lib/plans/photography";
 import type { MuviOperation } from "@/lib/muvi/operations";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 
 import { createPortal } from "react-dom";
-import { Component, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { MuviRoaming } from "@/components/muvi/muvi-roaming";
 import { useMotionPaused } from "@/components/muvi/use-motion-paused";
 import { SceneLabel } from "./scene-label";
@@ -36,8 +40,10 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 /** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
-export default function SceneView({ document, wallHeight, selected, onSelect, toolbar, muviOperation }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null }) {
+export default function SceneView({ document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
   const { t } = useI18n();
+  const [photoRenderer, setPhotoRenderer] = useState<PhotoRenderer | null>(null);
+  const photographing = Boolean(photoRequest);
   const systemPaused = useMotionPaused();
   const [showMuvi, setShowMuvi] = useState(true);
   const [muviPaused, setMuviPaused] = useState(false);
@@ -57,13 +63,17 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   const [exploreStatus,setExploreStatus]=useState<MessageKey>(EXPLORE_HINT);
   const overviewCeiling=useRef("hidden");
   const changeView=(next:CameraView)=>{
+    onPhotoClose?.();
     if(next==="interior" && view!=="interior") {overviewCeiling.current=ceilingMode;if(document.ceiling)setCeilingMode("solid");}
     if(next!=="interior" && view==="interior") setCeilingMode(overviewCeiling.current);
     setExploreStatus(EXPLORE_HINT);setView(next);setCameraRevision(n=>n+1);
   };
   const [showStructure, setShowStructure] = useState(true);
   const [showOverhead, setShowOverhead] = useState(true);
-  const renderedWallHeight = displayWallHeight(wallHeight, cutaway, view === "interior");
+  const applyPhotoSettings = useCallback((shot: PhotoShot) => {
+    setCutaway(shot.cutaway); setCeilingMode(shot.ceilingMode); setShowStructure(shot.showStructure); setShowOverhead(shot.showOverhead);
+  }, []);
+  const renderedWallHeight = displayWallHeight(wallHeight, cutaway, !photographing && view === "interior");
   const showCeiling = ceilingMode !== "hidden";
   const floorShape = useMemo(() => {
     if (!document.floorBoundary?.length) return null;
@@ -92,7 +102,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       </details></PopoverContent>
     </Popover>
   </div>;
-  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
 
     <color attach="background" args={[TOKENS.bg]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
@@ -100,29 +110,29 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     <directionalLight position={[span / 3, span, span / 2]} intensity={2.4} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0002} shadow-normalBias={0.04} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
     <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":TOKENS.model} roughness={0.9} /></mesh>
     {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
-    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
+    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={!photographing && selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={!photographing && selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
     {!exhibition && <gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />}
     {walls.map((line) => {
       const ax = line.a.x - width / 2, az = line.a.y - depth / 2;
       const bx = line.b.x - width / 2, bz = line.b.y - depth / 2;
       const length = Math.hypot(bx - ax, bz - az);
       if (length < 0.001) return null;
-      return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, renderedWallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow={view === "interior"} onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
-        <boxGeometry args={[length, renderedWallHeight, line.thickness]} /><meshStandardMaterial color={selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : VENUE_COLORS.existing} roughness={0.8} />
+      return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, renderedWallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow={photographing ? !cutaway : view === "interior"} onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
+        <boxGeometry args={[length, renderedWallHeight, line.thickness]} /><meshStandardMaterial color={!photographing && selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : VENUE_COLORS.existing} roughness={0.8} />
       </mesh>;
     })}
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
       {object.fixtureType && dimensionsMatch(object) ? <group onClick={e => { e.stopPropagation(); if (view !== "interior") onSelect(object.id); }}><FixtureObject type={object.fixtureType} color={object.color}/></group> : object.modelAssetId || object.materialAssetId ? <group onClick={e => { if (view === "interior" && e.delta > 5) return; e.stopPropagation(); if (view !== "interior") onSelect(object.id); else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
-        <AssetObject object={object} selected={selected === object.id} />
+        <AssetObject object={object} selected={!photographing && selected === object.id} />
         {object.kind === "partition" && <>
           <mesh position={[0,object.height-0.0125,0]}><boxGeometry args={[object.width,0.025,object.depth]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
-          {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
+          {!photographing && selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
         </>}
       </group> : object.kind === "partition" ? <group onClick={e => { if (view === "interior") return; e.stopPropagation(); onSelect(object.id); }}>
-        <mesh userData={{navigationObstacle:true}} position={[0,object.height/2,0]} castShadow><boxGeometry args={[object.width,object.height,object.depth]}/><meshStandardMaterial color={selected === object.id ? TOKENS.accent : object.color} roughness={0.85}/></mesh>
+        <mesh userData={{navigationObstacle:true}} position={[0,object.height/2,0]} castShadow><boxGeometry args={[object.width,object.height,object.depth]}/><meshStandardMaterial color={!photographing && selected === object.id ? TOKENS.accent : object.color} roughness={0.85}/></mesh>
         <mesh position={[0,object.height-0.0125,0]}><boxGeometry args={[object.width,0.025,object.depth]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
-        {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
-      </group> : exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
+        {!photographing && selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
+      </group> : exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={!photographing && selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
 
     </group>)}
     {(document.entrances ?? []).map(entrance => <group key={entrance.id} position={[(entrance.x-.5)*width,0.08,(entrance.y-.5)*depth]} rotation-y={entrance.rotation*Math.PI/180}>
@@ -130,10 +140,11 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       <mesh rotation-x={-Math.PI/2} position={[0,0.02,-0.25]}><circleGeometry args={[0.45,3]}/><meshBasicMaterial color={VENUE_COLORS.entrance} side={DoubleSide}/></mesh>
       <SceneLabel position={[0,Math.max(renderedWallHeight,1.2)+0.6,0]} text={`↳ ${entrance.label}`} color={VENUE_COLORS.entrance} onSelect={() => onSelect(entrance.id)}/>
     </group>)}
-    {view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
-    {showMuvi && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
-    <SceneCamera document={document} view={view} revision={cameraRevision} selected={selected}/>
-  </Canvas></SceneBoundary>;
+    {!photographing && view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
+    {showMuvi && !photographing && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
+    <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
+    <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected}/>
+  </Canvas></div></div>{photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
 }
 
 function SceneUnavailable() {

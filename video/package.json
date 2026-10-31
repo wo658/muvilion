@@ -32,7 +32,8 @@
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
     "render": "remotion render src/index.ts Muvilion-Space out/muvilion-space-10s.mp4 --concurrency=2",
-    "render:atelier": "remotion render src/index.ts Muvilion-Atelier out/muvilion-atelier-10s.mp4 --concurrency=2"
+    "render:atelier": "remotion render src/index.ts Muvilion-Atelier out/muvilion-atelier-10s.mp4 --concurrency=2",
+    "render:inputs": "remotion render src/index.ts Muvilion-Input-Reveal out/muvilion-input-reveal-10s.mp4 --concurrency=2"
   },
   "allowScripts": {
     "esbuild": false

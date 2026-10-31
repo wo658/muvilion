@@ -141,3 +141,10 @@ dialog::backdrop {
 .muse-message-response [data-streamdown="inline-code"],
 .muse-message-response [data-streamdown="table-header"],
 .muse-message-response [data-streamdown="image-placeholder"] { background: var(--sunken); }
+
+/* Photography keeps the live view and exported image in the same 16:9 frame. */
+.ps-photo-workspace{position:absolute;inset:64px 0 0;display:flex;min-height:0;background:var(--bg);overflow:hidden}
+.ps-photo-stage{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;padding:12px;container-type:size}
+.ps-photo-frame{position:relative;flex:none;width:min(100cqw,calc(100cqh * 16 / 9));aspect-ratio:16/9;overflow:hidden;background:var(--bg)}
+.ps-photography-panel{width:300px;flex:none;display:flex;flex-direction:column;gap:12px;overflow:auto;padding:16px;background:var(--surface);border-left:1px solid var(--hairline)}
+@media(max-width:799px){.ps-photo-workspace{flex-direction:column;overflow:hidden}.ps-photo-stage{flex:none;min-height:180px;height:clamp(180px,30dvh,280px)}.ps-photography-panel{width:100%;flex:1;min-height:0;border-left:0;border-top:1px solid var(--hairline)}.ps-center:has(.ps-photo-workspace) .ps-toolbar-end{display:none}}
