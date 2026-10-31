@@ -7,7 +7,7 @@
 .ps-source-group-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
 .ps-source-group-heading h3 { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; }
 .ps-source-group-heading h3>span { color:var(--muted); font-size:12px; font-weight:400; }
-.ps-source-actions { display:flex; flex-wrap:wrap; gap:8px; padding-bottom:16px; border-bottom:1px solid var(--hairline); }
+.ps-source-actions { display:flex; flex-wrap:wrap; gap:8px; padding-bottom:16px; }
 .ps-source-actions>p { flex-basis:100%; }
 .ps-source-list { display:flex; flex-direction:column; list-style:none; }
 .ps-source-list:empty { display:none; }
@@ -27,19 +27,19 @@
 .ps-source-row-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-shrink:0; }
 .ps-source-current { color:var(--muted); font-size:11px; }
 .ps-source-remove { min-width:32px; min-height:32px; padding:6px; }
-.ps-source-remove-confirm { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--sunken); border-top:1px solid var(--hairline); font-size:12px; }
+.ps-source-remove-confirm { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--sunken); font-size:12px; }
 .ps-source-remove-confirm>div { display:flex; gap:8px; }
 .ps-source-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:16px 0; color:var(--muted); font-size:13px; line-height:1.6; text-align:center; }
 .ps-source-empty svg { width:20px; height:20px; }
 .ps-source-empty strong { font-weight:500; color:var(--ink-soft); }
-.ps-source-form { display:flex; flex-direction:column; gap:16px; padding:16px 0; border-bottom:1px solid var(--hairline); }
+.ps-source-form { display:flex; flex-direction:column; gap:16px; padding:16px 0; }
 .ps-source-form footer { display:flex; justify-content:flex-end; gap:8px; }
 .ps-source-feedback { padding:12px; border-radius:8px; background:var(--sunken); color:var(--muted); font-size:12px; }
 .ps-source-error { padding:12px; border-radius:8px; background:var(--bad-soft); color:var(--bad); font-size:12px; overflow-wrap:anywhere; }
 
 .ps-source-dialog { margin:auto; width:min(760px,94vw); max-height:90dvh; border:1px solid var(--hairline); border-radius:20px; color:var(--ink); background:var(--surface); overflow:auto; }
 .ps-source-dialog::backdrop,.ps-source-manager::backdrop { background:var(--overlay); }
-.ps-source-dialog>header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; position:sticky; top:0; padding:20px 24px; border-bottom:1px solid var(--hairline); background:var(--surface); }
+.ps-source-dialog>header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; position:sticky; top:0; padding:20px 24px; background:var(--surface); }
 .ps-source-dialog h2 { font-size:16px; font-weight:600; overflow-wrap:anywhere; }
 .ps-source-preview-body { padding:24px; }
 .ps-source-original,.ps-source-preview-content img { width:100%; max-height:55dvh; object-fit:contain; border:1px solid var(--hairline); border-radius:8px; background:var(--sunken); }
@@ -54,9 +54,9 @@
 
 .ps-source-manager { margin:auto; width:min(840px,94vw); max-height:88dvh; border:1px solid var(--hairline); border-radius:20px; background:var(--surface); color:var(--ink); overflow:auto; }
 .ps-source-manager:has(>div:not([hidden])>.ps-sources) { width:min(680px,94vw); }
-.ps-source-manager>header { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--hairline); background:var(--surface); }
+.ps-source-manager>header { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:20px 24px; background:var(--surface); }
 .ps-source-manager>header h2 { font-size:18px; font-weight:600; }
-.ps-source-manager>nav { overflow-x:auto; flex-shrink:0; }
+.ps-source-manager>nav { border-bottom:0; overflow-x:auto; flex-shrink:0; }
 .ps-studio .ps-sidebar[hidden],.ps-drawing-controls[hidden] { display:none; }
 @media(max-width:680px) {
   .ps-sources { padding:20px 16px; gap:20px; }
