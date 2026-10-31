@@ -47,6 +47,8 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 Keep the rounded M silhouette, periwinkle body and dark eyes consistent across 2D and 3D. Muvi has no cheek blush; apply this to avatars, icons and the 3D model.
 
+In the drawing space, Muvi is a small companion: cap model scale at 0.4 (about 0.85 scene units tall, roughly half an adult reference). Never enlarge it for a larger venue. Tiny spaces may shrink it further. This is a visual proportion, not an occupancy or simulation body.
+
 ## Language
 
 Only `en` (Eng) and `ko` (한국어) are supported. App Settings changes the UI immediately; Korean is the default. The browser stores the preference and synchronizes other tabs. When storage is unavailable, the preference works for the session.
@@ -68,3 +70,7 @@ button returns to the latest message. Scrolling is instant, including reduced mo
 Assistant Markdown uses Streamdown; user input remains literal text. Sources,
 automatic intent routing, bilingual labels, cancellation and explicit proposal
 approval remain owned by StudioChat. File attachments remain in the Sources dialog.
+
+## Muvi motion gallery
+
+`/muvi/gallery` is a standalone motion review page: one large orbitable preview, four selectable designer studies, pause, replay, hide and language controls. Work gestures contain no staged result geometry. Recognizable hand tools (hammer, tape measure, broad brush) and brief impact accents are encouraged; they must never imply a particular surface or completed result. Motion is deliberately cartoon-like: bold anticipation, brisk action, squash/stretch and rebound, rather than subtle physical realism. A direction control and floor marker preview their local work orientation, independent of the camera. Use broad whole-body anticipation and fast action, with trailing recovery. Feet can rock and tap within the local stage but must not penetrate the floor. The hammer and working arm rise overhead and behind the head, then swing down toward the wall while the torso gives a small backward recoil over the planted feet; it must not visibly separate from them. Hammer strikes face forward into an implied vertical wall; no wall mesh is baked in. Impact accents are bright unlit star flashes and outward-travelling diamond sparks anchored at the contact, never wooden debris or an effect dragged by the recoiling hammer. Reduced motion and hidden pages stop animation.

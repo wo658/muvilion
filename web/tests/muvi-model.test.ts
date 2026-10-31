@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AnimationMixer, Box3, Mesh } from "three";
+import { AnimationMixer, Box3, Mesh, Quaternion, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { MUVI_MOTIONS } from "../lib/muvi/motions";
+import { MUVI_MOTIONS, MUVI_DESIGNER_MOTIONS } from "../lib/muvi/motions";
 
 describe("shipped Muvi GLB", () => {
-  it("loads offline with all eight usable, looping animation clips", async () => {
+  it("loads offline with all usable, looping animation clips", async () => {
     const file = readFileSync(new URL("../public/mascot/muvi-v1.glb", import.meta.url));
     const model = await new GLTFLoader().parseAsync(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength), "");
     expect(model.animations.map(clip => clip.name)).toEqual([...MUVI_MOTIONS]);
-    expect(file.byteLength).toBeLessThan(500_000);
+    expect(file.byteLength).toBeLessThan(900_000);
     const bounds = new Box3().setFromObject(model.scene);
     expect(bounds.min.y).toBeGreaterThanOrEqual(-0.001);
     expect(bounds.max.y).toBeGreaterThan(2);
@@ -27,6 +27,67 @@ describe("shipped Muvi GLB", () => {
       }
       mixer.stopAllAction(); mixer.clipAction(clip).play(); mixer.update(clip.duration / 4);
       expect(new Box3().setFromObject(model.scene).isEmpty()).toBe(false);
+      if ((MUVI_DESIGNER_MOTIONS as readonly string[]).includes(clip.name)) {
+        for (let step = 0; step <= 20; step++) {
+          mixer.setTime(step / 20 * clip.duration);
+          // Work gestures stay in place so callers can orient them beside any result.
+          for (const name of ["FootL", "FootR"]) {
+            const foot = model.scene.getObjectByName(name)!;
+            expect(new Box3().setFromObject(foot, true).min.y).toBeGreaterThanOrEqual(-0.001);
+            expect(Math.abs(foot.position.z)).toBeLessThan(0.35);
+          }
+          expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.35);
+        }
+      }
+      if (clip.name === "arrange") {
+        // The arm must carry the swing while the torso retreats from the wall.
+        mixer.setTime(0.235 * clip.duration);
+        model.scene.updateMatrixWorld(true);
+        const arm = model.scene.getObjectByName("ArmR")!;
+        const windupHand = arm.localToWorld(new Vector3(0.1, -0.32, 0.07));
+        expect(windupHand.y).toBeGreaterThan(1.5);
+        const windupHead = model.scene.getObjectByName("HammerFace")!.getWorldPosition(new Vector3());
+        expect(windupHead.y).toBeGreaterThan(2.1);
+        const windupRotation = arm.quaternion.clone();
+        const windupBodyZ = model.scene.getObjectByName("Body")!.position.z;
+        mixer.setTime(0.275 * clip.duration);
+        model.scene.updateMatrixWorld(true);
+        const contactHand = arm.localToWorld(new Vector3(0.1, -0.32, 0.07));
+        expect(contactHand.z - windupHand.z).toBeGreaterThan(0.3);
+        expect(windupHand.y - contactHand.y).toBeGreaterThan(0.35);
+        expect(arm.quaternion.angleTo(windupRotation)).toBeGreaterThan(0.8);
+        expect(model.scene.getObjectByName("Body")!.position.z).toBeLessThan(windupBodyZ - 0.06);
+        // Keep the body over the planted feet; recoil must not detach the silhouette.
+        expect(Math.abs(model.scene.getObjectByName("Body")!.position.z)).toBeLessThan(0.12);
+        const contacts: Vector3[] = [];
+        for (const phase of [0.275, 0.475, 0.735]) {
+          mixer.setTime(phase * clip.duration);
+          model.scene.updateMatrixWorld(true);
+          const face = model.scene.getObjectByName("HammerFace")!;
+          contacts.push(face.getWorldPosition(new Vector3()));
+          const normal = new Vector3(0, 0, -1).applyQuaternion(face.getWorldQuaternion(new Quaternion()));
+          expect(normal.z).toBeGreaterThan(0.9);
+          expect(model.scene.getObjectByName("ImpactCore")!.scale.x).toBeGreaterThan(0.9);
+        }
+        for (const contact of contacts) expect(contact.distanceTo(contacts[0])).toBeLessThan(0.015);
+        mixer.setTime(0.275 * clip.duration);
+        const effect = model.scene.getObjectByName("HammerImpact")!;
+        const anchor = effect.position.clone();
+        const spark = model.scene.getObjectByName("ImpactSpark0")!;
+        const initialRadius = spark.position.length();
+        mixer.setTime(0.30 * clip.duration);
+        expect(effect.position.distanceTo(anchor)).toBeLessThan(0.0001);
+        expect(spark.position.length()).toBeGreaterThan(initialRadius);
+        mixer.setTime(0.40 * clip.duration);
+        expect(effect.scale.x).toBe(0);
+      }
+      expect(model.scene.getObjectByName("PaintBrush")!.scale.x).toBe(clip.name === "paint" ? 1 : 0);
+      expect(model.scene.getObjectByName("Hammer")!.scale.x).toBe(clip.name === "arrange" ? 1 : 0);
+      expect(model.scene.getObjectByName("TapeCase")!.scale.x).toBe(clip.name === "measure" ? 1 : 0);
+      // Generic work clips carry no staged result objects into a real drawing space.
+      for (const name of ["Desk", "Pencil", "Tape", "Partition", "Roller", "Swatch"]) {
+        expect(model.scene.getObjectByName(name)).toBeUndefined();
+      }
     }
     mixer.stopAllAction();
   });
