@@ -1,4 +1,10 @@
 import type { ReferenceSource } from "./schema";
+
+/** Source IDs are opaque; getRandomValues also works on local HTTP previews. */
+export function createSourceId(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export async function compactImage(blob: Blob): Promise<string> {
   const bitmap = await createImageBitmap(blob);
   try {
@@ -19,7 +25,7 @@ export async function compactImage(blob: Blob): Promise<string> {
 }
 export async function readReference(file: File, kind: "concept" | "brief"): Promise<ReferenceSource> {
   if (!file.size || file.size > 20 * 1024 * 1024) throw new Error("Choose a non-empty file up to 20 MB.");
-  const result: ReferenceSource = { id: crypto.randomUUID(), kind, name: file.name, selected: false, text: "", notes: "", images: [] };
+  const result: ReferenceSource = { id: createSourceId(), kind, name: file.name, selected: false, text: "", notes: "", images: [] };
   if (kind === "concept") {
     if (!/\.(png|jpe?g|webp)$/i.test(file.name)) throw new Error("Choose a PNG, JPG or WebP concept image.");
     result.images = [await compactImage(file)];

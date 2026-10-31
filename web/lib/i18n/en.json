@@ -703,5 +703,16 @@
   "Muvi is inspecting…": "Muvi is inspecting…",
   "Muvi is measuring…": "Muvi is measuring…",
   "Muvi is arranging…": "Muvi is arranging…",
-  "Muvi is finishing…": "Muvi is finishing…"
+  "Muvi is finishing…": "Muvi is finishing…",
+  "Choose the materials Muse can use for this project.": "Choose the materials Muse can use for this project.",
+  "Search sources": "Search sources",
+  "Drawings": "Drawings",
+  "References": "References",
+  "Only the current drawing is shared with Muse.": "Only the current drawing is shared with Muse.",
+  "Add a drawing to start designing your space.": "Add a drawing to start designing your space.",
+  "Images, brand links and briefs shared across drawings.": "Images, brand links and briefs shared across drawings.",
+  "Add references to give Muse a direction.": "Add references to give Muse a direction.",
+  "Remove this source?": "Remove this source?",
+  "No sources found": "No sources found",
+  "Clear search": "Clear search"
 }
