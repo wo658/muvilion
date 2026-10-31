@@ -1,8 +1,10 @@
+import { MuviOperationKindSchema, MuviOperationSchema, type MuviOperation } from "@/lib/muvi/operations";
 import { z } from "zod";
 import { DesignObjectSchema, ZoneSchema, PlanDocumentSchema, type PlanDocument } from "./schema";
 import { applyDesignProposal } from "./muse";
 
 export const DesignPatchSchema = z.object({
+  operation: MuviOperationKindSchema.optional().describe("Choose Muvi work gesture: inspect for planning/removal, measure for dimensions, arrange for placement/building, paint for finishes. Decorative only."),
   label: z.string().min(1).max(200),
   objects: z.array(DesignObjectSchema).max(32),
   zones: z.array(ZoneSchema).max(32),
@@ -35,11 +37,12 @@ export function previewDocument(base: PlanDocument, event: DesignPreview) {
   return PlanDocumentSchema.parse({ ...base, objects: merge(base.objects ?? [], event.objects, event.removeObjects), zones: merge(base.zones ?? [], event.zones, event.removeZones), warnings: event.warnings });
 }
 /** Native fetch stream: only complete newline-delimited events are exposed. */
-export async function readDesignStream(response: Response, onPreview: (event: DesignPreview) => void) {
+export async function readDesignStream(response: Response, onPreview: (event: DesignPreview) => void, onOperation?: (event: MuviOperation) => void) {
   if (!response.ok) throw new Error((await response.json()).error ?? "Design request failed.");
   if (!response.body) throw new Error("Missing design stream.");
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "", revision = 0;
+  let operationSequence = 0, operationRun: string | undefined;
   let result: Record<string, unknown> | undefined;
   try {
     while (true) {
@@ -54,7 +57,12 @@ export async function readDesignStream(response: Response, onPreview: (event: De
         const event = JSON.parse(line);
         if (result) throw new Error("Unexpected event after completion.");
         if (event.type === "error") throw new Error(event.error);
-        if (event.type === "preview") {
+        if (event.type === "operation") {
+          const operation = MuviOperationSchema.parse(event);
+          if (operation.sequence !== operationSequence + 1 || (operationRun && operationRun !== operation.runId)) throw new Error("Out-of-order Muvi operation.");
+          operationSequence = operation.sequence; operationRun = operation.runId;
+          onOperation?.(operation);
+        } else if (event.type === "preview") {
           const preview = DesignPreviewSchema.parse(event);
           if (preview.revision !== revision + 1) throw new Error("Out-of-order design preview.");
           revision = preview.revision; onPreview(preview);

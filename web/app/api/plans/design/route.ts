@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const stream = new ReadableStream({
       start(controller) {
         const send = (event: unknown) => { if (!signal.aborted) controller.enqueue(encoder.encode(JSON.stringify(event) + "\n")); };
-        void designPlan(parsed.data, signal, send).then(result => send({ type: "complete", result })).catch(error => {
+        void designPlan(parsed.data, signal, send, send).then(result => send({ type: "complete", result })).catch(error => {
           send({ type: "error", error: error instanceof PlanServiceError ? error.message : "Muse could not draft a layout. Your drawing is unchanged." });
         }).finally(() => { if (!cancelled.signal.aborted) controller.close(); });
       },

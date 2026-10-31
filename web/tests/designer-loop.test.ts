@@ -17,6 +17,19 @@ function input() {return DesignRequest.parse({brief:'Design an open gallery',sou
 beforeEach(()=>{handle.savedKey=undefined;vi.stubEnv('MUSE_IMAGE_ENABLED','false');});
 
 describe('Designer Muse SDK loop',()=>{
+  it('streams the agent-selected operation before each grouped preview without changing the base',async()=>{
+    const patch={operation:'paint',label:'Finish study',objects:[],zones:[],removeObjects:[],removeZones:[]};
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('edit_design',patch),call('review_design',proposal),call('submit_design',{revision:2,summary:proposal.summary})]});
+    const events: string[]=[], request=input(), original=JSON.stringify(request.document);
+    const operations: import('@/lib/muvi/operations').MuviOperation[]=[];
+    const result=await designPlan(request,new AbortController().signal,e=>events.push(`preview:${e.revision}`),e=>{operations.push(e);events.push(e.operation);});
+    expect(events).toEqual(['inspect','paint','preview:1','measure','preview:2']);
+    expect(operations.map(e=>e.sequence)).toEqual([1,2,3]);
+    expect(operations.every(e=>e.runId===result.runId)).toBe(true);
+    expect(JSON.stringify(request.document)).toBe(original);
+    expect(JSON.stringify(result.document)).not.toContain('"operation"');
+  });
+
   it('executes review and delivers image evidence to the next model step before submission',async()=>{
     const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})]});handle.model=model;
     const result=await designPlan(input(),new AbortController().signal);

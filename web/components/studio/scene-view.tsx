@@ -1,4 +1,5 @@
 "use client";
+import type { MuviOperation } from "@/lib/muvi/operations";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -33,7 +34,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 /** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
-export default function SceneView({ document, wallHeight, selected, onSelect, toolbar }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null }) {
+export default function SceneView({ document, wallHeight, selected, onSelect, toolbar, muviOperation }: { document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null }) {
   const { t } = useI18n();
   const systemPaused = useMotionPaused();
   const [showMuvi, setShowMuvi] = useState(true);
@@ -128,7 +129,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       <SceneLabel position={[0,Math.max(renderedWallHeight,1.2)+0.6,0]} text={`↳ ${entrance.label}`} color={VENUE_COLORS.entrance} onSelect={() => onSelect(entrance.id)}/>
     </group>)}
     {view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
-    {showMuvi && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} paused={muviPaused || systemPaused}/>}
+    {showMuvi && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
     <SceneCamera document={document} view={view} revision={cameraRevision} selected={selected}/>
   </Canvas></SceneBoundary>;
 }
