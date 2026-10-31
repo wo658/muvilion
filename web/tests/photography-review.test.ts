@@ -112,4 +112,17 @@ describe("촬영 구도 개선",()=>{
    expect(warn.mock.calls[0][1]).not.toContain("private photo details");
   } finally {warn.mockRestore();}
  });
+ it("눈높이 사진을 검토하다 조감도로 바꾸면 원본 이미지로 다시 결정하도록 한다",async()=>{
+  const inside={...intent,view:"interior" as const};
+  const shot=generatePhotoCandidates(document,inside)[0];
+  mocks.generate.mockResolvedValueOnce({toolCalls:[{toolName:"review_photo",input:{action:"revise",shotId:null,explanation:"높이 올립니다",intent:{...inside,view:"overview",azimuth:135}}}]})
+   .mockResolvedValueOnce({toolCalls:[{toolName:"review_photo",input:{action:"revise",shotId:null,explanation:"통로 옆으로 이동합니다",intent:{...inside,azimuth:135}}}]});
+  const response=await POST(request({intent:inside,candidates:[{shot,image:"data:image/png;base64,AA=="}]}));
+  expect(response.status).toBe(200);
+  const result=await response.json();expect(result.intent.view).toBe("interior");
+  expect(result.candidates.every((s:{eye:number[];cutaway:boolean})=>s.eye[1]===1.65&&!s.cutaway)).toBe(true);
+  expect(mocks.generate).toHaveBeenCalledTimes(2);
+  expect(mocks.generate.mock.calls[1][0].messages).toEqual(mocks.generate.mock.calls[0][0].messages);
+ });
+
 });
