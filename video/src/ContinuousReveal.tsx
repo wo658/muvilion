@@ -27,6 +27,10 @@ export function ContinuousReveal() {
   const f = useCurrentFrame();
   const merge = m(f, 78, 112, 0, 1),
     send = m(f, 225, 270, 0, 1);
+  const elastic =
+    f < 92 ? 0 : Math.sin((f - 92) * 0.2) * Math.exp(-(f - 92) / 15);
+  const glass = `linear-gradient(135deg, color-mix(in srgb, ${T.surface} 88%, transparent), color-mix(in srgb, ${T.accentSoft} 38%, transparent) 55%, color-mix(in srgb, ${T.surface} 72%, transparent))`;
+  const glassShadow = `inset 0 2px 2px ${T.surface}, inset 0 -2px 3px ${T.hairline}, 0 24px 70px ${T.shadowColor}`;
   const camera = k(
     f,
     [0, 30, 65, 112, 190, 225, 246, 275, 340, 449],
@@ -59,9 +63,40 @@ export function ContinuousReveal() {
       <AbsoluteFill
         style={{
           background: `radial-gradient(ellipse at 65% 65%,${T.accentSoft},${T.bg} 65%)`,
-          opacity: 0.6,
+          opacity: 0.9,
         }}
       />
+      <AbsoluteFill
+        style={{
+          opacity: 0.42,
+          filter: "blur(65px)",
+          transform: `rotate(${f * 0.05}deg)`,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 260 + Math.sin(f / 65) * 160,
+            top: 270,
+            width: 620,
+            height: 340,
+            borderRadius: "50%",
+            background: T.accentSoft,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            right: 180,
+            top: 520 + Math.cos(f / 85) * 100,
+            width: 430,
+            height: 270,
+            borderRadius: "50%",
+            background: T.museGlow,
+            opacity: 0.24,
+          }}
+        />
+      </AbsoluteFill>
       <div
         style={{
           position: "absolute",
@@ -94,19 +129,55 @@ export function ContinuousReveal() {
             top: m(f, 243, 275, 395, 280),
             width: 1280,
             height: m(f, 243, 275, 330, 610),
-            borderRadius: m(f, 240, 275, 34, 6),
-            background: T.surface,
+            borderRadius: m(f, 240, 275, 56, 8),
+            background: glass,
+            backdropFilter: "blur(28px) saturate(150%)",
             border: `1px solid ${T.hairline}`,
-            boxShadow: `0 32px 90px ${T.shadowColor}`,
+            boxShadow: glassShadow,
             opacity: m(f, 85, 108, 0, 1) * (1 - m(f, 275, 300, 0, 1)),
-            transform: `perspective(1600px) rotateX(${m(f, 240, 275, 0, 30)}deg)`,
+            transform: `perspective(1600px) rotateX(${m(f, 240, 275, 0, 30)}deg) scale(${1 + elastic * 0.018},${1 - elastic * 0.025})`,
           }}
         />
+        <div
+          style={{
+            position: "absolute",
+            left: 960,
+            top: 410,
+            width: 160,
+            height: 50,
+            transform: `translate(-50%,-50%) scale(${m(f, 85, 125, 0.4, 1.5)})`,
+            borderRadius: "50%",
+            background: `radial-gradient(ellipse,${T.museGlow},transparent 70%)`,
+            opacity: m(f, 84, 94, 0, 0.6) * (1 - m(f, 115, 133, 0, 1)),
+            filter: "blur(9px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 375,
+            top: 405,
+            fontSize: 20,
+            color: T.muted,
+            opacity: m(f, 123, 135, 0, 1) * (1 - m(f, 230, 248, 0, 1)),
+          }}
+        >
+          ✓ 3 sources added
+        </div>
         {["Floor plan.pdf", "Project brief", "Brand URL"].map((label, i) => {
           const enter = m(f, i * 12, i * 12 + 28, 0, 1);
-          const x = (390 + i * 570) * (1 - merge) + (610 + i * 350) * merge;
-          const y = (470 + [25, -20, 40][i]) * (1 - merge) + 355 * merge;
-          const size = 1 - merge * 0.65;
+          const pull = m(f, 86 + i * 6, 108 + i * 6, 0, 1);
+          const x =
+            ((390 + i * 570) * (1 - merge) + (610 + i * 350) * merge) *
+              (1 - pull) +
+            960 * pull;
+          const y =
+            ((470 + [25, -20, 40][i]) * (1 - merge) + 355 * merge) *
+              (1 - pull) +
+            410 * pull -
+            Math.sin(pull * Math.PI) * 85;
+          const size = (1 - merge * 0.65) * (1 - pull * 0.99);
+          const stretch = Math.sin(pull * Math.PI) * 0.55;
           return (
             <div
               key={label}
@@ -116,12 +187,13 @@ export function ContinuousReveal() {
                 top: y,
                 width: 420,
                 height: 310,
-                transform: `translate(-50%,-50%) translateY(${(1 - enter) * 500}px) scale(${size * (1 - send * 0.5)}) rotate(${[-12, 5, 14][i] * (1 - merge) + m(f, 236, 270, 0, i * 30 - 30)}deg)`,
-                opacity: enter * (1 - m(f, 239 + i * 3, 267 + i * 3, 0, 1)),
-                borderRadius: 28,
-                background: T.surface,
+                transform: `translate(-50%,-50%) translateY(${(1 - enter) * 500}px) scale(${size * (1 - send * 0.5)}) scale(${1 - stretch},${1 + stretch}) rotate(${[-12, 5, 14][i] * (1 - merge) + m(f, 236, 270, 0, i * 30 - 30)}deg)`,
+                opacity: enter * (1 - m(f, 102 + i * 6, 110 + i * 6, 0, 1)),
+                borderRadius: 44 + Math.sin(merge * Math.PI) * 42,
+                background: glass,
+                backdropFilter: "blur(24px) saturate(160%)",
                 border: `1px solid ${T.hairline}`,
-                boxShadow: `0 25px 65px ${T.shadowColor}`,
+                boxShadow: glassShadow,
                 padding: 32,
                 boxSizing: "border-box",
               }}
@@ -239,9 +311,10 @@ export function ContinuousReveal() {
             height: 78 + send * 380,
             transform: `translate(-50%,-50%) scale(${k(f, [212, 224, 230, 242, 274], [1, 1, 0.86, 1, 1])})`,
             borderRadius: "50%",
-            background: T.accent,
+            background: `linear-gradient(140deg,${T.museGlow},${T.accent})`,
+            border: `2px solid ${T.accentSoft}`,
             opacity: m(f, 108, 122, 0, 1) * (1 - m(f, 250, 280, 0, 1)),
-            boxShadow: `0 0 ${send * 110}px ${T.museGlow}`,
+            boxShadow: `inset 0 3px 8px ${T.accentSoft}, 0 0 ${send * 110}px ${T.museGlow}`,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
