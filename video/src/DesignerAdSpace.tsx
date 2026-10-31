@@ -329,7 +329,7 @@ const m = (f: number, a: number, b: number, x: number, y: number) =>
 type V = [number, number, number];
 const font = '"SF Pro Display",Arial,sans-serif';
 
-function SpatialModel({ frame }: { frame: number }) {
+export function SpatialModel({ frame }: { frame: number }) {
   const tilt = m(frame, 15, 105, 0, 1);
   const turn = m(frame, 110, 300, -0.12, 0.13);
   const project = (v: V): string => {
