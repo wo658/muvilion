@@ -59,13 +59,22 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
       inputSchema: PlanDesignProposal.extend({ objects: PlanDesignProposal.shape.objects.optional(), coverage: DesignCoverageSchema }),
       execute: async proposal => {
         if (!context.brief) throw new Error("Call set_design_brief before reviewing a candidate.");
-        reserveToolCall(context, "review_design", 3);
         const draft = applyDesignProposal({ ...context.draft, warnings: context.base.warnings }, { ...proposal, objects: proposal.objects ?? context.draft.objects ?? [] });
+        const review = reviewDesignCoverage(context.brief, draft, proposal.coverage);
+        if (!review.complete) {
+          context.signal.throwIfAborted();
+          context.draft = draft;
+          context.revision++;
+          context.review = review;
+          publish(context, proposal.summary);
+          return { revision: context.revision, designReview: review, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Coverage incomplete: correct the missing object IDs, kinds or counts and call review_design again. No visual-review budget was consumed. Do not submit." };
+        }
+        reserveToolCall(context, "review_design", 3);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
         context.signal.throwIfAborted();
         context.draft = draft;
         context.revision++;
-        context.review = reviewDesignCoverage(context.brief, draft, proposal.coverage);
+        context.review = review;
         publish(context, proposal.summary);
         const artifacts = images.map((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Interior detail massing review" : "Plan composition review", image }));
         return { revision: context.revision, designReview: context.review, warnings: designWarnings(draft), artifacts, limitations: "Coverage checks only verify referenced elements and counts, not aesthetic quality or faithfulness to the original request. Geometry warnings are separate. Schematic masses only; no material detail, photometric lighting, eye-level sightline verification or mesh asset geometry." };

@@ -44,6 +44,17 @@ describe('shared Designer Muse tools', () => {
     await review.execute!(proposal,options); await review.execute!(proposal,options);
     await expect(review.execute!(proposal,options)).rejects.toThrow('budget');
   });
+  it('returns missing coverage before spending the visual review budget', async () => {
+    const c=context(), review=createDesignTools(c).review_design;
+    for (let i=0;i<4;i++) await review.execute!({...proposal,objects:[]},options);
+    expect(c.review?.complete).toBe(false);
+    expect(c.artifacts).toHaveLength(0);
+    expect(c.calls.get('review_design')).toBeUndefined();
+    await review.execute!(proposal,options);
+    expect(c.review?.complete).toBe(true);
+    expect(c.calls.get('review_design')).toBe(1);
+    expect(c.pendingImages).toHaveLength(2);
+  });
   it('does not mutate draft state on invalid proposals or cancelled requests', async () => {
     const c=context(), review=createDesignTools(c).review_design;
     await expect(review.execute!({...proposal,objects:[proposal.objects[0],proposal.objects[0]]},options)).rejects.toThrow('unique');

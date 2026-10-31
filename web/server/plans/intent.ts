@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { generateText, tool } from "ai";
 import type { z } from "zod";
 import { IntentDecision, IntentRequest } from "@/lib/plans/intent";
@@ -18,22 +19,44 @@ Examples: "입구 통로 넓혀줘" => design; "부스 배치를 어떻게 하�
 Respond in the requested locale. This classifier never executes tools or changes the drawing.`;
 
 export async function classifyPlanIntent(input: z.infer<typeof IntentRequest>, signal: AbortSignal): Promise<IntentDecision> {
+  const requestId = randomUUID();
+  const started = Date.now();
   const model = getModel();
-  if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
-  const result = await generateText({
-    model: model.model,
-    instructions: INSTRUCTIONS,
-    messages: [{ role: "user", content: JSON.stringify(input) }],
-    tools: { route_intent: tool({ description: "Select one next action without executing it.", inputSchema: IntentDecision }) },
-    // Meta currently supports only auto; validate exactly one routing result below.
-    toolChoice: "auto",
-    temperature: 0, maxRetries: 1, timeout: 20_000, maxOutputTokens: 2000, abortSignal: signal,
-  });
+  const report = (reason: string, details: Record<string, unknown> = {}) => console.error("[plan-intent]", JSON.stringify({
+    requestId, reason, provider: model.provider, modelId: model.modelId,
+    elapsedMs: Date.now() - started, ...details,
+  }));
+  const failure = (reason: string, details: Record<string, unknown> = {}) => {
+    report(reason, details);
+    return new PlanServiceError("Muse could not determine your request. Please try again.", 502);
+  };
+  if (!model.hasKey) {
+    report("not_configured");
+    throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
+  }
+  let result;
+  try {
+    result = await generateText({
+      model: model.model,
+      instructions: INSTRUCTIONS,
+      messages: [{ role: "user", content: JSON.stringify(input) }],
+      tools: { route_intent: tool({ description: "Select one next action without executing it.", inputSchema: IntentDecision }) },
+      // Meta currently supports only auto; validate exactly one routing result below.
+      toolChoice: "auto",
+      temperature: 0, maxRetries: 1, timeout: 20_000, maxOutputTokens: 2000, abortSignal: signal,
+    });
+  } catch (error) {
+    // Never log provider messages, response bodies, prompts, headers or credentials.
+    const status = error && typeof error === "object" && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : undefined;
+    const name = error instanceof Error ? error.name : "UnknownError";
+    const category = signal.aborted ? "cancelled" : /timeout/i.test(name) ? "timeout" : "provider_error";
+    throw failure(category, { statusCode: status });
+  }
   const calls = result.toolCalls.filter(call => call.toolName === "route_intent");
-  if (calls.length !== 1) throw new PlanServiceError("Muse could not determine your request. Please try again.", 502);
+  if (calls.length !== 1) throw failure("tool_call_count", { toolCallCount: calls.length, finishReason: result.finishReason });
   const parsed = IntentDecision.safeParse(calls[0].input);
   if (!parsed.success || (parsed.data.intent === "design" && !parsed.data.brief.trim())) {
-    throw new PlanServiceError("Muse could not determine your request. Please try again.", 502);
+    throw failure("invalid_decision", { finishReason: result.finishReason });
   }
   const decision = parsed.data;
   const ko = input.locale === "ko";
@@ -43,7 +66,7 @@ export async function classifyPlanIntent(input: z.infer<typeof IntentRequest>, s
     return clarify(ko ? "먼저 도면을 업로드하거나 예시 도면을 열어주세요." : "Upload a drawing or open an example first.");
   }
   if (decision.intent === "design" && !input.document?.scaleConfirmed) {
-    return clarify(ko ? "설계 전에 도면의 축척을 확인해주세요. 채팅 영역의 축척 확인 버튼에서 실제 크기를 설정할 수 있어요." : "Use Confirm scale in the conversation to set the drawing dimensions before creating a design.");
+    return clarify(ko ? "설계 전에 도면의 축척을 확인해주세요. 프로젝트 설정 → 도면 설정에서 실제 크기를 설정할 수 있어요." : "Open Project settings → Drawing settings to confirm the real-world scale before creating a design.");
   }
   if (decision.intent === "interpret" && input.document?.unknownLines === 0) {
     return clarify(ko ? "분류되지 않은 선이 없어요. 현재 도면에 대해 궁금한 점을 알려주세요." : "There are no unclassified lines to analyze. What would you like to know about the drawing?");
