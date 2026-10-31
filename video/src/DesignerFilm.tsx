@@ -11,7 +11,12 @@ import { Audio, Video } from "@remotion/media";
 import { TOKENS as T } from "../../web/lib/ui/tokens";
 import traces from "./DesignerMinuteTraces";
 import { ContinuousReveal } from "./ContinuousReveal";
-import { PhotoPrompt, PhotoFinish, LiquidBridge } from "./DesignerLiquidPhoto";
+import {
+  PhotoPrompt,
+  PhotoFinish,
+  LiquidBridge,
+  TypeBeat,
+} from "./DesignerLiquidPhoto";
 import { AdEnd } from "./DesignerAdSpace";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -128,7 +133,20 @@ function Shot({
   enter = false,
 }: ShotProps) {
   const f = useCurrentFrame();
-  const camera = mix(f, 0, 24, zoom * 0.96, zoom);
+  const events = traces[clip] ?? [];
+  const event = events.find((e) => e.click) ?? { x: 1173, y: 546, time: 0.8 };
+  const peak = (event.time * 30) / rate;
+  const tracking =
+    clip === "apply" || clip === "views" || clip === "photo-retake";
+  const camera = tracking
+    ? interpolate(
+        f,
+        [0, Math.max(8, peak - 8), peak + 18, duration - 22, duration],
+        [1.08, 1.75, 1.75, 1.12, 1.08],
+        smooth,
+      )
+    : mix(f, 0, duration, 1.08, zoom + 0.18);
+  const aim = tracking ? `${event.x / 12.8}% ${event.y / 7.2}%` : focus;
   return (
     <AbsoluteFill style={{ background: T.bg, perspective: 1800 }}>
       <div
@@ -137,6 +155,9 @@ function Shot({
           left: 160,
           top: 28,
           fontSize: 64,
+          maxWidth: 1450,
+          lineHeight: 1.1,
+          textWrap: "balance",
           fontWeight: 650,
           letterSpacing: -3,
           opacity: mix(f, 0, 9, 0, 1),
@@ -186,8 +207,9 @@ function Shot({
             style={{
               position: "absolute",
               inset: 0,
+              clipPath: "inset(0 13px 8px 0)",
               transform: `scale(${camera})`,
-              transformOrigin: focus,
+              transformOrigin: aim,
             }}
           >
             <Video
@@ -234,16 +256,6 @@ function Shot({
             {note}
           </div>
         )}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: `${(f / duration) * 100}%`,
-            height: 3,
-            background: T.accent,
-          }}
-        />
       </div>
     </AbsoluteFill>
   );
@@ -287,19 +299,21 @@ export const DesignerFilm = () => {
         durationInFrames={5 * fps}
         name="04 · Change perspective"
       >
-        <Shot
-          clip="views"
-          title="Every angle. In your hands."
-          step=""
-          duration={150}
-        />
+        <Shot clip="views" title="A new perspective." step="" duration={150} />
       </Sequence>
       <Sequence
         from={30 * fps}
-        durationInFrames={5 * fps}
+        durationInFrames={3 * fps}
         name="05 · Orbit the real space"
       >
-        <Shot clip="orbit" title="Find the feeling." step="" duration={150} />
+        <Shot clip="orbit" title="Find the feeling." step="" duration={90} />
+      </Sequence>
+      <Sequence
+        from={33 * fps}
+        durationInFrames={2 * fps}
+        name="A moment for the idea"
+      >
+        <TypeBeat />
       </Sequence>
       <Sequence
         from={35 * fps}

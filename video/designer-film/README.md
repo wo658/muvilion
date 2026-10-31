@@ -32,3 +32,7 @@ The real source remains the official Moscone West level 3 PDF, page 1, cropped a
 `encode-minute.py` converts timestamped browser frames to constant 30fps video, preserving holds and writing interaction traces. Raw captures and project exports remain ignored under `generated/`. `build-music.py` creates the original instrumental soundtrack; its AAC master has 9dB gain. The one-minute composition adds its own closing fade. No third-party music or reference footage is included.
 
 Visual direction: Apple Creator Studio launch film (https://www.youtube.com/watch?v=ISYIEmQxs2M), with large typography, restrained spacing and responsive product reveals. The earlier source captures and concept photos remain available for future designer-focused chapters, but the participant clip is removed from the current assets and timeline.
+
+## Motion polish
+
+Actual apply/preset/retake shots use click-focused camera pushes and pullbacks. The editorial bottom progress line is removed; captured outer scrollbars are excluded by an edge crop. At33–35s a kinetic type beat breaks up the app walkthrough. Both composers share FilmGlass surface/button specifications and deliberate two-line prompt copy. Locally synthesized typing is audible in both input scenes. The captured concept image emerges from the right-side preview area as a glass card.
