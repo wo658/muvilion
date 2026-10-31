@@ -4,25 +4,22 @@
 
 ## Current scope
 
-A 60-second product advertisement: 39 seconds of editorial motion and space presentation, 21 seconds of actual app footage. English throughout, original music, no participants. The central floating composer is an editorial presentation inspired by the requested Spline feel, not a newly shipped app interface.
+60-second liquid-glass film. The approved15-second continuous opening is retained, including source-card absorption and central typing. Glass contraction bridges connect real review, apply, camera presets and orbit footage with a central editorial photo request and actual photography.
 
-## Screen plan
-
-| Time | Screen and purpose |
+| Time | Content |
 |---|---|
-| 0–8s | Large idea-led typography; PDF, brief and brand cards converge |
-| 8–12s | Actual PDF zoom establishes the real source |
-| 12–15s | Actual project brief shows purpose |
-| 15–18s | Actual brand bookmark shows context |
-| 18–27s | Central floating composer, typed prompt, send pulse |
-| 27–37s | Editorial blueprint-to-volume build using saved layout coordinates |
-| 37–41s | Actual generation/review at 5× speed |
-| 41–45s | Actual Apply changes interaction |
-| 45–48s | Actual camera preset change |
-| 48–57s | UI-free crop of the same design; concept-frame treatment |
-| 57–60s | Brand close |
+|0–15s|Context cards absorb into glass composer; saved layout builds|
+|15–20s|Actual design review,5×|
+|20–25s|Actual Apply changes|
+|25–30s|Actual camera presets|
+|30–35s|Actual orbit|
+|35–41s|Editorial central photography request|
+|41–45s|Actual camera workflow,3×|
+|45–49s|Actual Retake photo click|
+|49–57s|Actual captured concept image|
+|57–60s|Close|
 
-Scene planning and transitions are separate modules: `DesignerAdIntro.tsx`, `DesignerAdSpace.tsx`, and `DesignerAdBridges.tsx`. The bridges carry card shapes into the composer, the send pulse into a spatial grid, and a camera aperture into the hero. The hero freeze-frame is editorial framing of actual app footage, not a claim that a new photo-generation request ran.
+New photography assets show the same16-object English project. Photography ran on the isolated local app after the main development app reloaded. The model planned and reviewed a three-quarter view; the final image is the actual captured scene. The subsequent retake was not reviewed again by AI. The hero uses the first reviewed photograph. Editorial UI, animated source thumbnails, generated geometry assembly and glass transitions are presentation, not real-time application execution. No participants or proposal PDF claims.
 
 ## Capture provenance
 
