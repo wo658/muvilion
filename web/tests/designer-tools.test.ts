@@ -8,10 +8,10 @@ import { PlanDocumentSchema } from "@/lib/plans/schema";
 import sharp from "sharp";
 
 function context(): DesignToolContext {
-  const base = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'hall', format: 'pdf', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', widthMeters: 20, heightMeters: 20, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: 'pdf-vector' });
-  return { brief: {scope:'interior',direction:'Stage focal point',requirements:[{id:'stage',label:'Stage',target:'objects',kinds:['stage'],minimum:1}]}, base, draft: base, phase: 'initial', revision: 0, sources: [], env: {}, signal: new AbortController().signal, artifacts: [], pendingImages: [], calls: new Map() };
+  const base = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'hall', format: 'pdf', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', widthMeters: 20, heightMeters: 20, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: 'pdf-vector', floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}] });
+  return { brief: {scope:'zoning',direction:'Stage focal point',requirements:[{id:'stage',label:'Stage',target:'objects',kinds:['stage'],minimum:1}]}, base, draft: base, phase: 'initial', revision: 0, sources: [], env: {}, signal: new AbortController().signal, artifacts: [], pendingImages: [], calls: new Map() };
 }
-const proposal = { coverage:[{requirementId:'stage',ids:['stage'],decision:'Stage focal point.'}], summary: 'Focal point', objects: [{ id:'stage', kind:'stage', label:'Stage', x:.5,y:.5,width:5,depth:3,height:1,rotation:0,color:'#335577' }], assumptions: [] };
+const proposal = { zones:[{id:'program',label:'Stage program',purpose:'stage',x:.5,y:.5,width:20,depth:20,rotation:0,assignable:false}], coverage:[{requirementId:'stage',ids:['stage'],decision:'Stage focal point.'}], summary: 'Focal point', objects: [{ id:'stage', kind:'stage', label:'Stage', x:.5,y:.5,width:5,depth:3,height:1,rotation:0,color:'#335577' }], assumptions: [] };
 const options = { toolCallId: 'test', messages: [], context: {} };
 
 describe('shared Designer Muse tools', () => {
@@ -23,6 +23,31 @@ describe('shared Designer Muse tools', () => {
     expect(c.artifacts).toHaveLength(0);expect(c.calls.get('review_design')).toBeUndefined();
   });
 
+  it('blocks a partially allocated floor before rendering and accepts repaired whole-floor zoning', async()=>{
+    const c=context(),review=createDesignTools(c).review_design;
+    const result=await review.execute!({...proposal,zones:[{...proposal.zones[0],width:10,depth:10}]},options) as {floorCoverage:{complete:boolean;unallocatedArea:number}};
+    expect(result.floorCoverage).toMatchObject({complete:false,unallocatedArea:300});
+    expect(c.pendingImages).toHaveLength(0);expect(c.calls.get('review_design')).toBeUndefined();
+    const fixed=await review.execute!(proposal,options) as {floorCoverage:{complete:boolean}};
+    expect(fixed.floorCoverage.complete).toBe(true);expect(c.pendingImages).toHaveLength(2);
+  });
+  it('rejects a central40x30 interior in90x63 even when its requested objects exist',async()=>{
+    const c=context();c.base={...c.base,widthMeters:90,heightMeters:63};c.draft=c.base;c.brief={...c.brief!,scope:'interior'};
+    const result=await createDesignTools(c).review_design.execute!({...proposal,zones:[{...proposal.zones[0],width:40,depth:30}]},options) as {floorCoverage:{unallocatedArea:number}};
+    expect(result.floorCoverage.unallocatedArea).toBe(4470);expect(c.review?.complete).toBe(false);expect(c.pendingImages).toEqual([]);
+  });
+  it('refuses to reduce an initial or explicit whole-floor request to edit scope',async()=>{
+    const c=context();c.brief=undefined;
+    const edit={...context().brief!,scope:'edit' as const};
+    await expect(createDesignTools(c).set_design_brief.execute!(edit,options)).rejects.toThrow('whole floor');
+    c.phase='revision';c.wholeFloorRequired=true;
+    await expect(createDesignTools(c).set_design_brief.execute!(edit,options)).rejects.toThrow('whole floor');
+  });
+  it('allows a targeted edit in an existing legacy layout without re-zoning the whole hall',async()=>{
+    const c=context();c.phase='revision';c.brief={...c.brief!,scope:'edit'};c.draft={...c.draft,floorBoundary:undefined};
+    await createDesignTools(c).review_design.execute!({...proposal,zones:[]},options);
+    expect(c.pendingImages).toHaveLength(2);
+  });
   it('makes the same tools available in initial and revision phases, with asset extensions', () => {
     const c = context();
     const asset = { name:'find_design_asset', category:'asset' as const, phases:['initial','revision'] as const, create: () => tool({inputSchema:z.object({}),execute:async()=>({items:[]})}) };

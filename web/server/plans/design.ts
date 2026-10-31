@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getModel } from "@/server/agent/model";
 import { createDesignTools, ReviewedDesignSubmission } from "@/server/agent/tools/design-tools";
 import type { DesignToolContext } from "@/server/agent/tools/design-context";
+import { requiresWholeFloor, reviewFloorCoverage } from "@/lib/plans/floor-coverage";
 import { reviewUsability } from "@/lib/plans/usability";
 import { designWarnings } from "@/lib/plans/design";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
@@ -21,11 +22,14 @@ export const DesignRequest = z.object({ selection: IntentRequest.shape.selection
 
 export async function designPlan(input: z.infer<typeof DesignRequest>, signal: AbortSignal, emitPreview?: DesignToolContext["emitPreview"], emitOperation?: (event: MuviOperation) => void) {
   const { document, brief } = input;
+  const wholeFloorRequired = requiresWholeFloor(document, brief);
+  if (wholeFloorRequired && (!document.floorBoundary?.length || !document.scaleConfirmed))
+    throw new PlanServiceError("Review the interior floor outline and confirm scale in Drawing settings before designing the whole floor. Image margins are not event space.", 400);
   const model = getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   const runSignal = AbortSignal.any([signal, AbortSignal.timeout(600_000)]);
   const context: DesignToolContext = {
-    base: document, draft: document, revision: 0, emitPreview,
+    base: document, draft: document, revision: 0, emitPreview, wholeFloorRequired,
     phase: document.objects?.length || document.zones?.length ? "revision" : "initial",
     sources: input.sources.filter(source => source.selected), signal: runSignal, env: { ...process.env, MODEL_API_KEY: storedMetaKey() ?? process.env.MODEL_API_KEY },
     artifacts: [], pendingImages: [], calls: new Map(),
@@ -76,7 +80,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
       temperature: 0.2, maxRetries: 1,
     });
     const result = await agent.generate({
-      messages: [{ role: "user", content: [{ type: "text", text: JSON.stringify({ phase: context.phase, brief, selection: input.selection ?? null, context: { ...planChatContext({ ...document, texts: input.drawingSelected ? document.texts : [] }), lines: undefined, linesTruncated: undefined }, wallLines: document.lines.filter(line => line.kind === "wall") }) }, ...sourceContent(context.sources)] }],
+      messages: [{ role: "user", content: [{ type: "text", text: JSON.stringify({ phase: context.phase, wholeFloorRequired, brief, selection: input.selection ?? null, context: { ...planChatContext({ ...document, texts: input.drawingSelected ? document.texts : [] }), lines: undefined, linesTruncated: undefined }, wallLines: document.lines.filter(line => line.kind === "wall") }) }, ...sourceContent(context.sources)] }],
       abortSignal: runSignal,
     });
     const call = result.toolCalls.find(item => item.toolName === "submit_design");
@@ -86,6 +90,8 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
     if (!seenRevision || seenRevision !== context.revision || proposal.revision !== context.revision)
       throw new PlanServiceError("Muse submitted a design that has not been visually reviewed. Please retry.", 502);
     if (!context.review?.complete) throw new PlanServiceError("The interior design is missing requested elements. No changes were applied. Retry with the same brief.", 502);
+    if ((context.brief?.scope !== "edit" || wholeFloorRequired) && !reviewFloorCoverage(context.draft, context.brief?.scope ?? "interior").complete)
+      throw new PlanServiceError("The design does not allocate and furnish the entire reviewed floor. No changes were applied. Retry with the same whole-floor brief.", 502);
     if (designWarnings(context.draft).length) throw new PlanServiceError("The design still has geometry conflicts. No changes were applied.", 502);
     if (reviewUsability(context.draft).issues.length) throw new PlanServiceError("The design still has seating or circulation usability issues. No changes were applied.", 502);
     return { document: context.draft, summary: proposal.summary, artifacts: context.artifacts, phase: context.phase, designReview: context.review, runId };

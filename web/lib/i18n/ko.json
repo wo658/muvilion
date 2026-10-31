@@ -774,5 +774,7 @@
   "Circulation zones are disconnected.": "통로 영역들이 서로 연결되지 않았습니다.",
   "Confirm scale before reviewing seating.": "좌석 사용성을 검토하기 전에 축척을 확인해 주세요.",
   "This seat has no reviewed use envelope. Use a supported seating fixture.": "이 좌석은 사용 공간 기준이 없습니다. 검토 가능한 좌석 기구로 교체해 주세요.",
-  "Seating target is missing from the booth design.": "부스 도면에 좌석이 사용할 테이블이나 무대가 없습니다."
+  "Seating target is missing from the booth design.": "부스 도면에 좌석이 사용할 테이블이나 무대가 없습니다.",
+  "Review the interior floor outline and confirm scale in Drawing settings before designing the whole floor. Image margins are not event space.": "전체 공간을 설계하려면 도면 설정에서 실내 바닥 경계와 축척을 먼저 확인해 주세요. 도면 이미지의 여백은 행사 공간이 아니에요.",
+  "The design does not allocate and furnish the entire reviewed floor. No changes were applied. Retry with the same whole-floor brief.": "확인된 바닥 전체의 공간 배정과 설치물 배치가 완료되지 않았어요. 변경사항은 적용되지 않았어요. 전체 공간 설계 요청으로 다시 시도해 주세요."
 }

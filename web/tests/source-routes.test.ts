@@ -23,7 +23,7 @@ const source = (id: string, selected: boolean) => ({ id, kind: "brief", name: id
 const document = {
   schemaVersion: 1, source: { name: "hall.pdf", format: "pdf", page: 1, pages: 1, width: 100, height: 100 },
   preview: "data:image/png;base64,AA==", widthMeters: 20, heightMeters: 20, scaleConfirmed: true,
-  lines: [], texts: [{ id: "label", text: "Keep original text", x: 0.2, y: 0.2 }], warnings: [], method: "pdf-vector",
+  lines: [], texts: [{ id: "label", text: "Keep original text", x: 0.2, y: 0.2 }], warnings: [], method: "pdf-vector", floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}],
 };
 const request = (body: unknown) => new Request("http://localhost/test", { method: "POST", body: JSON.stringify(body) });
 beforeEach(() => { vi.clearAllMocks(); calls.stream.mockReturnValue({ stream: {} }); });
@@ -53,7 +53,7 @@ describe("source-aware Muse routes", () => {
   });
   it("does not destroy drawing evidence when drafting with its reference deselected", async () => {
     calls.generate.mockImplementation(async options => {
-      const proposal = { summary: "Concept", objects: [], assumptions: [] };
+      const proposal = { summary: "Concept", objects: [], zones:[{id:"open",label:"Open program",purpose:"exhibition",x:.5,y:.5,width:20,depth:20,rotation:0,assignable:false}], assumptions: [] };
       await options.tools.set_design_brief.execute({scope:'zoning',direction:'Preserve open space',requirements:[{id:'open',label:'Open space',target:'objects',kinds:[],minimum:0}]});
       await options.tools.review_design.execute({...proposal,coverage:[{requirementId:'open',ids:[],decision:'Open space preserved.'}]});
       options.prepareStep({ messages: options.messages, stepNumber: 1 });

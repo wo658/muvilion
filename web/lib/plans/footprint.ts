@@ -1,5 +1,15 @@
 export type FloorPoint = {x:number;y:number};
 const cross=(a:FloorPoint,b:FloorPoint,c:FloorPoint)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+/** Includes the perimeter; used to ignore pointer hits on clipped purpose-zone rectangles. */
+export function pointInFloor(point: FloorPoint, polygon: FloorPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j], b = polygon[i];
+    if (Math.abs(cross(a, b, point)) < 1e-10 && point.x >= Math.min(a.x, b.x) - 1e-10 && point.x <= Math.max(a.x, b.x) + 1e-10 && point.y >= Math.min(a.y, b.y) - 1e-10 && point.y <= Math.max(a.y, b.y) + 1e-10) return true;
+    if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
 export function isSimpleFootprint(points:FloorPoint[]):boolean {
   if(points.length<3)return false;
   let area=0;

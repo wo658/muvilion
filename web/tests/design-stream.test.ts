@@ -3,7 +3,7 @@ import { applyDesignPatch, designPreview, previewDocument, readDesignStream, typ
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { createDesignTools } from "@/server/agent/tools/design-tools";
 import type { DesignToolContext } from "@/server/agent/tools/design-context";
-const base = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'hall', format: 'pdf', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', widthMeters: 20, heightMeters: 20, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: 'pdf-vector' });
+const base = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'hall', format: 'pdf', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', widthMeters: 20, heightMeters: 20, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: 'pdf-vector', floorBoundary:[{x:.4,y:.425},{x:.6,y:.425},{x:.6,y:.575},{x:.4,y:.575}],zones:[{id:'stage-area',label:'Stage area',purpose:'stage',x:.5,y:.5,width:4,depth:3,rotation:0,assignable:false}] });
 const object = {id:'stage',kind:'stage' as const,label:'무대',x:.5,y:.5,width:4,depth:3,height:1,rotation:0 as const,color:'#335577'};
 const patch = {label:'무대 설치',objects:[object],zones:[],removeObjects:[],removeZones:[]};
 function response(events: unknown[], tail = '') {

@@ -774,5 +774,7 @@
   "Circulation zones are disconnected.": "Circulation zones are disconnected.",
   "Confirm scale before reviewing seating.": "Confirm scale before reviewing seating.",
   "This seat has no reviewed use envelope. Use a supported seating fixture.": "This seat has no reviewed use envelope. Use a supported seating fixture.",
-  "Seating target is missing from the booth design.": "Seating target is missing from the booth design."
+  "Seating target is missing from the booth design.": "Seating target is missing from the booth design.",
+  "Review the interior floor outline and confirm scale in Drawing settings before designing the whole floor. Image margins are not event space.": "Review the interior floor outline and confirm scale in Drawing settings before designing the whole floor. Image margins are not event space.",
+  "The design does not allocate and furnish the entire reviewed floor. No changes were applied. Retry with the same whole-floor brief.": "The design does not allocate and furnish the entire reviewed floor. No changes were applied. Retry with the same whole-floor brief."
 }

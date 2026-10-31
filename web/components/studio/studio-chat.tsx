@@ -261,7 +261,8 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     onPhotography({ id: generateId(), brief: message.slice(0, 6000), locale, history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({ role: item.role as "user" | "assistant", text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000) })) });
                 }
                 if (decision.intent === "design" || decision.intent === "interpret") {
-                    await interpret(decision.intent, decision.brief);
+                    // Keep explicit scope constraints before the router's conversational summary.
+                    await interpret(decision.intent, decision.intent === "design" ? `${message}\n\n${decision.brief}`.slice(0, 6000) : decision.brief);
                 }
             }
         } catch (err) {

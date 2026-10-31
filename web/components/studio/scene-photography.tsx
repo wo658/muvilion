@@ -96,7 +96,7 @@ export function ScenePhotography({ settings, onReady }: {
           active.throwIfAborted();
           if (gl.getContext().isContextLost()) throw new Error("The 3D renderer is unavailable. Reload and try again.");
           if (!renderer) {
-            renderer = new WebGLRenderer({ antialias: true, alpha: gl.getContext().getContextAttributes()?.alpha ?? false });
+            renderer = new WebGLRenderer({ antialias: true, stencil: true, alpha: gl.getContext().getContextAttributes()?.alpha ?? false });
             renderer.setPixelRatio(1);
             renderer.setSize(1280, 720, false);
           }

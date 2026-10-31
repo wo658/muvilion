@@ -2,7 +2,7 @@
 import { isSeat, seatDirection } from "@/lib/plans/usability";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "../ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { deriveWalls } from "@/lib/plans/walls";
 import { VENUE_COLORS } from "@/lib/plans/overview";
 import type { PlanDocument } from "@/lib/plans/schema";
@@ -30,6 +30,7 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
     rectangle: boolean;
 }) {
   const { t } = useI18n();
+    const floorClipId = useId();
     const [zoom, setZoom] = useState(1);
     const [start, setStart] = useState<Point | null>(null);
     const [cursor, setCursor] = useState<Point | null>(null);
@@ -98,8 +99,9 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
         }} onPointerMove={(e) => { if (drawing && start)
         setCursor(point(e)); }} onKeyDown={(e) => { if (e.key === "Escape")
         setStart(null); }} tabIndex={drawing ? 0 : -1}>
-      <rect width={width} height={height} fill={reference ? "var(--surface)" : "var(--bg)"}/>
-      {!reference && document.floorBoundary && <polygon points={document.floorBoundary.map(p => `${p.x * width},${p.y * height}`).join(" ")} fill="var(--model)" stroke="var(--hairline-strong)" strokeWidth={1} vectorEffect="non-scaling-stroke"/>}
+      {document.floorBoundary && <defs><clipPath id={floorClipId}><polygon points={document.floorBoundary.map(p => `${p.x * width},${p.y * height}`).join(" ")}/></clipPath></defs>}
+      <rect width={width} height={height} fill={reference ? "var(--surface)" : "var(--sunken)"}/>
+      {!reference && document.floorBoundary && <polygon points={document.floorBoundary.map(p => `${p.x * width},${p.y * height}`).join(" ")} fill="var(--floor-indoor)" stroke="var(--edge)" strokeWidth={1} vectorEffect="non-scaling-stroke"/>}
       {reference && <image href={document.preview} width={width} height={height} opacity={sourceOnly ? 1 : 0.5}/>}
       {!sourceOnly && <g pointerEvents="none">
         {reference && <><path d={paths.unknown} fill="none" stroke="var(--faint)" strokeWidth={0.6} vectorEffect="non-scaling-stroke"/>
@@ -108,14 +110,14 @@ export function PlanCanvas({ document, selected, onSelect, sourceOnly, showOrigi
         {!reference && walls.map(wall => <line key={wall.id} x1={wall.a.x / metresWidth * width} y1={wall.a.y / metresHeight * height} x2={wall.b.x / metresWidth * width} y2={wall.b.y / metresHeight * height} stroke={VENUE_COLORS.cap} strokeWidth={Math.max(3 / scale, wall.thickness / metresWidth * width)} strokeLinecap="butt"/>)}
         {selectedLine && <line x1={selectedLine.a.x * width} y1={selectedLine.a.y * height} x2={selectedLine.b.x * width} y2={selectedLine.b.y * height} stroke="var(--accent)" strokeWidth={4} vectorEffect="non-scaling-stroke"/>}
       </g>}
-      {!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.zones ?? []).map(zone => {
+      <g clipPath={document.floorBoundary ? `url(#${floorClipId})` : undefined}>{!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.zones ?? []).map(zone => {
             const w = (zone.rotation === 90 ? zone.depth : zone.width) / document.widthMeters! * width, h = (zone.rotation === 90 ? zone.width : zone.depth) / document.heightMeters! * height;
             const fill = zone.purpose === "circulation" ? TOKENS.zoneCirculation : zone.purpose === "lounge" ? TOKENS.zoneLounge : zone.purpose === "stage" ? TOKENS.zoneStage : TOKENS.zoneOther;
             return <g key={zone.id} transform={`translate(${zone.x * width} ${zone.y * height})`} onPointerDown={e => { if (!drawing && !onBoundaryPoint && !onEntrancePoint) { e.stopPropagation(); onSelect(zone.id); } }} style={{ cursor: "pointer" }}>
               <title>{zone.label}</title><rect x={-w / 2} y={-h / 2} width={w} height={h} rx={Math.min(5 / scale, w / 10, h / 10)} fill={fill} fillOpacity={reference ? .25 : .85} stroke={selected === zone.id ? "var(--accent)" : "var(--hairline-strong)"} strokeWidth={selected === zone.id ? 2 : 1} strokeDasharray={zone.purpose === "circulation" ? "5 4" : undefined} vectorEffect="non-scaling-stroke"/>
               {(zone.purpose !== "circulation" || selected === zone.id) && (w * scale > 120 && h * scale > 35 ? <text x={-w / 2 + 5 / scale} y={-h / 2 + 14 / scale} fontSize={labelSize} fill="var(--muted)" paintOrder="stroke" stroke={fill} strokeWidth={3 / scale}>{zone.label.length > Math.floor(w * scale / 7) ? `${zone.label.slice(0, Math.max(4, Math.floor(w * scale / 7) - 1))}…` : zone.label}</text> : <g pointerEvents="none"><line x1={w / 2} x2={labelEdge - zone.x * width - 5 / scale} stroke="var(--hairline-strong)" strokeWidth={1} vectorEffect="non-scaling-stroke"/><text x={labelEdge - zone.x * width} dominantBaseline="central" fontSize={labelSize} fill="var(--muted)" paintOrder="stroke" stroke="var(--bg)" strokeWidth={3 / scale}>{zone.label}</text></g>)}
             </g>;
-        })}
+        })}</g>
       {!sourceOnly && document.scaleConfirmed && document.widthMeters && document.heightMeters && (document.objects ?? []).map((object) => {
             const w = (object.rotation % 180 === 90 ? object.depth : object.width) / document.widthMeters! * width, h = (object.rotation % 180 === 90 ? object.width : object.depth) / document.heightMeters! * height;
             const partition = object.kind === "partition";
