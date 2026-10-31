@@ -9,7 +9,6 @@ import { Button } from "../ui";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
-import { Switch } from "../ui/switch";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { SourceLibrarySchema, type SourceLibrary, type ReferenceSource } from "@/lib/sources/schema";
 import { createSourceId, readReference } from "@/lib/sources/files";
@@ -31,6 +30,7 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
   const [query, setQuery] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
   const [addingBrand, setAddingBrand] = useState(false);
+  const [addingSource, setAddingSource] = useState(false);
   const [url, setUrl] = useState("");
   const [brandName, setBrandName] = useState("");
   const [brandNotes, setBrandNotes] = useState("");
@@ -38,30 +38,29 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
   const [error, setError] = useState<string | null>(null);
   const concept = useRef<HTMLInputElement>(null), brief = useRef<HTMLInputElement>(null);
   const search = useRef<HTMLInputElement>(null);
-  const brandTrigger = useRef<HTMLButtonElement>(null);
+  const addTrigger = useRef<HTMLButtonElement>(null);
   const removeTrigger = useRef<HTMLButtonElement | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const drawingPreview = preview === activeDrawingId ? document : drawings.find(source => source.id === preview)?.document;
   const item = library.items.find(item => item.id === preview);
   useEffect(() => { if (preview) dialog.current?.showModal(); else dialog.current?.close(); }, [preview]);
-  const selectedCount = library.items.filter(item => item.selected).length + Number(Boolean(document && library.drawingSelected));
   const term = query.trim().toLocaleLowerCase(locale);
   const visibleDrawings = drawings.filter(source => source.document.source.name.toLocaleLowerCase(locale).includes(term));
   const visibleReferences = library.items.filter(source => `${source.name} ${source.url ?? ""}`.toLocaleLowerCase(locale).includes(term));
   const locked = !ready || busy;
   const referencesFull = library.items.length >= 12;
   const updateItem = (id: string, update: Partial<ReferenceSource>) => onChange(current => ({ ...current, items: current.items.map(item => item.id === id ? { ...item, ...update } : item) }));
-  const add = (source: ReferenceSource) => onChange(current => SourceLibrarySchema.parse({ ...current, items: [...current.items, source] }));
+  const add = (source: ReferenceSource) => onChange(current => SourceLibrarySchema.parse({ ...current, items: [...current.items, { ...source, selected: true }] }));
   function closeBrandForm() {
     setAddingBrand(false);
-    brandTrigger.current?.focus();
+    addTrigger.current?.focus();
   }
   async function upload(file: File, kind: "concept" | "brief") {
     setUploading(true); setError(null);
     try {
       const source = await readReference(file, kind);
       const originalAssetId = await onUploadOriginal(file);
-      if (alive.current) add({ ...source, originalAssetId });
+      if (alive.current) { add({ ...source, originalAssetId }); setQuery(""); }
     } catch (error) {
       if (alive.current) setError(error instanceof Error ? error.message : "Could not add this source.");
     } finally {
@@ -74,8 +73,18 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
         <FieldLabel htmlFor="source-search" className="sr-only">{t("Search sources")}</FieldLabel>
         <Input ref={search} id="source-search" placeholder={t("Search sources")} value={query} onChange={event => { setQuery(event.target.value); setRemoving(null); }}/>
       </Field>
-      <span className="ps-source-count">{selectedCount} {t("selected for Muse")}</span>
+      <Button variant="primary" disabled={locked || uploading} aria-expanded={addingSource} aria-controls="source-add-choices" onClick={event => {
+        addTrigger.current = event.currentTarget;
+        setAddingSource(value => !value); setAddingBrand(false);
+      }}>{t("Add source")}</Button>
     </div>
+    {addingSource && <div id="source-add-choices" className="ps-source-actions" role="group" aria-label={t("Add source")}>
+      <Button disabled={locked || drawings.length >= 12} onClick={() => { setAddingSource(false); onDrawing(); }}>{t("＋ Drawing")}</Button>
+      <Button disabled={uploading || locked || referencesFull} onClick={() => { setAddingSource(false); addTrigger.current?.focus(); concept.current?.click(); }}>{t("＋ Concept image")}</Button>
+      <Button disabled={locked || referencesFull} onClick={() => { setAddingSource(false); setAddingBrand(true); }}>{t("＋ Brand URL")}</Button>
+      <Button disabled={uploading || locked || referencesFull} onClick={() => { setAddingSource(false); addTrigger.current?.focus(); brief.current?.click(); }}>{t("＋ Brief")}</Button>
+      <p className="ps-source-description">{t("20 MB/file · PDF up to 12 pages")}</p>
+    </div>}
     <input ref={concept} type="file" accept=".png,.jpg,.jpeg,.webp" hidden aria-label={t("Add concept image")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "concept"); }}/>
     <input ref={brief} type="file" accept=".pdf,.txt,.md" hidden aria-label={t("Add planning document")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "brief"); }}/>
     {uploading && <p role="status" className="ps-source-feedback">{t("Preparing source preview…")}</p>}
@@ -83,7 +92,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     <section className="ps-source-group" aria-labelledby="source-drawings-heading">
       <header className="ps-source-group-heading">
         <h3 id="source-drawings-heading">{t("Drawings")} <span>{drawings.length}</span></h3>
-        <Button variant="ghost" title={t("20 MB/file · PDF up to 12 pages")} disabled={locked || drawings.length >= 12} onClick={onDrawing}>{t("＋ Drawing")}</Button>
       </header>
       <ul className="ps-source-list">
         {visibleDrawings.map(source => <li key={source.id} data-current={source.id === activeDrawingId || undefined}>
@@ -94,7 +102,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
             </button>
             <div className="ps-source-row-actions">
               {source.id === activeDrawingId ? <span className="ps-source-current">{t("Current drawing")}</span> : <Button disabled={locked} onClick={() => onSwitchDrawing(source.id)}>{t("Open drawing")}</Button>}
-              {source.id === activeDrawingId && <Field orientation="horizontal" className="ps-source-selection"><Switch aria-label={t("Use with Muse")} title={t("Use with Muse")} id="source-drawing-toggle" checked={library.drawingSelected} disabled={locked} onCheckedChange={checked => onChange(current => ({ ...current, drawingSelected: checked }))}/></Field>}
             </div>
           </div>
         </li>)}
@@ -104,11 +111,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     <section className="ps-source-group" aria-labelledby="source-references-heading">
       <header className="ps-source-group-heading">
         <h3 id="source-references-heading">{t("References")} <span>{library.items.length}</span></h3>
-        <div className="ps-source-actions">
-          <Button variant="ghost" title={t("20 MB/file · PDF up to 12 pages")} disabled={uploading || locked || referencesFull} onClick={() => concept.current?.click()}>{t("＋ Concept image")}</Button>
-          <Button variant="ghost" disabled={locked || referencesFull} aria-expanded={addingBrand} aria-controls="source-brand-form" onClick={event => { brandTrigger.current = event.currentTarget; setAddingBrand(value => !value); }}>{t("＋ Brand URL")}</Button>
-          <Button variant="ghost" title={t("20 MB/file · PDF up to 12 pages")} disabled={uploading || locked || referencesFull} onClick={() => brief.current?.click()}>{t("＋ Brief")}</Button>
-        </div>
       </header>
       {addingBrand && <form id="source-brand-form" className="ps-source-form" onSubmit={event => {
         event.preventDefault();
@@ -117,7 +119,7 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
         try {
           const parsed = new URL(url);
           if (!["https:", "http:"].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error(t("Use an http or https URL without credentials."));
-          add({ id: createSourceId(), kind: "brand", name: brandName.trim() || parsed.hostname, url: parsed.href, selected: false, text: "", notes: brandNotes, images: [] });
+          add({ id: createSourceId(), kind: "brand", name: brandName.trim() || parsed.hostname, url: parsed.href, selected: true, text: "", notes: brandNotes, images: [] });
           closeBrandForm(); setUrl(""); setBrandName(""); setBrandNotes(""); setQuery("");
         } catch (error) { setError(error instanceof Error ? error.message : t("Check this URL.")); }
       }}>
@@ -137,7 +139,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
               <span className="ps-source-identity"><strong>{source.name}</strong><small className="sr-only">{source.kind === "concept" ? t("CONCEPT IMAGE") : source.kind === "brand" ? t("BRAND LINK") : t("PLANNING DOCUMENT")} · {source.url ? new URL(source.url).hostname : source.images.length ? t("{count} previews", { count: source.images.length }) : t("{count} characters", { count: source.text.length })}</small></span>
             </button>
             <div className="ps-source-row-actions">
-              <Field orientation="horizontal" className="ps-source-selection"><Switch aria-label={t("Use with Muse")} title={t("Use with Muse")} id={`source-${source.id}`} checked={source.selected} disabled={locked} onCheckedChange={selected => updateItem(source.id, { selected })}/></Field>
               <Button variant="ghost" className="ps-source-remove" disabled={locked} aria-expanded={removing === source.id} aria-label={t("Remove {name}", { name: source.name })} onClick={event => { removeTrigger.current = event.currentTarget; setRemoving(source.id); }}><Trash2Icon aria-hidden="true"/></Button>
             </div>
           </div>
@@ -161,7 +162,6 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
           {item.images.map((image, i) => <figure key={i}><img src={image} alt={t("{name} — page {page}", { name: item.name, page: i + 1 })}/><figcaption>{item.images.length > 1 ? t("Page {page}", { page: i + 1 }) : item.name}</figcaption></figure>)}
           {item.text && <details open={!item.images.length}><summary>{t("Document text")}</summary><pre>{item.text}</pre></details>}
           <Field><FieldLabel htmlFor="source-notes">{t("Notes for Muse")}</FieldLabel><Textarea id="source-notes" disabled={locked} value={item.notes} maxLength={6000} onChange={event => updateItem(item.id, { notes: event.target.value })}/></Field>
-          <Field orientation="horizontal"><FieldLabel htmlFor="preview-reference">{t("Use with Muse")}</FieldLabel><Switch id="preview-reference" disabled={locked} checked={item.selected} onCheckedChange={selected => updateItem(item.id, { selected })}/></Field>
         </div>}
       </div>
     </dialog>

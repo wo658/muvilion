@@ -1,14 +1,14 @@
 .ps-sources { padding:24px; display:flex; flex-direction:column; gap:20px; }
 .ps-source-toolbar { display:flex; align-items:center; gap:16px; }
-.ps-source-count,.ps-source-description { color:var(--muted); font-size:12px; line-height:1.6; }
-.ps-source-count { white-space:nowrap; }
+.ps-source-description { color:var(--muted); font-size:12px; line-height:1.6; }
 .ps-source-search { position:relative; flex:1; min-width:0; }
 .ps-source-group { display:flex; flex-direction:column; gap:6px; min-width:0; }
 .ps-source-group+.ps-source-group { padding-top:4px; }
 .ps-source-group-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
 .ps-source-group-heading h3 { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; }
 .ps-source-group-heading h3>span { color:var(--muted); font-size:12px; font-weight:400; }
-.ps-source-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.ps-source-actions { display:flex; flex-wrap:wrap; gap:8px; padding-bottom:16px; border-bottom:1px solid var(--hairline); }
+.ps-source-actions>p { flex-basis:100%; }
 .ps-source-list { display:flex; flex-direction:column; list-style:none; }
 .ps-source-list:empty { display:none; }
 .ps-source-list li { min-width:0; background:var(--surface); }
@@ -26,8 +26,6 @@
 .ps-source-identity small { color:var(--muted); font-size:11px; overflow-wrap:anywhere; line-height:1.5; }
 .ps-source-row-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-shrink:0; }
 .ps-source-current { color:var(--muted); font-size:11px; }
-.ps-source-selection { position:relative; width:auto; gap:8px; }
-.ps-source-selection [data-slot=field-label] { color:var(--muted); font-size:12px; white-space:nowrap; }
 .ps-source-remove { min-width:32px; min-height:32px; padding:6px; }
 .ps-source-remove-confirm { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--sunken); border-top:1px solid var(--hairline); font-size:12px; }
 .ps-source-remove-confirm>div { display:flex; gap:8px; }
@@ -70,7 +68,6 @@
   .ps-source-preview-button { flex-basis:100%; }
   .ps-source-row-actions { width:100%; flex-direction:row; align-items:center; justify-content:flex-end; }
   .ps-source-row-actions>span { margin-right:auto; }
-  .ps-source-selection { gap:10px; }
   .ps-source-form { padding:16px; }
   .ps-source-dialog>header,.ps-source-manager>header { padding:16px; }
   .ps-source-preview-body { padding:16px; }
