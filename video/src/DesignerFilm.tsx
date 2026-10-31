@@ -3,7 +3,6 @@ import {
   Sequence,
   interpolate,
   Easing,
-  spring,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
@@ -11,6 +10,9 @@ import {
 import { Audio, Video } from "@remotion/media";
 import { TOKENS as T } from "../../web/lib/ui/tokens";
 import traces from "./DesignerMinuteTraces";
+import { AdOpening, AdChat } from "./DesignerAdIntro";
+import { AdBuild, AdHero, AdEnd } from "./DesignerAdSpace";
+import { BridgeOverlay } from "./DesignerAdBridges";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const smooth = { ...clamp, easing: Easing.bezier(0.16, 1, 0.3, 1) };
@@ -101,62 +103,6 @@ function Pointer({ clip, rate = 1 }: { clip: string; rate?: number }) {
         />
       </svg>
     </div>
-  );
-}
-function Opening() {
-  const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  return (
-    <AbsoluteFill
-      style={{
-        background: T.ink,
-        color: T.accentInk,
-        justifyContent: "center",
-        paddingLeft: 155,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 25,
-          letterSpacing: 5,
-          color: T.hairline,
-          marginBottom: 36,
-        }}
-      >
-        MUVILION / THE FIRST MINUTE
-      </div>
-      {["Start with a plan.", "Make it a space."].map((word, i) => {
-        const p = spring({
-          frame: f - i * 13,
-          fps,
-          config: { damping: 19, stiffness: 160 },
-        });
-        return (
-          <div
-            key={word}
-            style={{
-              fontSize: 138,
-              lineHeight: 1.04,
-              letterSpacing: -8,
-              fontWeight: 650,
-              opacity: p,
-              transform: `translateY(${(1 - p) * 100}px)`,
-              color: i ? T.museGlow : T.accentInk,
-            }}
-          >
-            {word}
-          </div>
-        );
-      })}
-      <div
-        style={{
-          width: mix(f, 18, 65, 0, 680),
-          height: 5,
-          background: T.accent,
-          marginTop: 45,
-        }}
-      />
-    </AbsoluteFill>
   );
 }
 type ShotProps = {
@@ -302,209 +248,127 @@ function Shot({
     </AbsoluteFill>
   );
 }
-function Ending() {
-  const f = useCurrentFrame();
+export const DesignerFilm = () => {
+  const { fps } = useVideoConfig();
   return (
     <AbsoluteFill
       style={{
-        background: T.ink,
-        color: T.accentInk,
-        justifyContent: "center",
-        alignItems: "center",
+        background: T.bg,
+        color: T.ink,
+        fontFamily: '"SF Pro Display","Arial",sans-serif',
       }}
     >
-      <div
-        style={{
-          fontSize: 148,
-          fontWeight: 700,
-          letterSpacing: -8,
-          transform: `scale(${mix(f, 0, 25, 0.92, 1)})`,
-          opacity: mix(f, 0, 10, 0, 1),
-        }}
+      <Sequence durationInFrames={8 * fps} name="01 · Idea / context cards">
+        <AdOpening />
+      </Sequence>
+      <Sequence
+        from={8 * fps}
+        durationInFrames={4 * fps}
+        name="02 · Actual PDF"
       >
-        Your space<span style={{ color: T.museGlow }}>.</span>
-      </div>
-      <div
-        style={{
-          fontSize: 36,
-          color: T.hairline,
-          marginTop: 30,
-          opacity: mix(f, 6, 20, 0, 1),
-        }}
+        <Shot
+          clip="scale"
+          title="Grounded in your plan."
+          step=""
+          duration={4 * fps}
+          zoom={1.12}
+          focus="32% 46%"
+        />
+      </Sequence>
+      <Sequence
+        from={12 * fps}
+        durationInFrames={3 * fps}
+        name="03 · Actual brief"
       >
-        Built from your context.
-      </div>
+        <Shot
+          clip="brief"
+          title="Made for your purpose."
+          step=""
+          duration={3 * fps}
+          zoom={1.2}
+        />
+      </Sequence>
+      <Sequence
+        from={15 * fps}
+        durationInFrames={3 * fps}
+        name="04 · Actual brand context"
+      >
+        <Shot
+          clip="brand"
+          title="Distinctly yours."
+          step=""
+          duration={3 * fps}
+          zoom={1.24}
+        />
+      </Sequence>
+      <Sequence
+        from={18 * fps}
+        durationInFrames={9 * fps}
+        name="05 · Central prompt / editorial"
+      >
+        <AdChat />
+      </Sequence>
+      <Sequence
+        from={27 * fps}
+        durationInFrames={10 * fps}
+        name="06 · Plan lifts into the saved layout"
+      >
+        <AdBuild />
+      </Sequence>
+      <Sequence
+        from={37 * fps}
+        durationInFrames={4 * fps}
+        name="07 · Actual generation"
+      >
+        <Shot
+          clip="generation-d"
+          title="An idea. Taking shape."
+          step=""
+          duration={4 * fps}
+          rate={5}
+          note="Actual app · 5× speed"
+        />
+      </Sequence>
+      <Sequence
+        from={41 * fps}
+        durationInFrames={4 * fps}
+        name="08 · Actual apply"
+      >
+        <Shot clip="apply" title="Make it yours." step="" duration={4 * fps} />
+      </Sequence>
+      <Sequence
+        from={45 * fps}
+        durationInFrames={3 * fps}
+        name="09 · Actual perspective"
+      >
+        <Shot
+          clip="views"
+          title="Find your perspective."
+          step=""
+          duration={3 * fps}
+        />
+      </Sequence>
+      <Sequence
+        from={48 * fps}
+        durationInFrames={9 * fps}
+        name="10 · Space / concept frame"
+      >
+        <AdHero />
+      </Sequence>
+      <Sequence
+        from={57 * fps}
+        durationInFrames={3 * fps}
+        name="11 · Brand close"
+      >
+        <AdEnd />
+      </Sequence>
+      <BridgeOverlay />
+      <Audio
+        src={staticFile("designer-film/music.m4a")}
+        volume={(f) =>
+          interpolate(f, [0, 15, 57 * fps, 60 * fps], [0.7, 0.7, 0.7, 0], clamp)
+        }
+      />
     </AbsoluteFill>
   );
-}
-export const DesignerFilm = () => (
-  <AbsoluteFill
-    style={{
-      background: T.bg,
-      color: T.ink,
-      fontFamily: '"SF Pro Display","Arial",sans-serif',
-    }}
-  >
-    <Sequence durationInFrames={90} name="01 · A plan becomes a space">
-      <Opening />
-    </Sequence>
-    <Sequence
-      from={90}
-      durationInFrames={120}
-      name="02 · Click Drawing settings"
-    >
-      <Shot
-        clip="plan"
-        title="Read the room."
-        step="01 / THE DRAWING"
-        duration={120}
-      />
-    </Sequence>
-    <Sequence
-      from={210}
-      durationInFrames={120}
-      name="03 · Zoom and fit the actual PDF"
-    >
-      <Shot
-        clip="scale"
-        title="Start with real context."
-        step="01 / THE DRAWING"
-        duration={120}
-        zoom={1.12}
-        focus="32% 46%"
-      />
-    </Sequence>
-    <Sequence
-      from={330}
-      durationInFrames={150}
-      name="04 · Open the English brief"
-    >
-      <Shot
-        clip="brief"
-        title="Add the purpose."
-        step="02 / THE BRIEF"
-        duration={150}
-        zoom={1.2}
-      />
-    </Sequence>
-    <Sequence
-      from={480}
-      durationInFrames={120}
-      name="05 · Open brand reference"
-    >
-      <Shot
-        clip="brand"
-        title="Bring the brand."
-        step="03 / THE REFERENCE"
-        duration={120}
-        zoom={1.24}
-      />
-    </Sequence>
-    <Sequence
-      from={600}
-      durationInFrames={210}
-      name="06 · Type and press Enter"
-    >
-      <Shot
-        clip="request"
-        title="Tell Muse what you imagine."
-        step="04 / THE REQUEST"
-        duration={210}
-        zoom={1.52}
-        focus="100% 100%"
-        enter
-      />
-    </Sequence>
-    <Sequence
-      from={810}
-      durationInFrames={150}
-      name="07 · Actual furniture placement"
-    >
-      <Shot
-        clip="generation-b"
-        title="Watch it take shape."
-        step="05 / LIVE DESIGN"
-        duration={150}
-        rate={5}
-        note="Actual app recording · 5× speed"
-      />
-    </Sequence>
-    <Sequence
-      from={960}
-      durationInFrames={150}
-      name="08 · Actual lounge and stage"
-    >
-      <Shot
-        clip="generation-c"
-        title="Furniture. Flow. Feeling."
-        step="05 / LIVE DESIGN"
-        duration={150}
-        rate={5}
-        note="Actual app recording · 5× speed"
-      />
-    </Sequence>
-    <Sequence
-      from={1110}
-      durationInFrames={150}
-      name="09 · Actual review and corrections"
-    >
-      <Shot
-        clip="generation-d"
-        title="Refined in the same space."
-        step="05 / LIVE DESIGN"
-        duration={150}
-        rate={5}
-        note="Actual app recording · 5× speed"
-      />
-    </Sequence>
-    <Sequence
-      from={1260}
-      durationInFrames={150}
-      name="10 · Click Apply changes"
-    >
-      <Shot
-        clip="apply"
-        title="You make the call."
-        step="06 / APPLY"
-        duration={150}
-      />
-    </Sequence>
-    <Sequence
-      from={1410}
-      durationInFrames={150}
-      name="11 · Click Top and Overview"
-    >
-      <Shot
-        clip="views"
-        title="Change your perspective."
-        step="07 / EXPLORE"
-        duration={150}
-      />
-    </Sequence>
-    <Sequence
-      from={1560}
-      durationInFrames={180}
-      name="12 · Drag to orbit the actual space"
-    >
-      <Shot
-        clip="orbit"
-        title="Look around. Make it yours."
-        step="07 / EXPLORE"
-        duration={180}
-      />
-    </Sequence>
-    <Sequence
-      from={1740}
-      durationInFrames={60}
-      name="13 · End of the opening minute"
-    >
-      <Ending />
-    </Sequence>
-    <Audio
-      src={staticFile("designer-film/music.m4a")}
-      volume={(f) =>
-        interpolate(f, [0, 15, 1710, 1800], [0.7, 0.7, 0.7, 0], clamp)
-      }
-    />
-  </AbsoluteFill>
-);
+};
