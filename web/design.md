@@ -91,3 +91,7 @@ Chat photography requests produce a semantic shooting intent, actual 16:9 scene 
 The selected photograph opens its exact camera pose and display settings in a letterboxed 16:9 viewer. Users can orbit/pan/zoom or expand fine adjustments, reopen the saved angle, retake and download the photograph. The original AI explanation describes its selected composition; a manually retaken photograph is labelled as user adjusted, not AI re-reviewed. Photos are session-only and this is stated beside download. Switching or editing drawings, changing references, cancellation and closing discard pending work. PDF export is not part of this flow.
 
 On narrow screens, photography keeps the 16:9 live frame above an independently scrolling adjustment panel. Ordinary camera presets/settings are hidden during photography on these screens; closing photography restores them.
+
+## Seating usability
+
+Physical object rotations support 0/90/180/270 degrees; zones retain 0/90. Fixture seating faces local -Y (north at 0°) and stores its served table/stage via useTargetId. The plan view and generated review drawings mark seat fronts. Generated seating must pass the explicit reach, pullback, legroom and connected internal approach checks in `lib/plans/usability.ts`, in addition to collision checks, before visual review/submission. Existing layouts remain readable and show localized usability issues in Items to review. Checks are concept planning allowances, not accessibility, egress or crowd certification; details and omissions are documented in `docs/dimensions.md`.

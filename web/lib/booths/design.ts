@@ -93,14 +93,16 @@ export function importBoothDesignIntoVenue(
     throw new Error("The published booth zone or size has changed. Check the original zone.");
   const issues = validateBoothDesign(booth, objects, locale);
   if (issues.length) throw new Error(issues.join("\n"));
+  if (objects.some(object => object.useTargetId && !objects.some(target => target.id === object.useTargetId)))
+    throw new Error(translate(locale, "Seating target is missing from the booth design."));
   const prefix = `participant-${applicationId}-`;
   const imported: DesignObject[] = objects.map((object, index) => {
     const dx = (object.x - 0.5) * booth.width, dy = (object.y - 0.5) * booth.depth;
     return {
-      ...object, id: `${prefix}${index}`, label: `${booth.name} · ${object.label}`.slice(0, 100), zoneId: zone.id,
+      ...object, useTargetId: object.useTargetId ? `${prefix}${objects.findIndex(item => item.id === object.useTargetId)}` : undefined, id: `${prefix}${index}`, label: `${booth.name} · ${object.label}`.slice(0, 100), zoneId: zone.id,
       x: zone.x + (zone.rotation === 90 ? -dy : dx) / venue.widthMeters!,
       y: zone.y + (zone.rotation === 90 ? dx : dy) / venue.heightMeters!,
-      rotation: ((object.rotation + zone.rotation) % 180) as 0 | 90,
+      rotation: ((object.rotation + zone.rotation) % 360) as DesignObject["rotation"],
     };
   });
   const next = PlanDocumentSchema.parse({ ...venue, objects: [...(venue.objects ?? []).filter(object => !object.id.startsWith(prefix)), ...imported] });

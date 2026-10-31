@@ -49,8 +49,8 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
   const width = document.widthMeters, depth = document.heightMeters;
   const targets = photographyTargets(document).filter(item => intent.targetIds.includes(item.id));
   const bounds = targets.map(item => {
-    const w = item.width && item.depth ? (item.rotation === 90 ? item.depth : item.width) : 1.5;
-    const d = item.width && item.depth ? (item.rotation === 90 ? item.width : item.depth) : 1.5;
+    const w = item.width && item.depth ? (item.rotation % 180 === 90 ? item.depth : item.width) : 1.5;
+    const d = item.width && item.depth ? (item.rotation % 180 === 90 ? item.width : item.depth) : 1.5;
     const h = item.height ? item.height + (item.elevation ?? 0) : 0;
     return { x: (item.x - .5) * width, z: (item.y - .5) * depth, w, d, h };
   });
@@ -79,7 +79,7 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
       // Elevated shots may be outside the venue, but never inside an installation or an existing wall.
       const blockedObject = (document.objects ?? []).some(object => {
         if (eye[1] < (object.elevation ?? 0) - .2 || eye[1] > (object.elevation ?? 0) + object.height + .2) return false;
-        const w = object.rotation === 90 ? object.depth : object.width, d = object.rotation === 90 ? object.width : object.depth;
+        const w = object.rotation % 180 === 90 ? object.depth : object.width, d = object.rotation % 180 === 90 ? object.width : object.depth;
         return Math.abs(eye[0] - (object.x - .5) * width) < w / 2 + .2 && Math.abs(eye[2] - (object.y - .5) * depth) < d / 2 + .2;
       });
       if (blockedObject) continue;

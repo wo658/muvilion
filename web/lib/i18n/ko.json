@@ -740,5 +740,21 @@
   "The 3D renderer is unavailable. Reload and try again.": "3D 화면을 사용할 수 없어요. 새로고침 후 다시 시도해주세요.",
   "The photo could not be captured. Try again.": "사진을 촬영하지 못했어요. 다시 시도해주세요.",
   "A photo is already being captured.": "이미 사진을 촬영하고 있어요.",
-  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name}의 치수가 모델과 맞지 않아 실제 크기 상자로 표시합니다. 교체하거나 다시 생성해 주세요."
+  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name}의 치수가 모델과 맞지 않아 실제 크기 상자로 표시합니다. 교체하거나 다시 생성해 주세요.",
+  "Seat target needs review.": "좌석이 사용할 테이블이나 무대를 지정해 주세요.",
+  "Seat must face its table or stage.": "좌석이 테이블이나 무대를 향하도록 방향을 수정해 주세요.",
+  "Seat-to-table distance needs adjustment.": "좌석과 테이블의 간격을 조정해 주세요.",
+  "Seated worktop height needs review.": "앉아서 사용하는 테이블 높이를 확인해 주세요.",
+  "Raised seating access needs separate review.": "높인 좌석은 별도의 접근 동선 검토가 필요합니다.",
+  "Clear space for sitting and chair movement is insufficient.": "앉고 일어나거나 의자를 뒤로 뺄 공간이 부족합니다.",
+  "Seat use space overlaps a main aisle.": "좌석 사용 공간이 주 통로와 겹칩니다.",
+  "Audience legroom is insufficient.": "관람석 앞 다리 공간이 부족합니다.",
+  "Seat approach is not connected to the circulation network.": "좌석 접근 경로가 연결된 통로에 닿지 않습니다.",
+  "Reserve connected circulation zones at least 1.2 m wide.": "폭 1.2m 이상의 연결된 통로 영역을 지정해 주세요.",
+  "Circulation width is below the 1.2 m planning allowance.": "통로 폭이 설계 가정인 1.2m보다 좁습니다.",
+  "Reserved circulation is obstructed or outside the floor.": "예약한 통로가 막혀 있거나 바닥 범위를 벗어납니다.",
+  "Circulation zones are disconnected.": "통로 영역들이 서로 연결되지 않았습니다.",
+  "Confirm scale before reviewing seating.": "좌석 사용성을 검토하기 전에 축척을 확인해 주세요.",
+  "This seat has no reviewed use envelope. Use a supported seating fixture.": "이 좌석은 사용 공간 기준이 없습니다. 검토 가능한 좌석 기구로 교체해 주세요.",
+  "Seating target is missing from the booth design.": "부스 도면에 좌석이 사용할 테이블이나 무대가 없습니다."
 }
