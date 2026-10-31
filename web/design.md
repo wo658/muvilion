@@ -61,7 +61,7 @@ Language changes preserve the conversation, composer, loaded drawing, undo histo
 
 ## Verification
 
-For Source manager review, capture desktop only; mobile screenshots are not required. Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web and engine checks before merging.
+For Source manager review, capture desktop only in English UI; mobile screenshots are not required. This capture preference does not change the application’s default language. Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web and engine checks before merging.
 
 ## Chat components
 
