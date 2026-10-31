@@ -10,9 +10,9 @@ import {
 import { Audio, Video } from "@remotion/media";
 import { TOKENS as T } from "../../web/lib/ui/tokens";
 import traces from "./DesignerMinuteTraces";
-import { AdOpening, AdChat } from "./DesignerAdIntro";
-import { AdBuild, AdHero, AdEnd } from "./DesignerAdSpace";
-import { BridgeOverlay } from "./DesignerAdBridges";
+import { ContinuousReveal } from "./ContinuousReveal";
+import { PhotoPrompt, PhotoFinish, LiquidBridge } from "./DesignerLiquidPhoto";
+import { AdEnd } from "./DesignerAdSpace";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const smooth = { ...clamp, easing: Easing.bezier(0.16, 1, 0.3, 1) };
@@ -167,7 +167,7 @@ function Shot({
           borderRadius: 24,
           overflow: "hidden",
           background: T.surface,
-          boxShadow: `0 14px 70px ${T.shadowColor}`,
+          boxShadow: `inset 0 2px 3px ${T.surface}, 0 24px 70px ${T.shadowColor}`,
           border: `1px solid ${T.hairline}`,
           transform: `translateY(${mix(f, 0, 15, 25, 0)}px) rotateX(${mix(f, 0, 18, 2, 0)}deg)`,
           opacity: mix(f, 0, 7, 0, 1),
@@ -255,118 +255,100 @@ export const DesignerFilm = () => {
       style={{
         background: T.bg,
         color: T.ink,
-        fontFamily: '"SF Pro Display","Arial",sans-serif',
+        fontFamily: '"SF Pro Display",Arial,sans-serif',
       }}
     >
-      <Sequence durationInFrames={8 * fps} name="01 · Idea / context cards">
-        <AdOpening />
-      </Sequence>
-      <Sequence
-        from={8 * fps}
-        durationInFrames={4 * fps}
-        name="02 · Actual PDF"
-      >
-        <Shot
-          clip="scale"
-          title="Grounded in your plan."
-          step=""
-          duration={4 * fps}
-          zoom={1.12}
-          focus="32% 46%"
-        />
-      </Sequence>
-      <Sequence
-        from={12 * fps}
-        durationInFrames={3 * fps}
-        name="03 · Actual brief"
-      >
-        <Shot
-          clip="brief"
-          title="Made for your purpose."
-          step=""
-          duration={3 * fps}
-          zoom={1.2}
-        />
+      <Sequence durationInFrames={15 * fps} name="01 · Liquid context to space">
+        <ContinuousReveal audio={false} />
       </Sequence>
       <Sequence
         from={15 * fps}
-        durationInFrames={3 * fps}
-        name="04 · Actual brand context"
-      >
-        <Shot
-          clip="brand"
-          title="Distinctly yours."
-          step=""
-          duration={3 * fps}
-          zoom={1.24}
-        />
-      </Sequence>
-      <Sequence
-        from={18 * fps}
-        durationInFrames={9 * fps}
-        name="05 · Central prompt / editorial"
-      >
-        <AdChat />
-      </Sequence>
-      <Sequence
-        from={27 * fps}
-        durationInFrames={10 * fps}
-        name="06 · Plan lifts into the saved layout"
-      >
-        <AdBuild />
-      </Sequence>
-      <Sequence
-        from={37 * fps}
-        durationInFrames={4 * fps}
-        name="07 · Actual generation"
+        durationInFrames={5 * fps}
+        name="02 · Real design review"
       >
         <Shot
           clip="generation-d"
-          title="An idea. Taking shape."
+          title="Built from your context."
           step=""
-          duration={4 * fps}
+          duration={150}
           rate={5}
           note="Actual app · 5× speed"
         />
       </Sequence>
       <Sequence
-        from={41 * fps}
-        durationInFrames={4 * fps}
-        name="08 · Actual apply"
+        from={20 * fps}
+        durationInFrames={5 * fps}
+        name="03 · Apply the design"
       >
-        <Shot clip="apply" title="Make it yours." step="" duration={4 * fps} />
+        <Shot clip="apply" title="Make it yours." step="" duration={150} />
       </Sequence>
       <Sequence
-        from={45 * fps}
-        durationInFrames={3 * fps}
-        name="09 · Actual perspective"
+        from={25 * fps}
+        durationInFrames={5 * fps}
+        name="04 · Change perspective"
       >
         <Shot
           clip="views"
-          title="Find your perspective."
+          title="Every angle. In your hands."
           step=""
-          duration={3 * fps}
+          duration={150}
         />
       </Sequence>
       <Sequence
-        from={48 * fps}
-        durationInFrames={9 * fps}
-        name="10 · Space / concept frame"
+        from={30 * fps}
+        durationInFrames={5 * fps}
+        name="05 · Orbit the real space"
       >
-        <AdHero />
+        <Shot clip="orbit" title="Find the feeling." step="" duration={150} />
       </Sequence>
       <Sequence
-        from={57 * fps}
-        durationInFrames={3 * fps}
-        name="11 · Brand close"
+        from={35 * fps}
+        durationInFrames={6 * fps}
+        name="06 · Photograph request"
       >
+        <PhotoPrompt />
+      </Sequence>
+      <Sequence
+        from={41 * fps}
+        durationInFrames={4 * fps}
+        name="07 · Actual camera review"
+      >
+        <Shot
+          clip="photo-new"
+          title="Frame your vision."
+          step=""
+          duration={120}
+          rate={3}
+          note="Actual camera workflow · 3× speed"
+        />
+      </Sequence>
+      <Sequence
+        from={45 * fps}
+        durationInFrames={4 * fps}
+        name="08 · Actual retake"
+      >
+        <Shot
+          clip="photo-retake"
+          title="One more shot."
+          step=""
+          duration={120}
+        />
+      </Sequence>
+      <Sequence
+        from={49 * fps}
+        durationInFrames={8 * fps}
+        name="08 · Actual captured image"
+      >
+        <PhotoFinish />
+      </Sequence>
+      <Sequence from={57 * fps} durationInFrames={3 * fps} name="09 · Close">
         <AdEnd />
       </Sequence>
-      <BridgeOverlay />
+      <LiquidBridge />
       <Audio
         src={staticFile("designer-film/music.m4a")}
         volume={(f) =>
-          interpolate(f, [0, 15, 57 * fps, 60 * fps], [0.7, 0.7, 0.7, 0], clamp)
+          interpolate(f, [0, 15, 1710, 1800], [0.65, 0.65, 0.65, 0], clamp)
         }
       />
     </AbsoluteFill>
