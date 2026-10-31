@@ -1,0 +1,37 @@
+{
+  "source": {
+    "name": "west-L3.pdf",
+    "format": "pdf",
+    "page": 1,
+    "pages": 10,
+    "width": 204,
+    "height": 136,
+    "crop": {
+      "x": 0.5171568627450981,
+      "y": 0.22095959595959597,
+      "width": 0.16666666666666666,
+      "height": 0.08585858585858586
+    }
+  },
+  "method": "pdf-vector",
+  "objects": 27,
+  "zones": 6,
+  "aiReviewComplete": true,
+  "postReviewAdjustments": [
+    {
+      "id": "plant-04",
+      "field": "y",
+      "from": 0.68,
+      "to": 0.65,
+      "reason": "Remove overlap with stage"
+    },
+    {
+      "id": "z-stage",
+      "field": "depth",
+      "from": 4.6,
+      "to": 4.8,
+      "reason": "Include backdrop in its assigned zone"
+    }
+  ],
+  "remainingDesignWarnings": []
+}
