@@ -60,16 +60,17 @@ describe("Muse asset references", () => {
     expect(PlanDocumentSchema.parse(JSON.parse(JSON.stringify(next))).objects?.[0]).toMatchObject({ kind: "partition", modelAssetId: "gallery_wall" });
   });
   it("executes asset lookup, feeds its results back to the model and returns a proposal at the HTTP boundary", async () => {
+    const coffee = { ...chair, label: "커피 테이블", modelAssetId: "modern_coffee_table_01", width: .6, depth: 1.201830, height: .39 };
     const model = new MockLanguageModelV4({ doGenerate: [
       call("set_design_brief", brief),
       call("search_design_assets", { category: "all", query: "" }),
-      call("review_design", { coverage, summary: "CC0 라운지", objects: [chair, wall], assumptions: [] }),
+      call("review_design", { coverage, summary: "CC0 라운지", objects: [coffee, wall], assumptions: [] }),
       call("submit_design", { revision:1, summary: "CC0 라운지" }),
     ] });
     vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect((await response.json()).document.objects[0].modelAssetId).toBe("modern_arm_chair_01");
+    expect((await response.json()).document.objects[0].modelAssetId).toBe("modern_coffee_table_01");
     expect(model.doGenerateCalls).toHaveLength(4);
     // Muse's provider supports auto only; restrict advertised tools rather than forcing tool_choice.
     expect(model.doGenerateCalls[0].toolChoice).toEqual({ type: "auto" });

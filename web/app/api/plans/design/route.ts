@@ -1,7 +1,7 @@
 import { DesignRequest, designPlan } from "@/server/plans/design";
 import { PlanServiceError } from "@/server/plans/errors";
 
-export const maxDuration = 450;
+export const maxDuration = 630;
 
 export async function POST(req: Request) {
   const raw = await req.text();

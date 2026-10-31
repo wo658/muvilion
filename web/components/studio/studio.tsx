@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { AppSettings } from "../app-settings";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { cropPlan } from "@/lib/plans/crop";
 import { boothExample } from "@/lib/booths/example";
@@ -27,6 +27,7 @@ import type { Project } from "@/lib/projects/schema";
 import { FolderCogIcon, SettingsIcon } from "lucide-react";
 
 
+import { usabilityWarnings } from "@/lib/plans/usability";
 import { designWarnings } from "@/lib/plans/design";
 import "./studio.css";
 import "./spatial-design.css";
@@ -243,7 +244,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         ?? document?.entrances?.find(item => item.id === selected);
     const selection = selectedItem ? { id: selectedItem.id, label: selectedItem.label }
         : selectedLine ? { id: selectedLine.id, label: selectedLine.kind === "wall" ? t("Wall") : t("Drawing element") } : null;
-    const issues = document ? designWarnings(document, locale) : [];
+    const issues = useMemo(() => document ? [...designWarnings(document, locale), ...usabilityWarnings(document, locale)] : [], [document, locale]);
     const cropSpace = async (a: Point, b: Point) => {
         if (!document || busy)
             return;

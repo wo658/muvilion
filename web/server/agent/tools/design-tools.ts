@@ -3,6 +3,7 @@ import { assetTools } from "@/server/plans/asset-tools";
 import { tool } from "ai";
 import { z } from "zod";
 import { applyDesignProposal, PlanDesignProposal } from "@/lib/plans/muse";
+import { reviewUsability } from "@/lib/plans/usability";
 import { designWarnings } from "@/lib/plans/design";
 import { createToolRegistry, type ToolRegistration } from "./registry";
 import { addArtifact, reserveToolCall, type DesignToolContext } from "./design-context";
@@ -62,13 +63,14 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         const draft = applyDesignProposal({ ...context.draft, warnings: context.base.warnings }, { ...proposal, objects: proposal.objects ?? context.draft.objects ?? [] });
         const review = reviewDesignCoverage(context.brief, draft, proposal.coverage);
         const geometryWarnings = designWarnings(draft);
-        if (!review.complete || geometryWarnings.length) {
+        const usability = reviewUsability(draft);
+        if (!review.complete || geometryWarnings.length || usability.issues.length) {
           context.signal.throwIfAborted();
           context.draft = draft;
           context.revision++;
           context.review = review;
           publish(context, proposal.summary);
-          return { revision: context.revision, designReview: review, geometryWarnings, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct missing coverage AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
+          return { revision: context.revision, designReview: review, geometryWarnings, usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct missing coverage AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
         }
         reserveToolCall(context, "review_design", 3);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
@@ -78,7 +80,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         context.review = review;
         publish(context, proposal.summary);
         const artifacts = images.map((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Interior detail massing review" : "Plan composition review", image }));
-        return { revision: context.revision, designReview: context.review, warnings: designWarnings(draft), artifacts, limitations: "Coverage checks only verify referenced elements and counts, not aesthetic quality or faithfulness to the original request. Geometry warnings are separate. Schematic masses only; no material detail, photometric lighting, eye-level sightline verification or mesh asset geometry." };
+        return { revision: context.revision, designReview: context.review, warnings: designWarnings(draft), usability, artifacts, limitations: "Coverage checks only verify referenced elements and counts, not aesthetic quality or faithfulness to the original request. Geometry warnings are separate. Schematic masses only; no material detail, photometric lighting, eye-level sightline verification or mesh asset geometry." };
       },
     }),
   },

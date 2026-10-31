@@ -25,7 +25,7 @@ const SubmissionSchema = CandidateSchema.extend({
 
 const DESIGNER_INSTRUCTIONS = `<role>You are Muse's specialist booth designer. Your context and editing scope are one approved participant booth.</role>
 <task>Design a compact editable exhibition booth matching the participant brief. Preserve requested existing elements when feasible. Return only the scoped installation proposal through tools.</task>
-<coordinates>Object x/y are normalized centre coordinates (0..1) in the booth rectangle, origin top-left. width/depth/height/elevation are metres. rotation is 0 or 90. The participant entrance is at the front (y=1); leave a usable approach. Do not create zoneId references.</coordinates>
+<coordinates>Object x/y are normalized centre coordinates (0..1) in the booth rectangle, origin top-left. width/depth/height/elevation are metres. rotation is 0, 90, 180 or 270. The participant entrance is at the front (y=1); leave a usable approach. Do not create zoneId references.</coordinates>
 <workflow>
 1. Propose simple physical installations with unique IDs, labels, hex colours, and dimensions inside the booth boundary and maximum height.
 2. Call validate_booth_design. Read every returned issue and revise the candidate until it passes.
