@@ -7,16 +7,22 @@ import { designPlan, DesignRequest } from '@/server/plans/design';
 
 const brief = { scope: 'zoning', direction: 'Open gallery', requirements: [{id:'open',label:'Keep an open gallery',target:'objects',kinds:[],minimum:0}] };
 const coverage = [{requirementId:'open',ids:[],decision:'Intentionally empty gallery.'}];
-const proposal = { summary:'An open central focal point and balanced perimeter.', objects:[], assumptions:[] };
+const proposal = { zones:[{id:'program',label:'Open gallery',purpose:'exhibition',x:.5,y:.5,width:20,depth:20,rotation:0,assignable:false}], summary:'An open central focal point and balanced perimeter.', objects:[], assumptions:[] };
 const usage = { inputTokens: {total:10,noCache:10,cacheRead:undefined,cacheWrite:undefined}, outputTokens:{total:5,text:5,reasoning:undefined} };
 function call(name:string, input:unknown) {
   if(name === 'review_design') input = {...input as object, coverage};
   return {content:[{type:'tool-call' as const,toolCallId:crypto.randomUUID(),toolName:name,input:JSON.stringify(input)}],finishReason:{unified:'tool-calls' as const,raw:undefined},usage,warnings:[]};
 }
-function input() {return DesignRequest.parse({brief:'Design an open gallery',sources:[],document:{schemaVersion:1,source:{name:'hall',format:'pdf',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:20,heightMeters:20,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'pdf-vector'}});}
+function input() {return DesignRequest.parse({brief:'Design an open gallery',sources:[],document:{schemaVersion:1,source:{name:'hall',format:'pdf',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:20,heightMeters:20,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'pdf-vector',floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]}});}
 beforeEach(()=>{handle.savedKey=undefined;vi.stubEnv('MUSE_IMAGE_ENABLED','false');});
 
 describe('Designer Muse SDK loop',()=>{
+  it('rejects an initial whole-floor request without an outline before invoking the model',async()=>{
+    const request=input();request.document.floorBoundary=undefined;
+    const model=new MockLanguageModelV4({doGenerate:async()=>{throw new Error('must not call');}});handle.model=model;
+    await expect(designPlan(request,new AbortController().signal)).rejects.toMatchObject({status:400});
+    expect(model.doGenerateCalls).toHaveLength(0);
+  });
   it('streams the agent-selected operation before each grouped preview without changing the base',async()=>{
     const patch={operation:'paint',label:'Finish study',objects:[],zones:[],removeObjects:[],removeZones:[]};
     handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('edit_design',patch),call('review_design',proposal),call('submit_design',{revision:2,summary:proposal.summary})]});

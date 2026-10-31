@@ -11,7 +11,7 @@ vi.mock("@/server/agent/model", () => ({ getModel: vi.fn() }));
 const document: PlanDocument = {
   schemaVersion: 1, source: { name: "hall.png", format: "image", page: 1, pages: 1, width: 100, height: 100 },
   preview: "data:image/png;base64,AA==", widthMeters: 20, heightMeters: 20, scaleConfirmed: true,
-  lines: [], texts: [], warnings: [], method: "opencv", wallHeight: 4,
+  lines: [], texts: [], warnings: [], method: "opencv", wallHeight: 4, floorBoundary:[{x:.35,y:.45},{x:.75,y:.45},{x:.75,y:.55},{x:.35,y:.55}],
 };
 const chair = { id: "chair", kind: "furniture", label: "라운지 의자", x: .4, y: .5, width: 0.820344, depth: 0.986562, height: 1.022852, rotation: 0, color: "#aaaaaa", modelAssetId: "modern_arm_chair_01" };
 const wall = { ...chair, x: .7, id: "partition", kind: "partition", modelAssetId: undefined, materialAssetId: "Wood051" };
@@ -64,7 +64,7 @@ describe("Muse asset references", () => {
     const model = new MockLanguageModelV4({ doGenerate: [
       call("set_design_brief", brief),
       call("search_design_assets", { category: "all", query: "" }),
-      call("review_design", { coverage, summary: "CC0 라운지", objects: [coffee, wall], assumptions: [] }),
+      call("review_design", { coverage, summary: "CC0 라운지", objects: [coffee, wall], zones:[{id:'lounge',label:'Lounge',purpose:'lounge',x:.55,y:.5,width:8,depth:2,rotation:0,assignable:false}], assumptions: [] }),
       call("submit_design", { revision:1, summary: "CC0 라운지" }),
     ] });
     vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });

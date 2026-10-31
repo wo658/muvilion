@@ -1,3 +1,5 @@
+import { pointInFloor } from "./footprint";
+import { clippedFloorArea } from "./floor-area";
 import { dimensionsMatch } from "@/lib/assets/dimensions";
 import { translate, type Locale } from "@/lib/i18n/messages";
 import type { DesignObject, PlanDocument, SpaceZone } from "./schema";
@@ -26,20 +28,10 @@ export function segmentHitsRect(start: Point, end: Point, rect: Bounds) {
   }
   return true;
 }
-function insideOrOn(point: Point, polygon: Point[]) {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const a = polygon[j], b = polygon[i];
-    const cross = (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
-    if (Math.abs(cross) < EPS && point.x >= Math.min(a.x, b.x) - EPS && point.x <= Math.max(a.x, b.x) + EPS && point.y >= Math.min(a.y, b.y) - EPS && point.y <= Math.max(a.y, b.y) + EPS) return true;
-    if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
-  }
-  return inside;
-}
 /** A concave boundary may cut through a rectangle even if all four corners fit. */
 export function footprintFitsBoundary(bounds: Bounds, polygon: Point[]) {
   const corners = [{ x: bounds.x, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }, { x: bounds.x, y: bounds.y + bounds.height }];
-  if (!corners.every(point => insideOrOn(point, polygon)) || !insideOrOn({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, polygon)) return false;
+  if (!corners.every(point => pointInFloor(point, polygon)) || !pointInFloor({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, polygon)) return false;
   const interior = { x: bounds.x + EPS, y: bounds.y + EPS, width: bounds.width - 2 * EPS, height: bounds.height - 2 * EPS };
   return !polygon.some((a, i) => segmentHitsRect(a, polygon[(i + 1) % polygon.length], interior));
 }
@@ -56,7 +48,14 @@ export function designWarnings(document: PlanDocument, locale: Locale = "en"): s
     if (document.floorBoundary && !footprintFitsBoundary(bounds, document.floorBoundary)) messages.push(t("{name} extends outside the reviewed floor boundary.", { name: item.label }));
     return bounds;
   };
-  for (const zone of zones) checkFootprint(zone);
+  for (const zone of zones) {
+    const bounds = objectBounds(zone, document);
+    // Purpose reservations are clipped to the actual floor, unlike physical objects.
+    // This permits complete allocation of diagonal/concave boundaries with rectangular zones.
+    if (!contains(drawing, bounds)) messages.push(t("{name} extends outside the drawing.", { name: zone.label }));
+    if (document.floorBoundary && clippedFloorArea(document.floorBoundary, bounds) <= EPS)
+      messages.push(t("{name} extends outside the reviewed floor boundary.", { name: zone.label }));
+  }
   const byZone = new Map<string, SpaceZone>(zones.map(zone => [zone.id, zone]));
   for (let i = 0; i < objects.length; i++) {
     const object = objects[i], a = checkFootprint(object);

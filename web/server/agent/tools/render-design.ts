@@ -25,10 +25,12 @@ export async function renderDesign(document: PlanDocument, view: "plan" | "isome
   const pieces: string[] = [];
   const floor = document.floorBoundary ?? [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];
   pieces.push(polygon(floor.map(p => project(p.x * width, p.y * depth)), '#eef2f6'));
+  pieces.push(`<defs><clipPath id="event-floor"><polygon points="${floor.map(p=>project(p.x*width,p.y*depth).join(',')).join(' ')}"/></clipPath></defs><g clip-path="url(#event-floor)">`);
   for (const zone of document.zones ?? []) {
     const b = objectBounds(zone, document);
     pieces.push(polygon([[b.x,b.y],[b.x+b.width,b.y],[b.x+b.width,b.y+b.height],[b.x,b.y+b.height]].map(([x,y]) => project(x*width,y*depth)), zone.purpose === 'circulation' ? '#a7f3d0' : '#bfdbfe', .4));
   }
+  pieces.push("</g>");
   // All source walls remain visible. No truncation or invented wall heights.
   for (const wall of document.lines.filter(l => l.kind === 'wall')) {
     const a = project(wall.a.x*width, wall.a.y*depth), b = project(wall.b.x*width,wall.b.y*depth);

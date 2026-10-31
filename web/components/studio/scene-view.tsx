@@ -16,6 +16,7 @@ import { useMotionPaused } from "@/components/muvi/use-motion-paused";
 import { SceneLabel } from "./scene-label";
 import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
+import { Mask, useMask } from "@react-three/drei/core/Mask";
 import { ExhibitionObject } from "./exhibition-object";
 import { AssetObject } from "./asset-object";
 import { SceneCamera } from "./scene-camera";
@@ -30,6 +31,7 @@ import { Switch } from "../ui/switch";
 import { SettingsIcon } from "lucide-react";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { deriveWalls } from "@/lib/plans/walls";
+import { pointInFloor } from "@/lib/plans/footprint";
 import { DoubleSide, Shape } from "three";
 import { TOKENS } from "@/lib/ui/tokens";
 
@@ -81,6 +83,10 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     document.floorBoundary.forEach((p, i) => { if (i === 0) shape.moveTo(p.x * width - width / 2, depth / 2 - p.y * depth); else shape.lineTo(p.x * width - width / 2, depth / 2 - p.y * depth); });
     shape.closePath(); return shape;
   }, [document.floorBoundary, width, depth]);
+  const floorOutline = useMemo(() => new Float32Array((document.floorBoundary ?? [
+    { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
+  ]).flatMap(p => [(p.x - 0.5) * width, -0.015, (p.y - 0.5) * depth])), [document.floorBoundary, width, depth]);
+  const floorMask = useMask(1);
   const tools = <div className="ps-scene-tools">
     <ToggleGroup aria-label={t("Camera view")} value={[view]} onValueChange={values=>{if(values[0])changeView(values[0] as CameraView);}} variant="outline" size="sm" spacing={0}>
       <ToggleGroupItem value="overview">{t("Overview")}</ToggleGroupItem><ToggleGroupItem value="top">{t("Top")}</ToggleGroupItem><ToggleGroupItem value="interior" disabled={!inside} title={!inside?t("Review scale and floor boundary; a clear interior viewpoint is required."):t("Click the floor to move; drag to look around")}>{t("Explore")}</ToggleGroupItem>
@@ -102,16 +108,18 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       </details></PopoverContent>
     </Popover>
   </div>;
-  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" gl={{ stencil: true }} shadows camera={cameraOptions} dpr={[1, 1.5]}>
 
-    <color attach="background" args={[TOKENS.bg]} />
+    <color attach="background" args={[TOKENS.sunken]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
     {exhibition && <hemisphereLight args={["#e6f1ff","#c6b69b",1.4]}/>}
     <directionalLight position={[span / 3, span, span / 2]} intensity={2.4} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0002} shadow-normalBias={0.04} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
-    <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":TOKENS.model} roughness={0.9} /></mesh>
+    <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":TOKENS.floorIndoor} roughness={0.9} /></mesh>
+    <lineLoop><bufferGeometry><bufferAttribute attach="attributes-position" args={[floorOutline, 3]}/></bufferGeometry><lineBasicMaterial color={TOKENS.edge}/></lineLoop>
+    {floorShape && <Mask id={1} rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}><shapeGeometry args={[floorShape]}/><meshBasicMaterial side={DoubleSide}/></Mask>}
     {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
-    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial color={!photographing && selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={!photographing && selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
-    {!exhibition && <gridHelper args={[span * 1.5, 24, TOKENS.hairlineStrong, TOKENS.hairline]} position={[0, -0.03, 0]} />}
+    {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{if(document.floorBoundary && !pointInFloor({x:e.point.x/width+.5,y:e.point.z/depth+.5},document.floorBoundary))return;e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial {...(floorShape ? floorMask : {})} color={!photographing && selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={!photographing && selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
+    <gridHelper args={[span * 1.5, 24, TOKENS.hairline, TOKENS.hairline]} position={[0, -0.03, 0]} />
     {walls.map((line) => {
       const ax = line.a.x - width / 2, az = line.a.y - depth / 2;
       const bx = line.b.x - width / 2, bz = line.b.y - depth / 2;
