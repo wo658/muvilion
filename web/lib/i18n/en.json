@@ -703,5 +703,6 @@
   "Muvi is inspecting…": "Muvi is inspecting…",
   "Muvi is measuring…": "Muvi is measuring…",
   "Muvi is arranging…": "Muvi is arranging…",
-  "Muvi is finishing…": "Muvi is finishing…"
+  "Muvi is finishing…": "Muvi is finishing…",
+  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it."
 }

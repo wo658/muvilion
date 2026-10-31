@@ -5,6 +5,7 @@ import { useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Light, Mesh, NoColorSpace, SkinnedMesh, SRGBColorSpace } from "three";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { getMaterialAsset, getModelAsset } from "@/lib/assets/catalog";
+import { dimensionsMatch } from "@/lib/assets/dimensions";
 import { fitAssetBounds } from "@/lib/assets/fit";
 import type { DesignObject } from "@/lib/plans/schema";
 import { TOKENS } from "@/lib/ui/tokens";
@@ -29,6 +30,7 @@ function AssetFallback({ object, failed = false }: { object: DesignObject; faile
 }
 
 function ModelAsset({ object }: { object: DesignObject }) {
+  if (!dimensionsMatch(object)) return <AssetFallback object={object} />;
   const asset = object.modelAssetId ? getModelAsset(object.modelAssetId) : undefined;
   if (!asset) throw new Error("Unknown model asset");
   return <LoadedModel url={asset.url} object={object} />;
@@ -54,12 +56,14 @@ function LoadedModel({ url, object }: { url: string; object: DesignObject }) {
     return { instance: copy, authoredBounds: new Box3().setFromObject(copy, true) };
   }, [scene]);
   const fit = useMemo(() => {
-    return fitAssetBounds(authoredBounds.min.toArray(), authoredBounds.max.toArray(), [object.width, object.height, object.depth]);
+    try { return fitAssetBounds(authoredBounds.min.toArray(), authoredBounds.max.toArray(), [object.width, object.height, object.depth]); }
+    catch { return null; }
   }, [authoredBounds, object.width, object.height, object.depth]);
   useEffect(() => () => {
     instance.traverse(node => { if (node instanceof SkinnedMesh) node.skeleton.dispose(); });
   }, [instance]);
   // Meshes/materials/textures remain cache-owned; each placement owns its transform and skeleton.
+  if (!fit) return <AssetFallback object={object} failed />;
   return <group scale={fit.scale} dispose={null}><group position={fit.offset}><primitive object={instance} dispose={null} /></group></group>;
 }
 

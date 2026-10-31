@@ -703,5 +703,6 @@
   "Muvi is inspecting…": "뮤비가 살펴보고 있어요…",
   "Muvi is measuring…": "뮤비가 치수를 확인해요…",
   "Muvi is arranging…": "뮤비가 배치하고 있어요…",
-  "Muvi is finishing…": "뮤비가 마감을 구상해요…"
+  "Muvi is finishing…": "뮤비가 마감을 구상해요…",
+  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name}의 치수가 모델과 맞지 않아 실제 크기 상자로 표시합니다. 교체하거나 다시 생성해 주세요."
 }

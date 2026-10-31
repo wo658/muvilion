@@ -1,3 +1,4 @@
+import { dimensionsMatch } from "@/lib/assets/dimensions";
 import { translate, type Locale } from "@/lib/i18n/messages";
 import type { DesignObject, PlanDocument, SpaceZone } from "./schema";
 
@@ -59,6 +60,7 @@ export function designWarnings(document: PlanDocument, locale: Locale = "en"): s
   const byZone = new Map<string, SpaceZone>(zones.map(zone => [zone.id, zone]));
   for (let i = 0; i < objects.length; i++) {
     const object = objects[i], a = checkFootprint(object);
+    if (!dimensionsMatch(object)) messages.push(t("{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.", { name: object.label }));
     const bottom = object.elevation ?? 0, top = bottom + object.height;
     if (document.ceiling && top > document.ceiling.height + EPS)
       messages.push(t("{name} exceeds the {status} ceiling height ({height} m).", { name: object.label, status: t(document.ceiling.status), height: document.ceiling.height }));

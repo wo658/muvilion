@@ -1,4 +1,6 @@
 "use client";
+import { dimensionsMatch } from "@/lib/assets/dimensions";
+import { FixtureObject } from "./fixture-object";
 import type { MuviOperation } from "@/lib/muvi/operations";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -110,15 +112,15 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       </mesh>;
     })}
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
-      {object.modelAssetId || object.materialAssetId ? <group onClick={e => { if (view === "interior" && e.delta > 5) return; e.stopPropagation(); if (view !== "interior") onSelect(object.id); else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
+      {object.fixtureType && dimensionsMatch(object) ? <group onClick={e => { e.stopPropagation(); if (view !== "interior") onSelect(object.id); }}><FixtureObject type={object.fixtureType} color={object.color}/></group> : object.modelAssetId || object.materialAssetId ? <group onClick={e => { if (view === "interior" && e.delta > 5) return; e.stopPropagation(); if (view !== "interior") onSelect(object.id); else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
         <AssetObject object={object} selected={selected === object.id} />
         {object.kind === "partition" && <>
-          <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
+          <mesh position={[0,object.height-0.0125,0]}><boxGeometry args={[object.width,0.025,object.depth]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
           {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
         </>}
       </group> : object.kind === "partition" ? <group onClick={e => { if (view === "interior") return; e.stopPropagation(); onSelect(object.id); }}>
         <mesh userData={{navigationObstacle:true}} position={[0,object.height/2,0]} castShadow><boxGeometry args={[object.width,object.height,object.depth]}/><meshStandardMaterial color={selected === object.id ? TOKENS.accent : object.color} roughness={0.85}/></mesh>
-        <mesh position={[0,object.height+0.012,0]}><boxGeometry args={[object.width,0.025,object.depth+0.02]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
+        <mesh position={[0,object.height-0.0125,0]}><boxGeometry args={[object.width,0.025,object.depth]}/><meshBasicMaterial color={TOKENS.venuePartitionEdge}/></mesh>
         {selected === object.id && <SceneLabel position={[0,object.height+0.5,0]} text={t(object.provenance === "ai" ? "AI-proposed partition" : "Planned partition")} color={TOKENS.venuePartitionEdge}/>}
       </group> : exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
 

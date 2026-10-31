@@ -13,8 +13,8 @@ const document: PlanDocument = {
   preview: "data:image/png;base64,AA==", widthMeters: 20, heightMeters: 20, scaleConfirmed: true,
   lines: [], texts: [], warnings: [], method: "opencv", wallHeight: 4,
 };
-const chair = { id: "chair", kind: "furniture", label: "라운지 의자", x: .4, y: .5, width: 1, depth: 1, height: 1, rotation: 0, color: "#aaaaaa", modelAssetId: "modern_arm_chair_01" };
-const wall = { ...chair, id: "partition", kind: "partition", modelAssetId: undefined, materialAssetId: "Wood051" };
+const chair = { id: "chair", kind: "furniture", label: "라운지 의자", x: .4, y: .5, width: 0.820344, depth: 0.986562, height: 1.022852, rotation: 0, color: "#aaaaaa", modelAssetId: "modern_arm_chair_01" };
+const wall = { ...chair, x: .7, id: "partition", kind: "partition", modelAssetId: undefined, materialAssetId: "Wood051" };
 const brief = { scope:'interior', direction:'Wood lounge', requirements:[{id:'furniture',label:'Lounge furniture',target:'objects',kinds:['furniture'],minimum:1}] };
 const coverage = [{requirementId:'furniture',ids:['chair'],decision:'Wood-framed lounge chair.'}];
 const usage = { inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 5, text: 5, reasoning: undefined } };
