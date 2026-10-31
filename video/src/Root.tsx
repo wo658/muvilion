@@ -8,7 +8,7 @@ export const RemotionRoot = () => (
     <Composition
       id="Muvilion-Designer-Film"
       component={DesignerFilm}
-      durationInFrames={5400}
+      durationInFrames={1800}
       fps={30}
       width={1920}
       height={1080}

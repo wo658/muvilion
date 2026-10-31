@@ -1,36 +1,35 @@
-# Spatial designer film
+# Spatial designer — opening minute
 
-180 seconds · 1920 × 1080 · 30 fps. English editorial copy and captions, original instrumental music, no narration. Composition: `Muvilion-Designer-Film`. Render with `npm run render:film` from `video/`.
+60 seconds · 1920 × 1080 · 30 fps. English app UI, source documents, prompts and model replies; English editorial copy and original background music. No narration. This replaces the previous three-minute cut. Composition: `Muvilion-Designer-Film`; render with `npm run render:film` from `video/`.
 
-## Story
+## Current scope
 
-| Time | Content |
+The opening minute covers the actual PDF, project brief, brand reference, typing a request, live design generation, applying the reviewed result, switching camera presets and dragging to orbit. Participant applications, participant booth design and proposal PDFs are future work and do not appear in the film. Their app entry points are hidden; existing implementation and data are retained.
+
+## Timeline
+
+| Time | Actual interaction |
 |---|---|
-| 0:00–0:15 | Kinetic typography and PDF / brief / brand cards |
-| 0:15–0:45 | Actual workspace and attached sources |
-| 0:45–1:22 | Actual Meta AI design request, live draft, review and apply |
-| 1:22–1:48 | Explore and conversationally revise the design |
-| 1:48–2:40 | Actual camera workflow, selected photo, manual angle adjustment and retake |
-| 2:40–2:50 | Explain the three AI-assisted steps |
-| 2:50–2:56 | Separate local exhibitor booth preview |
-| 2:56–3:00 | Closing |
+| 0:00–0:03 | Opening typography |
+| 0:03–0:07 | Click Drawing settings |
+| 0:07–0:11 | Zoom and fit the PDF room |
+| 0:11–0:16 | Open the English planning brief |
+| 0:16–0:20 | Open the brand bookmark and supplied notes |
+| 0:20–0:27 | Type the English prompt and press Enter |
+| 0:27–0:42 | Actual generation and review, edited at 5× speed |
+| 0:42–0:47 | Click Apply changes, then collapse Muse |
+| 0:47–0:52 | Click Top and Overview |
+| 0:52–0:58 | Drag to orbit the saved design |
+| 0:58–1:00 | End of the opening minute |
 
-## Evidence and limits
+## Capture provenance
 
-The source is the official Moscone West level 3 PDF, page 1, cropped around room 3011. The prior sample retained the original PDF. Crop: x633 y350 width204 height136 on a1224×1584 preview; scale calibration15m per134px. Room outline and ceiling height are assumptions, not an as-built survey. The original venue document is linked in `../input-reveal/README.md` and the repository sample provenance; no new third-party footage or music is bundled.
+Actual 1280 × 720 app captures are in `public/designer-minute/`. Click markers and the editorial cursor follow coordinates recorded from real controls and real mouse drags. Typography, camera crops, click rings and transitions are editorial Remotion animation. They do not invent app state. Brief and brand content were translated before capture. All visible installation labels and model responses were generated in English.
 
-The Community Studio brief and brand notes are authored demonstration content, not an official Facebook event. The attached Facebook URL is a reference with supplied notes; automatic URL crawling is not demonstrated.
+The initial input take was recorded on the main local app. A development hot reload interrupted that run; the identical request and source project were run again on an isolated local app for uninterrupted generation footage. The successful run produced 16 installations, including two sofas forming a four-seat lounge, and four zones. The final reviewed result was actually applied and saved. Clips omit waiting intervals and show their speed change. No automatic brand URL crawling, image generation or certified spatial validation is claimed.
 
-The video records actual local app behavior. For readable English copy, the revision and photo request stills were re-entered in the actual app after the successful runs; those two stills are illustrative input views, not another model execution. The revised-design clip is a subsequent recording of the saved result. The design was freshly generated from the attached context with 20 objects and six zones, reviewed and applied. A second real request changed stage color and adjusted lounge seating. Generation clips shorten waiting time. Editorial typography, source-card convergence, framing, zooms and photo reveals are Remotion animation; they are not claims about the app UI.
+The real source remains the official Moscone West level 3 PDF, page 1, cropped around room 3011. Crop x633 y350 width204 height136 on a1224×1584 preview; scale15m per134px. Floor outline, calibration and ceiling height are concept assumptions. See `../input-reveal/README.md` and repository sample provenance. The Community Studio brief and Facebook reference notes are authored demonstration material, not an official Meta event.
 
-The actual photography workflow rendered camera candidates and used model review to select `concept-01.jpg`. `concept-02.jpg` was captured after manual camera adjustment and was not reviewed again by AI. Photos are real scene renders, not image-generation output. Editorial zoom crops the surrounding blank canvas. Photography images are session-only in the app and are retained separately here.
+`encode-minute.py` converts timestamped browser frames to constant 30fps video, preserving holds and writing interaction traces. Raw captures and project exports remain ignored under `generated/`. `build-music.py` creates the original instrumental soundtrack; its AAC master has 9dB gain. The one-minute composition adds its own closing fade. No third-party music or reference footage is included.
 
-The six-second participant segment shows a separate local demo listing created from the source room with two empty booth zones. It previews browsing/application capability; it does not show a completed application, approval, booth design or PDF proposal. There is no live event, payment or external publication.
-
-## Assets and reproducibility
-
-`public/designer-film/` contains actual UI captures, scene photos and the generated soundtrack. `build-music.py` synthesizes an original 180-second instrumental bed (NumPy and Python); no sampled third-party song is used. Encode its generated WAV to AAC with ffmpeg and apply 9 dB gain for the film master. `encode-captures.py` converts timestamped browser JPEG sequences using ffmpeg. Raw frames, project exports and local booth access credentials are excluded under `generated/`.
-
-Visual reference: [Apple — Introducing Apple Creator Studio](https://www.youtube.com/watch?v=ISYIEmQxs2M), using large typography, generous spacing, layered cards and product reveals as direction. No Apple footage, audio, marks or UI is included. Original user reference: https://www.youtube.com/watch?v=i8g1dnPOrCc.
-
-The film duration follows the three-minute demo deliverable in the [Meta AI Developer Hackathon details](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/details).
+Visual direction: Apple Creator Studio launch film (https://www.youtube.com/watch?v=ISYIEmQxs2M), with large typography, restrained spacing and responsive product reveals. The earlier source captures and concept photos remain available for future designer-focused chapters, but the participant clip is removed from the current assets and timeline.
