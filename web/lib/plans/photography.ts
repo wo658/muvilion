@@ -15,7 +15,7 @@ export type PhotoShot = z.infer<typeof PhotoShotSchema>;
 export const PhotoIntentSchema = z.object({
   title: z.string().trim().min(1).max(120), description: z.string().trim().min(1).max(1500),
   targetIds: z.array(z.string().min(1).max(100)).max(8),
-  view: z.enum(["overview", "detail", "interior"]),
+  view: z.enum(["overview", "detail", "interior"]).default("interior").describe("Use visitor eye-level interior by default. Overview/detail are elevated compositions for an explicit aerial or object-study request."),
   framing: z.enum(["subjects", "venue"]).default("subjects").describe("subjects frames the selected targets, or installed objects when none are selected; venue with no target IDs explicitly frames the whole venue."),
   azimuth: z.number().min(0).max(360).describe("Camera direction around the target in degrees: 0 is positive X; 90 is positive Z."),
   elevation: z.number().min(15).max(75).describe("Downward viewing angle for overview/detail. Interior stays at eye height."),
@@ -41,7 +41,7 @@ export function photographyTargets(document: PlanDocument): PhotographyTarget[] 
 }
 export function validPhotoTargets(document: PlanDocument, intent: PhotoIntent): boolean {
   const ids = new Set(photographyTargets(document).map(item => item.id));
-  return new Set(intent.targetIds).size === intent.targetIds.length && intent.targetIds.every(id => ids.has(id)) && (intent.view === "overview" || intent.targetIds.length > 0);
+  return new Set(intent.targetIds).size === intent.targetIds.length && intent.targetIds.every(id => ids.has(id)) && (intent.view !== "detail" || intent.targetIds.length > 0);
 }
 
 type Point3 = PhotoShot["target"];
@@ -80,6 +80,26 @@ function fittingDistance(points: Point3[], target: Point3, azimuth: number, elev
   }));
 }
 
+/** Nearby real visitor areas may refine a requested position, never override its direction. */
+function visitorPositionHints(document: PlanDocument, desired: {x:number;y:number}, target: Point3) {
+  const width = document.widthMeters!, depth = document.heightMeters!;
+  const hints: {x:number;y:number}[] = [];
+  const clamp = (value:number, low:number, high:number) => Math.max(low, Math.min(high, value));
+  for (const zone of document.zones ?? []) {
+    if (zone.purpose !== "circulation") continue;
+    const w = zone.rotation === 90 ? zone.depth : zone.width, d = zone.rotation === 90 ? zone.width : zone.depth;
+    if (w < .6 || d < .6) continue;
+    hints.push({x:clamp(desired.x,zone.x*width-w/2+.3,zone.x*width+w/2-.3),y:clamp(desired.y,zone.y*depth-d/2+.3,zone.y*depth+d/2-.3)});
+  }
+  for (const entrance of document.entrances ?? []) {
+    const x=entrance.x*width,y=entrance.y*depth,dx=target[0]+width/2-x,dy=target[2]+depth/2-y,length=Math.hypot(dx,dy);
+    if (length > 1) hints.push({x:x+dx/length*.75,y:y+dy/length*.75});
+  }
+  // A small adjustment retains useful azimuth/distance control during image review.
+  return hints.filter(point=>Math.hypot(point.x-desired.x,point.y-desired.y)<=1.25)
+    .sort((a,b)=>Math.hypot(a.x-desired.x,a.y-desired.y)-Math.hypot(b.x-desired.x,b.y-desired.y));
+}
+
 /** These candidates frame geometry, not visibility: the model must inspect the actual rendered images for occlusion. */
 export function generatePhotoCandidates(document: PlanDocument, intent: PhotoIntent, round = 0): PhotoShot[] {
   if (!document.scaleConfirmed || !document.widthMeters || !document.heightMeters || !validPhotoTargets(document, intent)) return [];
@@ -98,8 +118,9 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
   const minX = Math.min(...points.map(p => p[0])), maxX = Math.max(...points.map(p => p[0]));
   const minY = Math.min(...points.map(p => p[1])), maxY = Math.max(...points.map(p => p[1]));
   const minZ = Math.min(...points.map(p => p[2])), maxZ = Math.max(...points.map(p => p[2]));
-  const target: Point3 = [(minX + maxX) / 2, intent.view === "interior" ? Math.min(EYE_HEIGHT, Math.max(.8, (minY + maxY) / 2)) : (minY + maxY) / 2, (minZ + maxZ) / 2];
+  const target: Point3 = [(minX + maxX) / 2, intent.view === "interior" ? EYE_HEIGHT : (minY + maxY) / 2, (minZ + maxZ) / 2];
   const world = navigationWorld(document);
+  const visitorDistance = Math.max(3, Math.min(12, Math.max(maxX - minX, maxZ - minZ) * .9));
   const candidates: PhotoShot[] = [];
   const variations = [
     { angle: 0, elevation: 0, distance: 1.08 }, { angle: 35, elevation: 12, distance: 1.14 },
@@ -111,12 +132,18 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
     const angle = (intent.azimuth + variation.angle) * Math.PI / 180;
     const elevation = Math.max(15, Math.min(75, intent.elevation + variation.elevation)) * Math.PI / 180;
     // distanceScale changes context without cropping required subjects out of elevated views.
-    const distance = fittingDistance(points, target, angle, intent.view === "interior" ? 0 : elevation) * Math.max(1.04, variation.distance * intent.distanceScale);
+    const distance = intent.view === "interior" ? visitorDistance * variation.distance * intent.distanceScale
+      : fittingDistance(points, target, angle, elevation) * Math.max(1.04, variation.distance * intent.distanceScale);
     let eye: PhotoShot["eye"];
     if (intent.view === "interior") {
       if (!world) return [];
-      // Try a modest range of distances without moving the target or inventing a clear view.
-      const point = [1, .7, .45].map(factor => ({ x: target[0] + Math.cos(angle) * distance * factor + width / 2, y: target[2] + Math.sin(angle) * distance * factor + depth / 2 })).find(point => canStand(point, world));
+      // A person sees a local part of the space; fitting the entire venue would put
+      // the camera outside it. Nearby aisle/entrance positions are preferences only.
+      const desired = {x: target[0] + Math.cos(angle) * distance + width / 2, y: target[2] + Math.sin(angle) * distance + depth / 2};
+      const hints = visitorPositionHints(document, desired, target);
+      const points = [...hints, ...[1, .8, 1.2, .6, 1.5, .4].map(factor => ({ x: target[0] + Math.cos(angle) * distance * factor + width / 2, y: target[2] + Math.sin(angle) * distance * factor + depth / 2 }))];
+      const point = points.find(point => Math.hypot(point.x-width/2-target[0],point.y-depth/2-target[2]) >= .75 && canStand(point, world)
+        && !candidates.some(shot => Math.hypot(shot.eye[0]+width/2-point.x,shot.eye[2]+depth/2-point.y)<.2));
       if (!point) continue;
       eye = [point.x - width / 2, EYE_HEIGHT, point.y - depth / 2];
     } else {
@@ -130,7 +157,7 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
       if (blockedObject) continue;
       if (eye[1] < (document.wallHeight ?? 3) && world && !canStand({x:eye[0]+width/2,y:eye[2]+depth/2}, {...world, objects:[], boundary:undefined, ceilingHeight:undefined}, .2)) continue;
     }
-    candidates.push({ id: `photo-${round}-${candidates.length + 1}`, eye, target, fov: 40, zoom: 1, aspect: 16 / 9, cutaway: intent.view !== "interior", ceilingMode: intent.view === "interior" && document.ceiling ? "solid" : "hidden", showStructure: true, showOverhead: true });
+    candidates.push({ id: `photo-${round}-${candidates.length + 1}`, eye, target, fov: intent.view === "interior" ? 60 : 40, zoom: 1, aspect: 16 / 9, cutaway: intent.view !== "interior", ceilingMode: intent.view === "interior" && document.ceiling ? "solid" : "hidden", showStructure: true, showOverhead: true });
     if (candidates.length === 4) break;
   }
   return candidates;

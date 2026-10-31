@@ -10,6 +10,20 @@ const document = {
   floorBoundary: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }], objects: [],
 };
 
+test("시점이 생략된 일반 공간 사진은 눈높이 기본값으로 검토할 수 있다", async context => {
+  const step = createSteps(context);
+  const response = await step("대상과 시점을 특정하지 않은 공간 사진 검토 요청", () => fetch(`${process.env.WEB_URL}/api/plans/photography`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({phase:"review",document:{...document,scaleConfirmed:true},round:0,
+      intent:{title:"Visitor view",description:"A visitor inside the space",targetIds:[],azimuth:45,elevation:35,distanceScale:1},
+      candidates:[{shot:{id:"visitor",eye:[2,1.65,2],target:[0,1.65,0],fov:60,aspect:16/9,cutaway:false,ceilingMode:"hidden",showStructure:true,showOverhead:true},image:"data:image/png;base64,iVBORw0KGgo="}],
+    }),
+  }));
+  await step("기본 시점과 빈 대상 목록이 허용되어 모델 설정 확인까지 도달", () => {
+    expect(response.status).toBe(503);
+  });
+});
+
 /** 촬영 API는 모델 호출 전에 잘못된 입력을 거부한다. */
 test("촬영 요청의 잘못된 형식과 미확정 축척을 거부한다", async context => {
   const step = createSteps(context);

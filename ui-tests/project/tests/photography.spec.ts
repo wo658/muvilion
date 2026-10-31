@@ -7,6 +7,7 @@ const scene = {
   ...emptyPlan,
   source: { ...emptyPlan.source, name: '구도 수정 회귀용 비대칭 공간' },
   widthMeters: 18, heightMeters: 12,
+  floorBoundary: [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}],
   objects: [
     { id: 'exhibit', kind: 'furniture', label: '주요 전시대', x: .5, y: .5, width: 2.4, depth: 1.2, height: 1.2, rotation: 0, color: '#887766' },
     { id: 'backdrop', kind: 'partition', label: '전시 배경 가벽', x: .5, y: .36, width: 4, depth: .2, height: 2.8, rotation: 0, color: '#536a80' },
@@ -15,15 +16,15 @@ const scene = {
 };
 const intent = {
   title: '전시대와 접근 동선', description: '전시대와 배경 가벽, 오른쪽 접근 공간을 함께 보여준다.',
-  targetIds: ['exhibit', 'backdrop'], view: 'detail', azimuth: 45, elevation: 35, distanceScale: 1,
+  targetIds: ['exhibit', 'backdrop'], view: 'interior', azimuth: 45, elevation: 35, distanceScale: 1,
 };
 const baseShot = {
-  id: 'initial-1', eye: [7, 5, 8], target: [0, 1, -.5], fov: 40, zoom: 1, aspect: 16 / 9,
-  cutaway: true, ceilingMode: 'hidden', showStructure: true, showOverhead: true,
+  id: 'initial-1', eye: [7, 1.65, 4], target: [0, 1.65, -.5], fov: 60, zoom: 1, aspect: 16 / 9,
+  cutaway: false, ceilingMode: 'hidden', showStructure: true, showOverhead: true,
 };
-const initialShots = [[7, 5, 8], [8, 5, 6], [6, 5, 9], [9, 6, 8]].map((eye, i) => ({ ...baseShot, id: `initial-${i + 1}`, eye }));
+const initialShots = [[7, 1.65, 4], [8, 1.65, 3], [6, 1.65, 5], [8, 1.65, 5]].map((eye, i) => ({ ...baseShot, id: `initial-${i + 1}`, eye }));
 const revisedIntent = { ...intent, azimuth: 135, description: '반대편에서 전시대와 측면 설치물 사이의 접근 공간을 드러낸다.' };
-const revisedShots = [[-7, 5, 8], [-8, 5, 6], [-6, 5, 9], [-9, 6, 8]].map((eye, i) => ({ ...baseShot, id: `revised-${i + 1}`, eye }));
+const revisedShots = [[-7, 1.65, 4], [-8, 1.65, 3], [-6, 1.65, 5], [-8, 1.65, 5]].map((eye, i) => ({ ...baseShot, id: `revised-${i + 1}`, eye }));
 const revisionReason = '[모델 응답 fixture] 오른쪽 설치물이 접근 공간을 가리므로 반대편 앵글에서 다시 촬영합니다.';
 const selectionReason = '[모델 응답 fixture] 다시 촬영한 첫 번째 앵글에서 전시대와 접근 공간이 함께 보입니다.';
 
@@ -119,12 +120,12 @@ test('모델 응답 fixture · 구도 검토 후 다른 앵글로 재촬영하�
     await panel.getByText('앵글 미세조정', { exact: true }).click();
     await panel.getByText('카메라 상세', { exact: true }).click();
     const cameraDetails = panel.getByLabel('카메라 상세', { exact: true });
-    await expect(cameraDetails).toContainText('"eye":[-7,5,8]');
+    await expect(cameraDetails).toContainText('"eye":[-7,1.65,4]');
     await panel.getByRole('button', { name: '오른쪽으로 회전', exact: true }).click();
-    await expect(cameraDetails).not.toContainText('"eye":[-7,5,8]');
+    await expect(cameraDetails).not.toContainText('"eye":[-7,1.65,4]');
     await panel.getByRole('button', { name: '이 앵글로 이동', exact: true }).click();
-    await expect(cameraDetails).toContainText('"eye":[-7,5,8]');
-    await expect(cameraDetails).toContainText('"target":[0,1,-0.5]');
+    await expect(cameraDetails).toContainText('"eye":[-7,1.65,4]');
+    await expect(cameraDetails).toContainText('"target":[0,1.65,-0.5]');
     await panel.getByRole('button', { name: '다시 촬영', exact: true }).click();
     await expect(image).toHaveAttribute('src', selectedImage!);
     await panel.getByRole('button', { name: '오른쪽으로 회전', exact: true }).click();
