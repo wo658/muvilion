@@ -4,23 +4,25 @@
 
 ## Current scope
 
-The opening minute covers the actual PDF, project brief, brand reference, typing a request, live design generation, applying the reviewed result, switching camera presets and dragging to orbit. Participant applications, participant booth design and proposal PDFs are future work and do not appear in the film. Their app entry points are hidden; existing implementation and data are retained.
+A 60-second product advertisement: 39 seconds of editorial motion and space presentation, 21 seconds of actual app footage. English throughout, original music, no participants. The central floating composer is an editorial presentation inspired by the requested Spline feel, not a newly shipped app interface.
 
-## Timeline
+## Screen plan
 
-| Time | Actual interaction |
+| Time | Screen and purpose |
 |---|---|
-| 0:00–0:03 | Opening typography |
-| 0:03–0:07 | Click Drawing settings |
-| 0:07–0:11 | Zoom and fit the PDF room |
-| 0:11–0:16 | Open the English planning brief |
-| 0:16–0:20 | Open the brand bookmark and supplied notes |
-| 0:20–0:27 | Type the English prompt and press Enter |
-| 0:27–0:42 | Actual generation and review, edited at 5× speed |
-| 0:42–0:47 | Click Apply changes, then collapse Muse |
-| 0:47–0:52 | Click Top and Overview |
-| 0:52–0:58 | Drag to orbit the saved design |
-| 0:58–1:00 | End of the opening minute |
+| 0–8s | Large idea-led typography; PDF, brief and brand cards converge |
+| 8–12s | Actual PDF zoom establishes the real source |
+| 12–15s | Actual project brief shows purpose |
+| 15–18s | Actual brand bookmark shows context |
+| 18–27s | Central floating composer, typed prompt, send pulse |
+| 27–37s | Editorial blueprint-to-volume build using saved layout coordinates |
+| 37–41s | Actual generation/review at 5× speed |
+| 41–45s | Actual Apply changes interaction |
+| 45–48s | Actual camera preset change |
+| 48–57s | UI-free crop of the same design; concept-frame treatment |
+| 57–60s | Brand close |
+
+Scene planning and transitions are separate modules: `DesignerAdIntro.tsx`, `DesignerAdSpace.tsx`, and `DesignerAdBridges.tsx`. The bridges carry card shapes into the composer, the send pulse into a spatial grid, and a camera aperture into the hero. The hero freeze-frame is editorial framing of actual app footage, not a claim that a new photo-generation request ran.
 
 ## Capture provenance
 
