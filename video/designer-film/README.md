@@ -21,7 +21,7 @@ The source is the official Moscone West level 3 PDF, page 1, cropped around room
 
 The Community Studio brief and brand notes are authored demonstration content, not an official Facebook event. The attached Facebook URL is a reference with supplied notes; automatic URL crawling is not demonstrated.
 
-The video records actual local app behavior. The design was freshly generated from the attached context with 20 objects and six zones, reviewed and applied. A second real request changed stage color and adjusted lounge seating. Generation clips shorten waiting time. Editorial typography, source-card convergence, framing, zooms and photo reveals are Remotion animation; they are not claims about the app UI.
+The video records actual local app behavior. For readable English copy, the revision and photo request stills were re-entered in the actual app after the successful runs; those two stills are illustrative input views, not another model execution. The revised-design clip is a subsequent recording of the saved result. The design was freshly generated from the attached context with 20 objects and six zones, reviewed and applied. A second real request changed stage color and adjusted lounge seating. Generation clips shorten waiting time. Editorial typography, source-card convergence, framing, zooms and photo reveals are Remotion animation; they are not claims about the app UI.
 
 The actual photography workflow rendered camera candidates and used model review to select `concept-01.jpg`. `concept-02.jpg` was captured after manual camera adjustment and was not reviewed again by AI. Photos are real scene renders, not image-generation output. Editorial zoom crops the surrounding blank canvas. Photography images are session-only in the app and are retained separately here.
 
@@ -29,7 +29,7 @@ The six-second participant segment shows a separate local demo listing created f
 
 ## Assets and reproducibility
 
-`public/designer-film/` contains actual UI captures, scene photos and the generated soundtrack. `build-music.py` synthesizes an original 180-second instrumental bed (NumPy and Python); no sampled third-party song is used. Encode its generated WAV to AAC with ffmpeg. `encode-captures.py` converts timestamped browser JPEG sequences using ffmpeg. Raw frames, project exports and local booth access credentials are excluded under `generated/`.
+`public/designer-film/` contains actual UI captures, scene photos and the generated soundtrack. `build-music.py` synthesizes an original 180-second instrumental bed (NumPy and Python); no sampled third-party song is used. Encode its generated WAV to AAC with ffmpeg and apply 9 dB gain for the film master. `encode-captures.py` converts timestamped browser JPEG sequences using ffmpeg. Raw frames, project exports and local booth access credentials are excluded under `generated/`.
 
 Visual reference: [Apple — Introducing Apple Creator Studio](https://www.youtube.com/watch?v=ISYIEmQxs2M), using large typography, generous spacing, layered cards and product reveals as direction. No Apple footage, audio, marks or UI is included. Original user reference: https://www.youtube.com/watch?v=i8g1dnPOrCc.
 
