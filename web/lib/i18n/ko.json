@@ -739,5 +739,6 @@
   "Scene assets are still loading. Try again shortly.": "3D 요소를 불러오고 있어요. 잠시 후 다시 시도해주세요.",
   "The 3D renderer is unavailable. Reload and try again.": "3D 화면을 사용할 수 없어요. 새로고침 후 다시 시도해주세요.",
   "The photo could not be captured. Try again.": "사진을 촬영하지 못했어요. 다시 시도해주세요.",
-  "A photo is already being captured.": "이미 사진을 촬영하고 있어요."
+  "A photo is already being captured.": "이미 사진을 촬영하고 있어요.",
+  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name}의 치수가 모델과 맞지 않아 실제 크기 상자로 표시합니다. 교체하거나 다시 생성해 주세요."
 }

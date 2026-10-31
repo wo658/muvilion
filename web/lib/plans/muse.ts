@@ -1,3 +1,4 @@
+import { resolvePhysicalDimensions } from "@/lib/assets/dimensions";
 import { z } from "zod";
 import { DesignObjectSchema, ZoneSchema, PlanDocumentSchema, type PlanDocument } from "./schema";
 import { designWarnings } from "./design";
@@ -103,7 +104,8 @@ export function applyDesignProposal(document: PlanDocument, input: unknown): Pla
   if (proposal.objects.some(object => object.zoneId && !zoneIds.has(object.zoneId)))
     throw new Error("Design object references an unknown space zone.");
   // Only editable design collections may be replaced. Source, floor and height review stay intact.
-  const objects = proposal.objects.map(object => {
+  const objects = proposal.objects.map(inputObject => {
+    const object = resolvePhysicalDimensions(inputObject);
     const previous = document.objects?.find(item => item.id === object.id);
     const shape = { ...object }; delete shape.provenance;
     const previousShape = previous ? { ...previous } : undefined;

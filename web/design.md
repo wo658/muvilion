@@ -29,6 +29,12 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - App Settings uses a centered dialog and a centered content column up to 640px wide. Each section has a heading; setting rows pair left-aligned labels/descriptions with right-aligned controls. Use separators between API key actions and stack rows on narrow screens. Keep the section navigation, scrollable content and keyboard dismissal.
 
+## Physical dimensions
+
+One scene unit is one metre. Object width/depth/height are local outer bounds before rotation; rotation swaps the footprint axes, never the stored dimensions. Model objects use catalog native metre bounds (5 mm input rounding is normalized); changed proportions are rejected by design tools. A mismatched legacy asset is shown as its declared-size box with a warning, never as a silently shrunken model. Schematic fixtures use the declared assumption sizes in `lib/assets/fixtures.ts`; mesh outer bounds, 2D footprints and collision boxes share those sizes. Partitions of arbitrary length use exact schematic geometry or multiple native-size modules. Never relabel a truss as a phone stand or a coffee table as a work desk.
+
+Confirm the cropped drawing extent or a known measured distance before design. A scale confirmation establishes the coordinate conversion, not surveyed geometry. The KINTEX demo uses the printed 1B extent (90 × 63 m); floor outline and the selected event footprint must be reviewed independently. See `docs/dimensions.md` for assumptions and limits.
+
 ## Tokens
 
 `lib/ui/tokens.ts` owns colors. `app/layout.tsx` exposes CSS variables; `app/globals.css` maps them to Tailwind and shadcn semantic roles.

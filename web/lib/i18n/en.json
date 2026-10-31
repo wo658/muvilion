@@ -739,5 +739,6 @@
   "Scene assets are still loading. Try again shortly.": "Scene assets are still loading. Try again shortly.",
   "The 3D renderer is unavailable. Reload and try again.": "The 3D renderer is unavailable. Reload and try again.",
   "The photo could not be captured. Try again.": "The photo could not be captured. Try again.",
-  "A photo is already being captured.": "A photo is already being captured."
+  "A photo is already being captured.": "A photo is already being captured.",
+  "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it.": "{name} has dimensions that do not match its model. Shown as a size box; replace or regenerate it."
 }

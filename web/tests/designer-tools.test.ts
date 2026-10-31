@@ -55,6 +55,16 @@ describe('shared Designer Muse tools', () => {
     expect(c.calls.get('review_design')).toBe(1);
     expect(c.pendingImages).toHaveLength(2);
   });
+  it('returns overlapping physical envelopes before consuming visual review budget', async () => {
+    const c=context(), review=createDesignTools(c).review_design;
+    const collision={...proposal,objects:[proposal.objects[0],{...proposal.objects[0],id:'other'}]};
+    const failed=await review.execute!(collision,options) as {geometryWarnings?:string[]};
+    expect(failed.geometryWarnings?.join(' ')).toContain('overlaps');
+    expect(c.artifacts).toHaveLength(0);
+    expect(c.calls.get('review_design')).toBeUndefined();
+    await review.execute!({...collision,objects:[proposal.objects[0],{...proposal.objects[0],id:'other',x:.85}]},options);
+    expect(c.pendingImages).toHaveLength(2);
+  });
   it('does not mutate draft state on invalid proposals or cancelled requests', async () => {
     const c=context(), review=createDesignTools(c).review_design;
     await expect(review.execute!({...proposal,objects:[proposal.objects[0],proposal.objects[0]]},options)).rejects.toThrow('unique');

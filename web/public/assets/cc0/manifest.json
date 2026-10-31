@@ -594,8 +594,8 @@
       ],
       "boundsMeters": {
         "width": 0.64003,
-        "depth": 0.640955,
-        "height": 1.437516
+        "depth": 0.64003,
+        "height": 1.420001
       },
       "dimensionSource": "gltf-scene-bounds"
     },

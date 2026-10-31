@@ -87,7 +87,7 @@ const models: readonly ModelAsset[] = [
   model("display_vitrine", "furniture", "Display Vitrine",
     "작은 장식 전시물이 포함된 진열장 외형. 내부 전시 가능 공간과 하중은 확인되지 않았으며 충돌 검사는 전체 외곽 크기를 사용. AI 생성 콘셉트 모델.",
     ["진열장", "쇼케이스", "전시", "유리", "vitrine", "showcase", "display", "case", "exhibition"],
-    0.64003, 0.640955, 1.437516, generatedGlb),
+    0.64003, 0.64003, 1.420001, generatedGlb),
   model("reception_desk", "furniture", "Reception Desk",
     "데스크톱 모니터가 포함된 전시장·부스 안내용 접수 데스크. 높이는 모니터를 포함한 전체 외곽이며 상판 높이가 아님. AI 생성 콘셉트 모델.",
     ["접수대", "안내", "데스크", "카운터", "전시", "부스", "reception", "desk", "counter", "welcome", "booth"],
