@@ -322,13 +322,11 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     // Discard the request, rather than reactivating it if an old drawing is reopened.
     if (photoRequest && (photoRequest.base !== document || photoRequest.sources !== sources || !spaceMode || activePreview || planTools)) setPhotoRequest(null);
     const [toolbarEnd, setToolbarEnd] = useState<HTMLDivElement | null>(null);
-    const roleToggle = <Segmented options={[{ id: "space", label: t("Organize") }, { id: "booth", label: t("Participate") }]} value={designRole} onChange={role => { setDesignRole(role); setChatOpen(true); setMarkingEntrance(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }} label={t("Design mode")}/>;
     return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
 
     {controls.sidebar && createPortal(<>
       <RailButton icon={<SettingsIcon/>} label={t("Settings")} onClick={() => setSettings("general")}/>
     </>, controls.sidebar)}
-    {!document && <div className="ps-design-mode-bar">{roleToggle}</div>}
     <AppSettings section={settings} onSectionChange={setSettings} sections={spaceMode ? [
 
 
@@ -343,7 +341,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={id => { switchDrawing(id); setProjectSettings(null); }} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setProjectSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
       </div>
-      {spaceMode && document && <div hidden={projectSettings !== "booths"}>
+      {spaceMode && document && projectSettings === "booths" && <div>
         <OrganizerBooths key={activeDrawingId} document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
       </div>}
     </ProjectDialog>
@@ -381,7 +379,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </aside>
       <section className="ps-center" aria-label={t("Drawing workspace")} hidden={!document}>
         <div className="ps-canvas-toolbar">
-          {roleToggle}
           {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: t("My booth") }, { id: "venue", label: t("Whole venue") }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label={t("Booth work scope")}/></>}
           {spaceMode && document && <>
             <NativeSelect aria-label={t("Switch drawing")} className="min-w-0 max-w-64 flex-1" value={activeDrawingId ?? drawings[0]?.id ?? ""} disabled={busy} onChange={event => switchDrawing(event.target.value)}>
@@ -394,7 +391,6 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
               <PopoverContent align="start" aria-label={t("Project settings")} finalFocus={projectSettings === null}>
                 <Button variant="ghost" className="justify-start" onClick={() => { setProjectMenuOpen(false); setDetails(true); }}>{t("Drawing settings")}</Button>
                 <Button variant="ghost" className="justify-start" onClick={() => openProjectDialog("sources")}>{t("Sources")}</Button>
-                <Button variant="ghost" className="justify-start" onClick={() => openProjectDialog("booths")}>{t("Booth pricing · applications")}</Button>
               </PopoverContent>
             </Popover>
           </>}
