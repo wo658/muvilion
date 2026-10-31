@@ -1,5 +1,7 @@
+import { FILM_GLASS } from "./FilmGlass";
 import {
   AbsoluteFill,
+  Sequence,
   Easing,
   interpolate,
   staticFile,
@@ -20,7 +22,7 @@ const k = (f: number, frames: number[], values: number[]) =>
     easing: Easing.bezier(0.65, 0, 0.2, 1),
   });
 const prompt =
-  "Create an open community space. Blue accents. A four-seat lounge.";
+  "Create an open community space.\nBlue accents. A four-seat lounge.";
 
 /** One continuous world: the same cards attach, the same composer becomes the plan. */
 export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
@@ -29,8 +31,8 @@ export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
     send = m(f, 225, 270, 0, 1);
   const elastic =
     f < 92 ? 0 : Math.sin((f - 92) * 0.2) * Math.exp(-(f - 92) / 15);
-  const glass = `linear-gradient(135deg, color-mix(in srgb, ${T.surface} 88%, transparent), color-mix(in srgb, ${T.accentSoft} 38%, transparent) 55%, color-mix(in srgb, ${T.surface} 72%, transparent))`;
-  const glassShadow = `inset 0 2px 2px ${T.surface}, inset 0 -2px 3px ${T.hairline}, 0 24px 70px ${T.shadowColor}`;
+  const glass = FILM_GLASS.background;
+  const glassShadow = FILM_GLASS.shadow;
   const camera = k(
     f,
     [0, 30, 65, 112, 190, 225, 246, 275, 340, 449],
@@ -274,7 +276,8 @@ export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
             top: 445,
             width: 1110,
             fontSize: 49,
-            lineHeight: 1.25,
+            lineHeight: 1.3,
+            whiteSpace: "pre-line",
             letterSpacing: -1.8,
             opacity: m(f, 109, 123, 0, 1) * (1 - m(f, 234, 254, 0, 1)),
             transform: `translateY(${m(f, 235, 265, 0, -90)}px)`,
@@ -429,6 +432,9 @@ export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
         />
       )}
       <Audio src={staticFile("designer-ad/continuous-sfx.wav")} volume={0.7} />
+      <Sequence from={102} durationInFrames={110}>
+        <Audio src={staticFile("designer-ad/photo-typing.wav")} volume={0.75} />
+      </Sequence>
     </AbsoluteFill>
   );
 }
