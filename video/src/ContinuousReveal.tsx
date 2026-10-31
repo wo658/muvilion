@@ -23,7 +23,7 @@ const prompt =
   "Create an open community space. Blue accents. A four-seat lounge.";
 
 /** One continuous world: the same cards attach, the same composer becomes the plan. */
-export function ContinuousReveal() {
+export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
   const f = useCurrentFrame();
   const merge = m(f, 78, 112, 0, 1),
     send = m(f, 225, 270, 0, 1);
@@ -420,10 +420,14 @@ export function ContinuousReveal() {
           </div>
         ))}
       </div>
-      <Audio
-        src={staticFile("designer-film/music.m4a")}
-        volume={(f) => interpolate(f, [0, 15, 420, 450], [0.6, 0.6, 0.6, 0], c)}
-      />
+      {audio && (
+        <Audio
+          src={staticFile("designer-film/music.m4a")}
+          volume={(f) =>
+            interpolate(f, [0, 15, 420, 450], [0.6, 0.6, 0.6, 0], c)
+          }
+        />
+      )}
       <Audio src={staticFile("designer-ad/continuous-sfx.wav")} volume={0.7} />
     </AbsoluteFill>
   );

@@ -157,6 +157,8 @@ const traces: Record<string, Point[]> = {
     { time: 8.944, x: 850, y: 190, drag: true },
     { time: 8.976, x: 850, y: 190, drag: true },
   ],
+  "photo-new": [],
+  "photo-retake": [],
   plan: [{ time: 0.614, x: 484, y: 77, click: true }],
   request: [
     { time: 0.609, x: 1080.5, y: 628.5, click: false },

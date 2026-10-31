@@ -1,43 +1,47 @@
 1
-00:00:00,000 --> 00:00:08,000
-Every space starts with an idea.
+00:00:00,000 --> 00:00:04,000
+Bring your context.
 
 2
-00:00:08,000 --> 00:00:12,000
-Grounded in your plan.
-
-3
-00:00:12,000 --> 00:00:15,000
-Made for your purpose.
-
-4
-00:00:15,000 --> 00:00:18,000
-Distinctly yours.
-
-5
-00:00:18,000 --> 00:00:27,000
+00:00:04,000 --> 00:00:09,000
 Describe the space you imagine.
 
-6
-00:00:27,000 --> 00:00:37,000
-From plan to possibility.
+3
+00:00:09,000 --> 00:00:15,000
+Your idea. In space.
 
-7
-00:00:37,000 --> 00:00:41,000
-An idea. Taking shape.
+4
+00:00:15,000 --> 00:00:20,000
+Built from your context.
 
-8
-00:00:41,000 --> 00:00:45,000
+5
+00:00:20,000 --> 00:00:25,000
 Make it yours.
 
+6
+00:00:25,000 --> 00:00:30,000
+Every angle. In your hands.
+
+7
+00:00:30,000 --> 00:00:35,000
+Find the feeling.
+
+8
+00:00:35,000 --> 00:00:41,000
+Designed to be seen.
+
 9
-00:00:45,000 --> 00:00:48,000
-Find your perspective.
+00:00:41,000 --> 00:00:45,000
+Frame your vision.
 
 10
-00:00:48,000 --> 00:00:57,000
-A space worth sharing.
+00:00:45,000 --> 00:00:49,000
+One more shot.
 
 11
+00:00:49,000 --> 00:00:57,000
+A space worth sharing.
+
+12
 00:00:57,000 --> 00:01:00,000
-muvilion
+Ideas become spaces. muvilion
