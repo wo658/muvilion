@@ -624,7 +624,6 @@ export const DesignerFilm = () => (
       <Screen
         file="photo-process.mp4"
         video
-        rate={0.45}
         title="04 / PHOTOGRAPH"
         caption="Muse frames, renders and compares camera angles."
         detail="Actual scene captures · camera review"
