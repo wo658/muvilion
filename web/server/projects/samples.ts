@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { z } from "zod";
-import { emptyProject, type SampleProject, type DrawingSource } from "@/lib/projects/schema";
+import { emptyProject, SampleProject, type DrawingSource } from "@/lib/projects/schema";
 import { createHttpEngine } from "@/server/engine/client";
 import { createProject, ProjectError } from "./store";
 
 const Drawing = z.object({ name: z.string().min(1).max(100), file: z.string().regex(/^[\w-]+\/[\w.-]+\.(pdf|jpe?g|png)$/), page: z.number().int().positive().optional(), rasterPdf: z.boolean().optional() });
-const Manifest = z.object({ projects: z.array(z.object({ id: z.string().regex(/^[\w-]+$/), name: z.string().min(1).max(100), drawings: z.array(Drawing).min(1).max(12) })) }).refine(value => new Set(value.projects.map(p => p.id)).size === value.projects.length, "Duplicate sample project IDs");
+const Manifest = z.object({ projects: z.array(SampleProject.extend({ id: z.string().regex(/^[\w-]+$/), name: z.string().min(1).max(100), drawings: z.array(Drawing).min(1).max(12) })) }).refine(value => new Set(value.projects.map(p => p.id)).size === value.projects.length, "Duplicate sample project IDs");
 const mimeOf = (file: string) => file.endsWith(".pdf") ? "application/pdf" : file.endsWith(".png") ? "image/png" : "image/jpeg";
 export const samplesDirectory = () => process.env.SAMPLES_DIR ?? resolve(process.cwd(), "../data/samples");
 
@@ -39,6 +39,14 @@ export async function createSampleProject(id: string, directory = samplesDirecto
     assets.push({ id: assetId, name, mimeType, data: bytes.toString("base64") });
   }
   runSignal.throwIfAborted();
+  const sources = emptyProject().sources;
+  sources.items = (sample.sources ?? []).map(source => {
+    const reference = { ...source, id: randomUUID() };
+    if (source.kind !== "brief") return reference;
+    const originalAssetId = randomUUID();
+    assets.push({ id: originalAssetId, name: `${source.name.slice(0, 251)}.txt`, mimeType: "text/plain", data: Buffer.from(source.text, "utf8").toString("base64") });
+    return { ...reference, originalAssetId };
+  });
   const first = drawings[0];
-  return createProject({ name: sample.name, state: { ...emptyProject(), document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId }, assets });
+  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId }, assets });
 }

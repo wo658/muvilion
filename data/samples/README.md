@@ -70,3 +70,19 @@ CAD도 있다: Moscone은 층별 DWG(2026년), KINTEX는 CAD zip(2005–2007년)
 `samples.json`이 유일한 샘플 목록이다. 시작 화면에서 KINTEX(6개), Moscone Center(7개), LVCC(2개) 프로젝트를 선택하면 포함된 원본을 복사하고 지정된 페이지를 실제 엔진으로 추출한다. 각 도면은 독립 작업 화면으로 저장되며 헤더에서 전환한다. 이는 사전 디자인 결과나 시뮬레이션 재생이 아니다. 원본이 하나라도 없으면 해당 묶음은 제공하지 않으며, 추출 실패 시 일부만 담긴 프로젝트를 생성하지 않는다. 기존 사용자 프로젝트는 변경하지 않는다.
 
 Moscone `northsouth-exhibit.pdf`와 `northsouth-lobby.pdf`는 10만 벡터 선 제한을 초과하므로 매니페스트에 `rasterPdf: true`를 명시했다. 원본 PDF와 페이지를 보존하면서 해당 페이지를 이미지로 렌더링해 선 후보를 추정한다. 벡터·텍스트 추출 결과가 아니며, 도면 경고에도 이 제한을 기록한다. 나머지 PDF는 기본 벡터 추출을 사용한다.
+
+## Meta 서비스 기반 기획 자료
+
+각 샘플은 도면 묶음과 함께 선택된 기획서 1개, 브랜드 URL·설명 2개를 불러온다.
+
+| 샘플 | 가상 기획 | 브랜드 참고 |
+|---|---|---|
+| KINTEX | 크리에이터 커넥션 데이: 촬영·편집·대화·토크 | [Instagram](https://www.meta.com/instagram/), [Threads](https://www.threads.com/) |
+| Moscone | 커뮤니티 & 비즈니스 허브: 워크숍·메시징 시연·상담 | [Facebook](https://www.meta.com/facebook-app/), [WhatsApp](https://www.whatsapp.com/) |
+| LVCC | 몰입형 플레이 & AI 스튜디오: VR·혼합현실 체험·AI 아이디어 시연 | [Meta Quest](https://www.meta.com/quest/), [Meta AI](https://ai.meta.com/meta-ai/) |
+
+기획은 2026-10-31에 공식 서비스 소개를 참고하여 독자 작성했다. Meta의 공식 행사·의뢰·제휴나 공식 브랜드 가이드가 아니다. 외부 로고·사진·페이지 원문을 새로 번들하지 않는다. Threads의 텍스트·공개 대화 성격은 [공식 소개](https://about.fb.com/news/2023/07/introducing-threads-new-app-text-sharing/)를, 현재 도메인은 [threads.com 이전 발표](https://about.fb.com/news/2025/04/new-features-threads-web-experience/)를 참고했다.
+
+`samples.json`의 `sources`가 기획서와 브랜드 자료의 정본이다. 기획서는 공간 프로그램, 설계 연습용 가구·시설 수량, 체험 흐름, 도면별 활용 및 설계 요청 예시를 담는다. 새 프로젝트를 만들 때 본문을 UTF-8 `.txt` 원본으로 SQLite에 함께 저장하므로 프로젝트 내보내기에도 포함된다. 브랜드 URL은 북마크이며 생성 시 웹페이지를 수집하지 않는다. 함께 제공된 설명과 기획만 모델의 참고 자료가 된다.
+
+도면 추출은 실제 엔진 계산이다. 공간 배치 결과, 기록된 재생, 모의 시뮬레이션 또는 라이브 VR·AI 체험 결과는 미리 채우지 않는다. 기획의 수량·운영 방향은 가정이며 축척·사용 영역·시설 연결·안전 조건은 실제 설계 전에 확인한다. 기존 SQLite 프로젝트는 덮어쓰지 않는다. 최신 자료는 시작 화면에서 새 샘플 프로젝트를 생성하면 적용된다.
