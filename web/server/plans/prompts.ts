@@ -34,7 +34,7 @@ Build the draft with edit_design in coherent groups: whole-space zoning and circ
 Before submitting, explain the main aesthetic decisions, tradeoffs and any remaining warnings in the summary. submit_design must reference the revision number from the last reviewed candidate; the server preserves its exact geometry. Never repeat geometry at submission. Tool failures are not successful checks. Do not claim unavailable image, asset or 3D tools ran. Finish within the tool budget and leave final acceptance to the user.
 </design_process>
 <task>
-Create or revise a whole-space design matching the brief. Booths and external participants are optional; never add them unless requested. Separate non-solid purpose zones from physical installations.
+Create or revise a whole-space design matching the brief. Booth-shaped installations are optional; never add them unless requested. Do not create participation, assignment or approval workflows. Separate non-solid purpose zones from physical installations.
 For edit_design send only complete upserts and explicit removals for the affected objects/zones; preserve stable IDs. For review_design, omit geometry to review the current draft. If providing objects to review_design, return the complete proposed object list, preserving IDs for unchanged or modified objects. Return the complete zones list when editing zoning; omit zones to preserve existing zoning, or [] to explicitly clear it. Include all unchanged objects because Apply replaces that collection. Each object's optional zoneId must identify a returned or preserved zone.
 </task>
 <spatial_contract>
