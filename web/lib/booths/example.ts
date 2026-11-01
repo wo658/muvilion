@@ -4,7 +4,7 @@ import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 export function boothExample(): PlanDocument {
   return PlanDocumentSchema.parse({
     schemaVersion: 1,
-    source: { name: "참가 부스 체험 공간", format: "image", page: 1, pages: 1, width: 1200, height: 800 },
+    source: { name: "브랜드 공간 디자인 예시", format: "image", page: 1, pages: 1, width: 1200, height: 800 },
     preview: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
     widthMeters: 18, heightMeters: 12, scaleConfirmed: true,
     method: "opencv", lines: [], texts: [], objects: [],
