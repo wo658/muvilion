@@ -1,6 +1,5 @@
 "use client";
 import { MUVI_OPERATION_LABELS, type MuviOperation } from "@/lib/muvi/operations";
-import type { PricingContext } from "@/lib/booths/pricing";
 import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -36,11 +35,10 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, boothPricing, onDesignPreview, onMuviOperation, onPhotography }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onDesignPreview, onMuviOperation, onPhotography }: {
     onPhotography?: (request: import("@/lib/plans/photography-client").PhotoRequest) => void;
     onMuviOperation?: (activity: { base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null) => void;
     onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
-    boothPricing?: PricingContext;
     onCollapse?: () => void;
 
     onSources: () => void;
@@ -55,7 +53,6 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         api: "/api/plans/chat",
         prepareSendMessagesRequest: ({ messages, body }) => ({ body: {
                 document: body?.document ?? null,
-                boothPricing: body?.boothPricing,
                 selection: body?.selection ?? null,
                 locale: body?.locale,
                 sources: body?.sources ?? [],
@@ -250,7 +247,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 if (!mounted.current) return;
                 abortController.signal.throwIfAborted();
                 handedOff = true;
-                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, boothPricing, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: document.texts } : null, sources: references } });
+                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: document.texts } : null, sources: references } });
             } else {
                 handedOff = true;
                 setMessages(previous => [...previous,

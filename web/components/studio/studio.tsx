@@ -1,8 +1,6 @@
 "use client";
 import type { MuviOperation } from "@/lib/muvi/operations";
 import { MuviAvatar } from "@/components/muvi/muvi-avatar";
-import type { PublicBoothProject } from "@/lib/booths/schema";
-import type { PricingContext } from "@/lib/booths/pricing";
 
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
@@ -15,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import { cropPlan } from "@/lib/plans/crop";
 import { boothExample } from "@/lib/booths/example";
-import { Badge, Button, Segmented } from "../ui";
+import { Badge, Button } from "../ui";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
 import { activateDrawing, addDrawing, drawingSources, saveDrawing } from "@/lib/projects/drawings";
@@ -35,8 +33,6 @@ import "./spatial-design.css";
 import "./sources.css";
 import { TOKENS } from "@/lib/ui/tokens";
 const SceneView = dynamic(() => import("./scene-view"), { ssr: false, loading: SceneLoading });
-const OrganizerBooths = dynamic(() => import("../booths/organizer-booths").then(module => module.OrganizerBooths), { ssr: false, loading: BoothsLoading });
-const ParticipantPortal = dynamic(() => import("../booths/participant-portal").then(module => module.ParticipantPortal), { ssr: false });
 type Point = {
     x: number;
     y: number;
@@ -46,14 +42,6 @@ export function Studio() {
     return <ProjectWorkspace editor={StudioEditor}/>;
 }
 function StudioEditor({ project, controls }: { project: Project; controls: ProjectControls }) {
-    const [designRole, setDesignRole] = useState<"space" | "booth">("space");
-    const [publishedId, setPublishedId] = useState<string | null>(null);
-    const [publicProject, setPublicProject] = useState<PublicBoothProject | null>(null);
-    const [boothDocument, setBoothDocument] = useState<PlanDocument | null>(null);
-    const [boothSelection, setBoothSelection] = useState<string | null>(null);
-    const [focusBooth, setFocusBooth] = useState(true);
-    const [boothPricing, setBoothPricing] = useState<PricingContext>([]);
-    const spaceMode = designRole === "space";
     const { t, locale } = useI18n();
     const [settings, setSettings] = useState<string | null>(null);
     // Start with Muse docked on phones so the plan stays visible; the editor only renders client-side.
@@ -73,12 +61,12 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const [muviActivity, setMuviActivity] = useState<{ base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null>(null);
     const activeOperation = muviActivity?.base === document && muviActivity?.sources === sources ? muviActivity.operation : null;
     const [designPreview, setDesignPreview] = useState<{ base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null>(null);
-    const activePreview = spaceMode && designPreview?.base === document && designPreview?.sources === sources ? designPreview : null;
+    const activePreview = designPreview?.base === document && designPreview?.sources === sources ? designPreview : null;
     const [details, setDetails] = useState(false);
-    const [projectSettings, setProjectSettings] = useState<"sources" | "booths" | null>(null);
+    const [projectSettings, setProjectSettings] = useState<"sources" | null>(null);
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const projectMenuTrigger = useRef<HTMLButtonElement>(null);
-    const openProjectDialog = (section: "sources" | "booths") => {
+    const openProjectDialog = (section: "sources") => {
         // Native dialogs restore focus to this persistent trigger, not the closing popover.
         projectMenuTrigger.current?.focus();
         setProjectMenuOpen(false);
@@ -175,8 +163,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         sourcesRef.current = next.sources; setSources(next.sources);
         setDrawings(drawingSources(next)); setActiveDrawingId(next.activeDrawingId);
         setSourceFile(null); setError(null); setNotice(null);
-        setPublishedId(null); setPublicProject(null); setBoothDocument(null); setBoothPricing([]);
-        setBoothSelection(null); setProjectSettings(null);
+        setProjectSettings(null);
         openDocument(next.document!);
         const edits = next.activeDrawingId && drawingEdits.current.get(next.activeDrawingId);
         if (edits) { setHistory(edits.history); setWidth(edits.width); setHeight(edits.height); }
@@ -312,38 +299,33 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         setFloorDraft(null);
     };
     const calibrated = document?.scaleConfirmed && document.widthMeters && document.heightMeters;
-    const editingBooth = !spaceMode && focusBooth && !!boothDocument;
-    const canvasSelection = editingBooth ? boothSelection : selected;
-    const selectCanvas = editingBooth ? setBoothSelection : setSelected;
-    const visibleDocument = activePreview?.document ?? (!spaceMode && focusBooth && boothDocument ? boothDocument : !spaceMode && publicProject && publicProject.id === publishedId ? publicProject.space : document);
+    const visibleDocument = activePreview?.document ?? document;
     const museCollapsed = Boolean(document) && !chatOpen;
     // The workspace is 3D; the 2D plan appears only while a drawing setup tool needs it.
-    const planTools = spaceMode && (details || markingEntrance || drawing || calibrating || cropping || floorDraft !== null);
+    const planTools = (details || markingEntrance || drawing || calibrating || cropping || floorDraft !== null);
     // Discard the request, rather than reactivating it if an old drawing is reopened.
-    if (photoRequest && (photoRequest.base !== document || photoRequest.sources !== sources || !spaceMode || activePreview || planTools)) setPhotoRequest(null);
+    if (photoRequest && (photoRequest.base !== document || photoRequest.sources !== sources || activePreview || planTools)) setPhotoRequest(null);
     const [toolbarEnd, setToolbarEnd] = useState<HTMLDivElement | null>(null);
-    return <main className={`ps-studio ${spaceMode && details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
+    return <main className={`ps-studio ${details ? "ps-detail-view" : "ps-simple-view"} ${document ? "ps-has-plan" : "ps-conversation-only"}${museCollapsed ? " ps-muse-collapsed" : ""}`}>
 
     {controls.sidebar && createPortal(<>
       <RailButton icon={<SettingsIcon/>} label={t("Settings")} onClick={() => setSettings("general")}/>
     </>, controls.sidebar)}
-    <AppSettings section={settings} onSectionChange={setSettings} sections={spaceMode ? [
+    <AppSettings section={settings} onSectionChange={setSettings} sections={[
 
 
       { id: "project", label: t("Project"), content: <div className="flex flex-col gap-6">
         <section className="settings-row"><div className="flex flex-col gap-2"><h4 className="font-medium">{t("Export project")}</h4><p className="settings-description">{t("Download this project and its original files as one JSON bundle.")}</p></div><Button className="self-start" variant="primary" onClick={exportPlan} disabled={busy || !sourcesReady}>{t("Export")}</Button></section>
         <section className="settings-row"><div className="flex flex-col gap-2"><h4 className="font-medium">{t("Import project")}</h4><p className="settings-description">{t("Open an exported JSON bundle as a new project. The current project is kept.")}</p></div><Button className="self-start" disabled={!sourcesReady} onClick={() => { setSettings(null); restoreInput.current?.click(); }}>{t("Import project")}</Button></section>
       </div> },
-    ] : []}/>
+    ]}/>
 
-    <ProjectDialog open={projectSettings !== null} title={t(projectSettings === "booths" ? "Booth pricing · applications" : "Sources")} onClose={() => setProjectSettings(null)}>
+    <ProjectDialog open={projectSettings !== null} title={t("Sources")} onClose={() => setProjectSettings(null)}>
       <div hidden={projectSettings !== "sources"}>
         <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={id => { switchDrawing(id); setProjectSettings(null); }} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setProjectSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
       </div>
-      {spaceMode && document && projectSettings === "booths" && <div>
-        <OrganizerBooths key={activeDrawingId} document={document} onDocumentChange={change} onPublished={setPublishedId} onPricing={setBoothPricing}/>
-      </div>}
+
     </ProjectDialog>
     <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
@@ -352,8 +334,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     else if (file)
         setError(t("Plan file must be smaller than 32 MB.")); e.target.value = ""; }}/>
     <div className="ps-workspace">
-      <aside className="ps-sidebar" hidden={!details || !spaceMode}>
-        <div id="drawing-details" className="ps-drawing-controls" hidden={!details || !spaceMode}>
+      <aside className="ps-sidebar" hidden={!details}>
+        <div id="drawing-details" className="ps-drawing-controls" hidden={!details}>
         <section className="ps-section"><div className="ps-section-heading"><h2>{t("Drawing setup")}</h2><Button variant="ghost" onClick={() => { setDetails(false); setFloorDraft(null); setDrawing(false); setCalibrating(false); setCropping(false); setMeasure(null); }}>{t("Close")}</Button></div>
           {document && document.source.pages > 1 && <label className="ps-field">{t("Drawing page")}<NativeSelect value={document.source.page} disabled={busy || !sourceFile} onChange={(e) => { if (sourceFile)
         void extract(sourceFile, Number(e.target.value), originalDrawing.current ?? undefined); }}>{Array.from({ length: document.source.pages }, (_, i) => <option key={i} value={i + 1}>{t("Page {page}", { page: i + 1 })}</option>)}</NativeSelect>{!sourceFile && <small>{t("Re-upload the source to change pages.")}</small>}</label>}
@@ -379,8 +361,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </aside>
       <section className="ps-center" aria-label={t("Drawing workspace")} hidden={!document}>
         <div className="ps-canvas-toolbar">
-          {!spaceMode && boothDocument && <><span className="ps-toolbar-divider" aria-hidden/><Segmented options={[{ id: "booth", label: t("My booth") }, { id: "venue", label: t("Whole venue") }]} value={focusBooth ? "booth" : "venue"} onChange={value => setFocusBooth(value === "booth")} label={t("Booth work scope")}/></>}
-          {spaceMode && document && <>
+          {document && <>
             <NativeSelect aria-label={t("Switch drawing")} className="min-w-0 max-w-64 flex-1" value={activeDrawingId ?? drawings[0]?.id ?? ""} disabled={busy} onChange={event => switchDrawing(event.target.value)}>
               {drawings.map(item => <option key={item.id} value={item.id}>{item.document.source.name}{item.document.source.pages > 1 ? ` · ${t("Page {page}", { page: item.document.source.page })}` : ""}</option>)}
             </NativeSelect>
@@ -401,36 +382,30 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
           {activePreview && <p role="status" className="pointer-events-none absolute left-3 right-3 top-16 z-10 max-w-md line-clamp-2 rounded bg-surface px-3 py-2 text-xs text-ink">{t("Live draft · not saved")} · {activePreview.label}</p>}
-          {document ? !planTools ? <><SceneView photoRequest={photoRequest?.base === document && photoRequest?.sources === sources && !activePreview ? photoRequest.request : null} onPhotoClose={() => setPhotoRequest(null)} muviOperation={activeOperation} key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={canvasSelection} onSelect={activePreview ? () => {} : selectCanvas}/>{spaceMode && details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={canvasSelection} onSelect={activePreview ? () => {} : selectCanvas} sourceOnly={false} showOriginal={false} showSourceFallback={spaceMode} drawing={spaceMode && (drawing || calibrating || cropping)} rectangle={cropping} onDraw={!spaceMode ? () => {} : cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {document ? !planTools ? <><SceneView sources={sources} exportDisabled={Boolean(activePreview)} photoRequest={photoRequest?.base === document && photoRequest?.sources === sources && !activePreview ? photoRequest.request : null} onPhotoClose={() => setPhotoRequest(null)} muviOperation={activeOperation} key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={selected} onSelect={activePreview ? () => {} : setSelected}/>{details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={activePreview ? () => {} : setSelected} sourceOnly={false} showOriginal={false} showSourceFallback drawing={(drawing || calibrating || cropping)} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
           {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? t("Cropping your space") : t("Reading your drawing")}</strong><span>{cropping ? t("Keeping geometry inside the selected area.") : t("Extracting geometry and preparing the source preview.")}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>{t("Cancel")}</Button>}</div>}
         </div>
-        <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details || !spaceMode}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || !planTools || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : !planTools ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
+        <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || !planTools || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : !planTools ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
 
-        {spaceMode && details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
+        {details && document?.warnings.length ? <details className="ps-warnings"><summary>{t("{count} source notes to review", { count: document.warnings.length })}</summary><ul>{document.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details> : null}
       </section>
       <aside id="muse-panel" className="ps-right-panel" aria-label="Muse" data-collapsed={museCollapsed ? "" : undefined} onKeyDown={event => { if (event.key === "Escape" && document) setChatOpen(false); }}>
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
-        <div hidden={!spaceMode} className="ps-role-panel">
+        <div className="ps-chat-panel">
           {!document && <div className="p-5"><Button onClick={() => showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: boothExample(), originalAssetId: null, selected: true }))}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat onPhotography={request => { if (document) { setDetails(false); setMarkingEntrance(false); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); setPhotoRequest({ base: document, sources, request }); setChatOpen(false); } }} onMuviOperation={setMuviActivity} onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} boothPricing={boothPricing} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          <StudioChat onPhotography={request => { if (document) { setDetails(false); setMarkingEntrance(false); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); setPhotoRequest({ base: document, sources, request }); setChatOpen(false); } }} onMuviOperation={setMuviActivity} onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
-        <div hidden={spaceMode} className="ps-role-panel">
-          {document && <div className="ps-panel-head"><Button variant="ghost" onClick={() => setChatOpen(false)} aria-controls="muse-panel">{t("Minimize Muse")}</Button></div>}
-          {publishedId ? <ParticipantPortal key={publishedId} projectId={publishedId} embedded active={!spaceMode} selectedZoneId={selected} onSelect={setSelected} onProject={setPublicProject} onDesignPreview={setBoothDocument} selectedObjectId={boothSelection} onObjectSelect={setBoothSelection}/> : <section className="p-5"><h2 className="font-semibold">{t("Muse · Booth designer")}</h2><p className="mt-3 text-sm text-muted">{t("No booths are published yet. Once you set prices with Muse and publish booths in organizer mode, you can get recommendations and apply here.")}</p><Button className="mt-4" onClick={() => setDesignRole("space")}>{t("Back to organizer mode")}</Button></section>}
-        </div>
+
 
 
       </aside>
 
     </div>
-    {spaceMode && document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
+    {document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 
 
   </main>;
 }
-
-function BoothsLoading() {
-  const { t } = useI18n(); return <p role="status">{t("Opening booth management…")}</p>; }
 
 function SceneLoading() {
   const { t } = useI18n(); return <div className="ps-canvas-message">{t("Opening the 3D workspace…")}</div>; }
