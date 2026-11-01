@@ -864,5 +864,6 @@
   "{count} photos failed. Document changes were retained; ask Muse to retry.": "사진 {count}장을 촬영하지 못했어요. 문서 내용은 반영했으며 Muse에게 재촬영을 요청할 수 있어요.",
   "Added {count} scene captures to the document.": "사진 {count}장을 문서에 추가했어요.",
   "Apply or discard the spatial draft before revising the planning document.": "기획문서를 수정하기 전에 공간 설계 초안을 적용하거나 취소해주세요.",
-  "Document request stopped. Any completed revisions and photos are kept.": "문서 작업을 중지했어요. 이미 완료된 수정과 사진은 유지됩니다."
+  "Document request stopped. Any completed revisions and photos are kept.": "문서 작업을 중지했어요. 이미 완료된 수정과 사진은 유지됩니다.",
+  "Document sections": "문서 목차"
 }
