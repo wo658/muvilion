@@ -9,6 +9,14 @@ const raw = {title:"Walk into the space",description:"A visitor looking into the
 const interior = {...raw,view:"interior" as const,framing:"subjects" as const};
 
 describe("visitor eye-level photography",()=>{
+ it("requests an enclosed interior even when the drawing has no saved ceiling",()=>{
+  const source={...room,ceiling:undefined};
+  const before=JSON.stringify(source);
+  const shots=generatePhotoCandidates(source,interior);
+  expect(shots).toHaveLength(4);
+  expect(shots.every(shot=>shot.ceilingMode==="solid"&&!shot.cutaway)).toBe(true);
+  expect(JSON.stringify(source)).toBe(before);
+ });
  it("defaults an unspecified view to an interior photograph and permits a general space request",()=>{
   const intent=PhotoIntentSchema.parse(raw);
   expect(intent.view).toBe("interior");
@@ -39,6 +47,34 @@ describe("visitor eye-level photography",()=>{
   expect(turned.map(s=>s.eye)).not.toEqual(original.map(s=>s.eye));
   expect(closer.map(s=>s.eye)).not.toEqual(original.map(s=>s.eye));
   expect(Math.hypot(closer[0].eye[0],closer[0].eye[2])).toBeLessThan(Math.hypot(original[0].eye[0],original[0].eye[2]));
+ });
+ it("accepts a much closer visitor view when a broad zone would otherwise keep the subject small",()=>{
+  const scene:PlanDocument={...room,zones:[{id:"activity",label:"Stage and audience",purpose:"exhibition",x:.5,y:.5,width:40,depth:30,rotation:0,assignable:false}]};
+  const original={...interior,targetIds:["activity"],distanceScale:.75};
+  const parsed=PhotoIntentSchema.safeParse({...original,distanceScale:.35});
+  expect(parsed.success).toBe(true);
+  if(!parsed.success)return;
+  const shots=generatePhotoCandidates(scene,parsed.data);
+  const farther=generatePhotoCandidates(scene,original);
+  expect(shots).toHaveLength(4);
+  expect(Math.hypot(shots[0].eye[0],shots[0].eye[2])).toBeLessThan(5);
+  expect(Math.hypot(shots[0].eye[0],shots[0].eye[2])).toBeLessThan(Math.hypot(farther[0].eye[0],farther[0].eye[2]));
+  const world=navigationWorld(scene)!;
+  for(const shot of shots){
+   expect(canStand({x:shot.eye[0]+45,y:shot.eye[2]+31.5},world)).toBe(true);
+   expect(shot.eye[1]).toBe(EYE_HEIGHT);expect(shot.target[1]).toBe(EYE_HEIGHT);
+   expect(shot.ceilingMode).toBe("solid");expect(shot.cutaway).toBe(false);
+  }
+  const nearest=generatePhotoCandidates(scene,PhotoIntentSchema.parse({...original,distanceScale:.25}))[0];
+  expect(Math.hypot(nearest.eye[0],nearest.eye[2])).toBeGreaterThanOrEqual(3);
+  expect(Math.hypot(nearest.eye[0],nearest.eye[2])).toBeLessThan(3.5);
+ });
+ it("keeps explicit elevated framing at its fitting margin even with a smaller distance scale",()=>{
+  const overview={...interior,view:"overview" as const,targetIds:["display"]};
+  const close=PhotoIntentSchema.safeParse({...overview,distanceScale:.25});
+  expect(close.success).toBe(true);
+  if(!close.success)return;
+  expect(generatePhotoCandidates(room,close.data)).toEqual(generatePhotoCandidates(room,{...overview,distanceScale:.75}));
  });
  it("uses a nearby circulation lane while retaining the requested subject",()=>{
   const scene:PlanDocument={...room,zones:[{id:"aisle",label:"Visitor aisle",purpose:"circulation",x:.5,y:.56,width:12,depth:1.5,rotation:0,assignable:false}]};

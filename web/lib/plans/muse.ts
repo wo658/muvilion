@@ -1,6 +1,6 @@
 import { resolvePhysicalDimensions } from "@/lib/assets/dimensions";
 import { z } from "zod";
-import { DesignObjectSchema, ZoneSchema, PlanDocumentSchema, type PlanDocument } from "./schema";
+import { PlanDocumentSchema, type PlanDocument } from "./schema";
 import { designWarnings } from "./design";
 
 /** Muse can label observed geometry; it cannot invent coordinates or confirm dimensions. */
@@ -86,8 +86,8 @@ export function planChatContext(document: Omit<PlanDocument, "preview"> | null) 
 
 export const PlanDesignProposal = z.object({
   summary: z.string().min(1).max(2000),
-  zones: z.array(ZoneSchema).max(80).optional().describe("Complete proposed space-zone list. Omit to preserve existing zones; [] explicitly clears them. Zones do not create walls."),
-  objects: z.array(DesignObjectSchema).max(80),
+  zones: PlanDocumentSchema.shape.zones.describe("Complete proposed space-zone list. Omit to preserve existing zones; [] explicitly clears them. Zones do not create walls."),
+  objects: PlanDocumentSchema.shape.objects.unwrap(),
   assumptions: z.array(z.string().max(300)).max(12),
 });
 

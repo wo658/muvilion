@@ -76,6 +76,7 @@
   "Viewing the space": "Viewing the space",
   "Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles.": "Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles.",
   "Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.": "Drag to orbit. Right-drag to pan. Scroll to zoom. Select an area or element, then Focus.",
+  "Room enclosure partly estimated · {height} m": "Room enclosure partly estimated · {height} m",
   "Ceiling height not set": "Ceiling height not set",
   ". Wall height": ". Wall height",
   "m is provisional.": "m is provisional.",

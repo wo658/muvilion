@@ -1,11 +1,23 @@
 import {describe,it,expect} from 'vitest';
-import {reviewFloorCoverage, requiresWholeFloor} from '@/lib/plans/floor-coverage';
+import {reviewFloorCoverage, requiresWholeFloor, requiresWholeFloorInterior} from '@/lib/plans/floor-coverage';
 import {designWarnings} from '@/lib/plans/design';
 import type {PlanDocument,SpaceZone,DesignObject} from '@/lib/plans/schema';
 const floor:PlanDocument={schemaVersion:1,source:{name:'hall',format:'pdf',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:90,heightMeters:63,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'pdf-vector',floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]};
 const zone=(id:string,x:number,y:number,width:number,depth:number,purpose:SpaceZone['purpose']='experience'):SpaceZone=>({id,label:id,x,y,width,depth,purpose,rotation:0,assignable:false});
 const object=(id:string,x:number,y:number):DesignObject=>({id,label:id,x,y,width:2,depth:2,height:1,rotation:0,kind:'equipment',color:'#123456'});
 describe('whole-floor program coverage',()=>{
+ it('requires actual interiors for whole-floor decoration, while preserving zoning and targeted edits',()=>{
+  const existing={...floor,objects:[object('old',.5,.5)]};
+  expect(requiresWholeFloorInterior(existing,'Muvi 는 이 공간 전체를 꾸며야해')).toBe(true);
+  expect(requiresWholeFloorInterior(existing,'Design the entire hall')).toBe(true);
+  expect(requiresWholeFloorInterior(existing,'Design the entire hall with activity zones')).toBe(true);
+  expect(requiresWholeFloorInterior(existing,'Only zone the whole hall')).toBe(false);
+  expect(requiresWholeFloorInterior(existing,'Zone the entire hall')).toBe(false);
+  expect(requiresWholeFloorInterior(existing,'공간 전체 구역만 나눠줘')).toBe(false);
+  expect(requiresWholeFloorInterior(existing,'Decorate all zones in the entire hall')).toBe(true);
+  expect(requiresWholeFloorInterior(existing,'Move this chair')).toBe(false);
+  expect(requiresWholeFloorInterior(floor,'Design a lounge')).toBe(true);
+ });
  it('rejects the former40x30 island within a90x63 hall',()=>{const r=reviewFloorCoverage({...floor,zones:[zone('event',.5,.5,40,30)],objects:[object('counter',.5,.5)]},'interior');expect(r.complete).toBe(false);expect(r.floorArea).toBe(5670);expect(r.allocatedArea).toBe(1200);expect(r.unallocatedArea).toBe(4470);expect(r.issues.some(x=>x.code==='unallocated_floor')).toBe(true);});
  it('counts overlapping zones once, not duplicated claimed coverage',()=>{const r=reviewFloorCoverage({...floor,zones:[zone('a',.25,.5,45,63),zone('b',.25,.5,45,63)]},'zoning');expect(r.allocatedArea).toBe(2835);expect(r.complete).toBe(false);});
  it('rejects sparse giant reservations despite full allocation',()=>{const r=reviewFloorCoverage({...floor,zones:[zone('left',.2,.5,36,63),zone('route',.5,.5,18,63,'circulation'),zone('right',.8,.5,36,63)],objects:[object('l',.2,.5),object('r',.8,.5)]},'interior');expect(r.complete).toBe(false);expect(r.unallocatedArea).toBe(0);expect(r.sparseZones).toHaveLength(2);});

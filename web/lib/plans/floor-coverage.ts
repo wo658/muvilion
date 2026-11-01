@@ -9,6 +9,16 @@ export function requiresWholeFloor(document:PlanDocument,brief:string) {
  if(!(document.objects?.length||document.zones?.length))return true;
  return /(?:whole|entire|all)\s*(?:drawing|floor|hall|venue|space)|(?:도면|공간|홀|행사장|바닥)(?:\s*(?:내의?|안의?|내부의?))?\s*(?:전체|모든)|(?:전체|모든)\s*(?:도면|영역|공간|홀|행사장|바닥)/i.test(brief);
 }
+/** Whole-space design means a furnished interior unless the user asks only for zoning.
+ * This server hint prevents the model from relaxing a physical design into coloured areas.
+ * It does not expand a targeted edit into a whole-floor redesign.
+ */
+export function requiresWholeFloorInterior(document:PlanDocument,brief:string) {
+ if(!requiresWholeFloor(document,brief))return false;
+ const furnishing=/(?:decorat|furnish|interior|installations?|꾸[미며민밀]|인테리어|가구|설치물|장식)/i.test(brief);
+ const zoning=/(?:\bzoning\b|\bzone\s+(?:the|this|entire|whole|all)\b|\bzones?[- ]only\b|\bonly\s+zones?\b|\ballocate\s+(?:(?:the|activity|functional)\s+)*zones?\b|조닝|구역(?:만|\s*(?:배치|구분|나누|설정))|존\s*(?:배치|구분))/i.test(brief);
+ return furnishing||!zoning;
+}
 export function reviewFloorCoverage(document:PlanDocument,scope:DesignBrief['scope']) {
  const issues:FloorCoverageIssue[]=[];
  const sparseZones:{zoneId:string;label:string;zoneArea:number;installationSpan:{width:number;depth:number};zoneSpan:{width:number;depth:number}}[]=[];

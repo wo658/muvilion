@@ -10,12 +10,12 @@ const document = {
   floorBoundary: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }], objects: [],
 };
 
-test("시점이 생략된 일반 공간 사진은 눈높이 기본값으로 검토할 수 있다", async context => {
+test("가까운 공간 사진은 눈높이 기본값과 짧은 촬영 거리를 검토할 수 있다", async context => {
   const step = createSteps(context);
   const response = await step("대상과 시점을 특정하지 않은 공간 사진 검토 요청", () => fetch(`${process.env.WEB_URL}/api/plans/photography`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({phase:"review",document:{...document,scaleConfirmed:true},round:0,
-      intent:{title:"Visitor view",description:"A visitor inside the space",targetIds:[],azimuth:45,elevation:35,distanceScale:1},
+      intent:{title:"Visitor view",description:"A visitor inside the space",targetIds:[],azimuth:45,elevation:35,distanceScale:.35},
       candidates:[{shot:{id:"visitor",eye:[2,1.65,2],target:[0,1.65,0],fov:60,aspect:16/9,cutaway:false,ceilingMode:"hidden",showStructure:true,showOverhead:true},image:"data:image/png;base64,iVBORw0KGgo="}],
     }),
   }));

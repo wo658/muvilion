@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ generate: vi.fn() }));
-vi.mock("@/server/agent/model", () => ({ getModel: () => ({ model: {}, hasKey: true }) }));
+const mocks = vi.hoisted(() => ({ generate: vi.fn(), provider: "meta" }));
+vi.mock("@/server/agent/model", () => ({ getModel: () => ({ model: {}, hasKey: true, provider: mocks.provider }) }));
 vi.mock("ai", () => ({ generateText: mocks.generate, tool: (value: unknown) => value }));
 import { POST } from "@/app/api/plans/photography/route";
 import { generatePhotoCandidates, PhotoIntentSchema } from "@/lib/plans/photography";
@@ -11,9 +11,41 @@ const intent = PhotoIntentSchema.parse({ title:"메인 무대", description:"무
 const candidate = () => ({shot:generatePhotoCandidates(document,intent)[0],image:"data:image/png;base64,AA=="});
 const request = (extra:object={}) => new Request("http://localhost/api/plans/photography", {method:"POST",body:JSON.stringify({phase:"review",document,intent,candidates:[candidate()],round:0,locale:"ko",...extra})});
 const decide = (decision:object) => mocks.generate.mockResolvedValue({toolCalls:[{toolName:"review_photo",input:decision}]});
-beforeEach(()=>{vi.clearAllMocks();mocks.generate.mockReset();});
+beforeEach(()=>{vi.clearAllMocks();mocks.generate.mockReset();mocks.provider="meta";});
 
 describe("촬영 구도 개선",()=>{
+ it("Meta 이미지 검토와 출력 복구는 낮은 추론 강도로 원본 이미지를 유지한다",async()=>{
+  const warn=vi.spyOn(console,"warn").mockImplementation(()=>{});
+  try {
+   mocks.generate.mockResolvedValueOnce({toolCalls:[],text:"",finishReason:"length",usage:{outputTokens:2500,outputTokenDetails:{reasoningTokens:2498}}})
+    .mockResolvedValueOnce({toolCalls:[{toolName:"review_photo",input:{action:"select",shotId:candidate().shot.id,explanation:"무대와 통로가 선명하게 보입니다.",intent:null}}]});
+   expect((await POST(request())).status).toBe(200);
+   expect(mocks.generate).toHaveBeenCalledTimes(2);
+   const [initial,recovery]=mocks.generate.mock.calls.map(call=>call[0]);
+   expect(initial.providerOptions).toEqual({meta:{reasoningEffort:"low"}});
+   expect(recovery.providerOptions).toEqual({meta:{reasoningEffort:"low"}});
+   expect(recovery.messages).toEqual(initial.messages);
+   expect(initial.messages[0].content).toContainEqual({type:"image",image:candidate().image});
+   expect(recovery.abortSignal).toBe(initial.abortSignal);
+   expect([initial.maxOutputTokens,recovery.maxOutputTokens]).toEqual([2500,8000]);
+  } finally {warn.mockRestore();}
+ });
+ it("다른 제공자의 추론 설정은 Meta 촬영 정책으로 덮어쓰지 않는다",async()=>{
+  mocks.provider="baseten";
+  decide({action:"select",shotId:candidate().shot.id,explanation:"무대가 보입니다.",intent:null});
+  expect((await POST(request())).status).toBe(200);
+  expect(mocks.generate.mock.calls[0][0].providerOptions).toBeUndefined();
+ });
+
+ it("도면에 없는 벽과 천장은 실측이 아닌 렌더링 가정으로 모델에게 알린다",async()=>{
+  decide({action:"select",shotId:candidate().shot.id,explanation:"무대와 공간을 보여줍니다.",intent:null});
+  expect((await POST(request())).status).toBe(200);
+  const content=mocks.generate.mock.calls[0][0].messages[0].content;
+  const {scene}=JSON.parse(content[0].text);
+  expect(scene.enclosure).toMatchObject({assumedWalls:true,assumedCeiling:true});
+  expect(scene.enclosure.ceiling.height).toBeGreaterThan(1.65);
+  expect(scene.ceiling).toBeUndefined();
+ });
  it("가려진 장면을 다시 촬영할 때 원래 제목과 설명 목적을 유지한다",async()=>{
   decide({action:"revise",shotId:null,explanation:"전경 가벽이 무대를 가려 반대쪽으로 이동합니다.",intent:{...intent,title:"새로운 장면",description:"다른 기획 의도",azimuth:135}});
   const response=await POST(request());
@@ -38,6 +70,14 @@ describe("촬영 구도 개선",()=>{
   const content=mocks.generate.mock.calls[0][0].messages[0].content;
   expect(JSON.parse(content[0].text)).toMatchObject({brief,intent:provisional});
   expect(content.filter((part:{type:string})=>part.type==="image")).toHaveLength(candidates.length);
+ });
+ it("눈높이 후보의 대상이 작으면 0.35 거리로 실제 가까운 후보를 다시 생성한다",async()=>{
+  const inside={...intent,view:"interior" as const};
+  const shots=generatePhotoCandidates(document,inside).map(shot=>({shot,image:"data:image/png;base64,AA=="}));
+  decide({action:"revise",shotId:null,explanation:"대상이 너무 작아 더 가까운 통로로 이동합니다.",intent:{...inside,azimuth:90,distanceScale:.35}});
+  const response=await POST(request({intent:inside,candidates:shots}));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({action:"revise",intent:{view:"interior",distanceScale:.35}});
  });
  it("각도나 거리 변경 없이 다시 촬영했다고 가장하지 않는다",async()=>{
   decide({action:"revise",shotId:null,explanation:"다시 촬영합니다.",intent});
