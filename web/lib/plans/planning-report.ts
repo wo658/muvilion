@@ -55,7 +55,7 @@ export function planningReportHtml(snapshot: PlanningSnapshot, options: Planning
     const copy = artifact.content.booths.find(b => b.id === booth.id);
     const capture = artifact.photos.find(p => p.targetId === booth.id);
     const fee = copy?.fee.amount == null ? t("Not estimated") : escapeHtml(new Intl.NumberFormat(options.locale, { style: "currency", currency: copy.fee.currency, maximumFractionDigits: 0 }).format(copy.fee.amount));
-    return `<section class="page booth-page">${index === 0 ? `<h2 class="eyebrow">${t("Participation guide")}</h2>` : `<p class="eyebrow">${t("Participation guide")}</p>`}<p class="note">${String(index + 1).padStart(2, "0")} / ${String(booths.length).padStart(2, "0")}</p>
+    return `<section class="page booth-page">${index === 0 ? `<h2 class="eyebrow">${t("Participation guide")}</h2>` : `<p class="eyebrow">${t("Participation guide")}</p>`}
       <h2 class="page-title">${escapeHtml(booth.label)}</h2>
       <dl class="facts">${metric(t("Dimensions (m)"), `${booth.width} × ${booth.depth} m · ${Math.round(booth.width * booth.depth * 100) / 100} m²`)}${metric(t("Estimated participation fee"), fee)}</dl>
       <div class="booth-intro">${captureFigure(capture, booth.label, "booth-photo")}<div>${copy?.description ? prose(copy.description) : ""}</div></div>
@@ -81,19 +81,32 @@ export function planningReportHtml(snapshot: PlanningSnapshot, options: Planning
 * { box-sizing: border-box; }
 body { margin: 0; background: ${TOKENS.surface}; color: ${TOKENS.ink}; font: 10pt/1.5 system-ui, -apple-system, "Malgun Gothic", sans-serif; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 main { max-width: 178mm; margin: 0 auto; }
-h1 { font-size: 27pt; letter-spacing: -.035em; line-height: 1.18; margin: 8mm 0 5mm; }
+h1 { font-size: 30pt; letter-spacing: -.035em; line-height: 1.18; margin: 9mm 0 5mm; }
 h2 { font-size: 16pt; line-height: 1.3; margin: 7mm 0 3mm; break-after: avoid; }
 h3 { font-size: 10pt; line-height: 1.4; margin: 4mm 0 1.5mm; break-after: avoid; }
 p { margin: 0 0 3mm; orphans: 3; widows: 3; }
-.prose { white-space: pre-wrap; }
+.prose { white-space: pre-wrap; text-wrap: pretty; }
+:lang(ko) .prose, :lang(ko) h1, :lang(ko) h2 { word-break: keep-all; overflow-wrap: anywhere; }
+h1, h2 { text-wrap: balance; }
 .note, figcaption, footer, dt { color: ${TOKENS.muted}; font-size: 8pt; }
-.eyebrow { color: ${TOKENS.accent}; font-size: 8pt; font-weight: 650; letter-spacing: .08em; margin: 0 0 3mm; }
+.eyebrow { color: ${TOKENS.accent}; font-size: 8pt; font-weight: 650; letter-spacing: .02em; margin: 0 0 3mm; }
 .page { break-before: page; }
 .page-title { font-size: 23pt; letter-spacing: -.025em; margin: 0 0 5mm; }
 figure { margin: 4mm 0 5mm; break-inside: avoid; }
 img { display: block; max-width: 100%; object-fit: contain; }
-figure img { width: 100%; border-radius: 3mm; background: ${TOKENS.sunken}; }
+figure img { width: 100%; border-radius: 2mm; background: ${TOKENS.sunken}; }
 .hero img { height: 88mm; }
+.masthead { display: flex; justify-content: space-between; align-items: baseline; gap: 8mm; padding-bottom: 4mm; border-bottom: 1.5pt solid ${TOKENS.ink}; color: ${TOKENS.muted}; font-size: 9pt; }
+.wordmark { color: ${TOKENS.ink}; font-size: 15pt; font-weight: 750; letter-spacing: -.04em; }
+.cover > .facts { border-top: 0; padding-top: 1mm; }
+.cover > .narrative { border-left: 2pt solid ${TOKENS.accent}; padding-left: 5mm; margin-top: 7mm; }
+.cover > .narrative h2 { font-size: 12pt; margin-top: 0; }
+.design-narrative > .narrative { margin: 8mm 0 0; padding-top: 5mm; border-top: 1px solid ${TOKENS.hairline}; }
+.design-narrative h2 { margin-top: 0; font-size: 18pt; }
+.design-narrative .prose { max-width: 145mm; }
+.booth-page > .facts { background: ${TOKENS.sunken}; border: 0; border-radius: 2mm; padding: 5mm; }
+.booth-page > .facts dd { font-variant-numeric: tabular-nums; }
+.booth-page > .facts > div + div { border-left: 1px solid ${TOKENS.hairlineStrong}; padding-left: 5mm; }
 .booth-intro { display: grid; grid-template-columns: 1.15fr 1fr; gap: 6mm; align-items: start; margin: 5mm 0; }
 .booth-intro figure { margin: 0; }
 .booth-intro .prose { font-size: 9pt; }
@@ -107,17 +120,19 @@ dt { margin: 0 0 1.5mm; } dd { margin: 0; font-size: 14pt; font-weight: 600; lin
 .missing-photo { padding: 8mm; background: ${TOKENS.sunken}; color: ${TOKENS.muted}; }
 table { width: 100%; border-collapse: collapse; margin: 4mm 0; font-size: 9pt; }
 th, td { text-align: left; padding: 2.5mm 2mm; border-bottom: 1px solid ${TOKENS.hairline}; vertical-align: top; }
-th { color: ${TOKENS.muted}; font-weight: 500; } thead { display: table-header-group; } tr { break-inside: avoid; }
+th { color: ${TOKENS.inkSoft}; background: ${TOKENS.sunken}; font-weight: 600; }
+tbody tr:nth-child(even) { background: ${TOKENS.bg}; }
+td:last-child { font-variant-numeric: tabular-nums; } thead { display: table-header-group; } tr { break-inside: avoid; }
 li { margin-bottom: 1.5mm; } footer { margin-top: 8mm; font-size: 7pt; }
 @media screen { body { padding: 24px; background: ${TOKENS.bg}; } main { padding: 12mm; background: ${TOKENS.surface}; } .screen-only { padding: 12px; background: ${TOKENS.sunken}; } .page { margin-top: 20mm; padding-top: 10mm; border-top: 1px solid ${TOKENS.hairline}; } }
 @media print { .screen-only { display: none; } }
 </style></head><body data-report-snapshot="${escapeHtml(snapshot.id)}"><main>
 <p class="screen-only">${t(artifact ? "Document photos are saved with the project. Choose Save as PDF in the print dialog." : "In the print dialog, choose Save as PDF. Captures are kept only while this panel is open.")}</p>
-<section class="cover"><p class="eyebrow">muvilion · ${t("Planning report")}</p><h1>${title}</h1><p class="note">${escapeHtml(capturedDate)}${artifact ? ` · ${t("Planning document revision")} ${artifact.revision}` : ""}</p>
+<section class="cover"><header class="masthead"><span class="wordmark">muvilion</span><span>${t("Planning report")}</span></header><h1>${title}</h1><p class="note">${escapeHtml(capturedDate)}${artifact ? ` · ${t("Planning document revision")} ${artifact.revision}` : ""}</p>
 <dl class="facts">${metric(t("Dimensions (m)"), escapeHtml(dimensions))}${metric(t("Drawing source"), escapeHtml(plan.source.name))}</dl>
 ${captureFigure(photo, translate(options.locale, "Actual 3D capture"), "hero")}
 ${text("overview") ? section("overview") : `<p class="note">${t(plan.scaleConfirmed ? "Scale confirmed by the user" : "Illustrative scale · dimensions not confirmed")}</p>`}</section>
-${narrative ? `<section class="page"><p class="eyebrow">muvilion · ${t("Planning report")}</p>${narrative}</section>` : ""}
+${narrative ? `<section class="page design-narrative"><p class="eyebrow">muvilion · ${t("Planning report")}</p>${narrative}</section>` : ""}
 ${participation}${references}
 <section class="page"><p class="eyebrow">muvilion · ${t("Planning report")}</p><h2 class="page-title">${t("Source drawing · reference image")}</h2><figure class="drawing">${imageTag(plan.preview, plan.source.name)}<figcaption>${escapeHtml(plan.source.name)} · ${plan.source.page}/${plan.source.pages}</figcaption></figure><h2>${t("Installations")}</h2>${installations ? `<table><thead><tr><th>${t("Item")}</th><th>${t("Dimensions (m)")}</th></tr></thead><tbody>${installations}</tbody></table>` : `<p>${t("No installations in this design.")}</p>`}</section>
 <section class="page"><p class="eyebrow">muvilion · ${t("Planning report")}</p><h2 class="page-title">${t("Assumptions & items to review")}</h2>${text("notes") ? prose(text("notes")) : ""}<ul>${warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>${plan.ceiling ? `<p>${t("Ceiling")}: ${plan.ceiling.height} m · ${t(plan.ceiling.status)}</p>` : ""}<p>${t("Wall height (m)")}: ${plan.wallHeight ?? 3} · ${t("estimated")}</p><p class="note">${t("Planning material only · not a construction drawing or safety certification.")}</p><footer>${t("Snapshot")}: ${escapeHtml(snapshot.id)} · ${t("Captured on")}: ${escapeHtml(snapshot.capturedAt)}</footer></section>
