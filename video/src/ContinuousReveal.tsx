@@ -36,12 +36,12 @@ export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
   const camera = k(
     f,
     [0, 30, 65, 112, 190, 225, 246, 275, 340, 449],
-    [1.35, 1.05, 1.05, 1, 1.06, 1.08, 1.55, 1.22, 1.08, 1.12],
+    [1.35, 1.05, 1.05, 1, 1.06, 1.08, 1.35, 1.18, 1.08, 1.12],
   );
   const camX = k(
     f,
     [0, 45, 90, 112, 215, 246, 275, 360, 449],
-    [180, -80, 40, 0, 0, -570, 0, 55, -35],
+    [180, -80, 40, 0, 0, -380, 0, 35, -35],
   );
   const camY = k(
     f,
@@ -51,7 +51,7 @@ export function ContinuousReveal({ audio = true }: { audio?: boolean }) {
   const roll = k(
     f,
     [0, 50, 112, 215, 246, 285, 365, 449],
-    [-9, 4, 0, 0, -5, 3, -3, 0],
+    [-6, 3, 0, 0, -3, 2, -2, 0],
   );
   return (
     <AbsoluteFill

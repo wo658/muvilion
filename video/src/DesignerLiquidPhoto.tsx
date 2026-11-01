@@ -114,8 +114,8 @@ export function PhotoFinish() {
       <div
         style={{
           position: "absolute",
-          left: m(f, 0, 45, 1320, 220),
-          top: m(f, 0, 45, 400, 210),
+          left: m(f, 0, 60, 1240, 220),
+          top: m(f, 0, 60, 370, 210),
           transformOrigin: "top left",
           width: 1480,
           height: 760,
@@ -124,7 +124,7 @@ export function PhotoFinish() {
           overflow: "hidden",
           background: glass,
           boxShadow: `0 35px 90px ${T.shadowColor}`,
-          transform: `rotateY(${m(f, 0, 45, -12, 0)}deg) rotateZ(${m(f, 0, 60, -3, 0)}deg) scale(${m(f, 0, 50, 0.16, 1)})`,
+          transform: `rotateY(${m(f, 0, 45, -12, 0)}deg) rotateZ(${m(f, 0, 60, -3, 0)}deg) scale(${m(f, 0, 60, 0.28, 1)})`,
         }}
       >
         <Img
@@ -156,7 +156,7 @@ export function PhotoFinish() {
 }
 export function LiquidBridge() {
   const f = useCurrentFrame();
-  const at = [450, 600, 750, 900, 1050, 1230, 1470, 1710].find(
+  const at = [450, 1050, 1230, 1470, 1710].find(
     (t) => f >= t - 10 && f < t + 15,
   );
   if (at === undefined) return null;
@@ -175,8 +175,8 @@ export function LiquidBridge() {
           border: `3px solid ${T.accentSoft}`,
           boxShadow: `inset 0 2px 4px ${T.surface},0 0 50px ${T.shadowColor}`,
           background: `color-mix(in srgb,${T.surface} 18%,transparent)`,
-          backdropFilter: `blur(${Math.sin(p * Math.PI) * 9}px)`,
-          opacity: Math.sin(p * Math.PI),
+          backdropFilter: `blur(${Math.sin(p * Math.PI) * 4}px)`,
+          opacity: Math.sin(p * Math.PI) * 0.55,
         }}
       />
     </AbsoluteFill>
@@ -196,7 +196,7 @@ export function TypeBeat() {
         letterSpacing: -6,
       }}
     >
-      {["Not just a plan.", "A point of view."].map((t, i) => (
+      {["Design it.", "Then capture it."].map((t, i) => (
         <div
           key={t}
           style={{
