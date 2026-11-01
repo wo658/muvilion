@@ -135,14 +135,14 @@ function Shot({
   const f = useCurrentFrame();
   const events = traces[clip] ?? [];
   const event = events.find((e) => e.click) ?? { x: 1173, y: 546, time: 0.8 };
-  const peak = (event.time * 30) / rate;
+  const peak = Math.max(28, (event.time * 30) / rate);
   const tracking =
     clip === "apply" || clip === "views" || clip === "photo-retake";
   const camera = tracking
     ? interpolate(
         f,
-        [0, Math.max(8, peak - 8), peak + 18, duration - 22, duration],
-        [1.08, 1.75, 1.75, 1.12, 1.08],
+        [0, peak, peak + 24, duration - 25, duration],
+        [1.08, 1.48, 1.48, 1.12, 1.08],
         smooth,
       )
     : mix(f, 0, duration, 1.08, zoom + 0.18);
@@ -280,7 +280,7 @@ export const DesignerFilm = () => {
       >
         <Shot
           clip="generation-d"
-          title="Built from your context."
+          title="AI arranges your space."
           step=""
           duration={150}
           rate={5}
@@ -292,21 +292,31 @@ export const DesignerFilm = () => {
         durationInFrames={5 * fps}
         name="03 · Apply the design"
       >
-        <Shot clip="apply" title="Make it yours." step="" duration={150} />
+        <Shot clip="apply" title="Review. Then apply." step="" duration={150} />
       </Sequence>
       <Sequence
         from={25 * fps}
         durationInFrames={5 * fps}
         name="04 · Change perspective"
       >
-        <Shot clip="views" title="A new perspective." step="" duration={150} />
+        <Shot
+          clip="views"
+          title="Explore every angle."
+          step=""
+          duration={150}
+        />
       </Sequence>
       <Sequence
         from={30 * fps}
         durationInFrames={3 * fps}
         name="05 · Orbit the real space"
       >
-        <Shot clip="orbit" title="Find the feeling." step="" duration={90} />
+        <Shot
+          clip="orbit"
+          title="Move through your design."
+          step=""
+          duration={90}
+        />
       </Sequence>
       <Sequence
         from={33 * fps}
@@ -329,7 +339,7 @@ export const DesignerFilm = () => {
       >
         <Shot
           clip="photo-new"
-          title="Frame your vision."
+          title="Find the best angle."
           step=""
           duration={120}
           rate={3}
@@ -343,7 +353,7 @@ export const DesignerFilm = () => {
       >
         <Shot
           clip="photo-retake"
-          title="One more shot."
+          title="Capture. Refine. Repeat."
           step=""
           duration={120}
         />
