@@ -23,6 +23,9 @@ import { ProjectWorkspace, RailButton, type ProjectControls } from "./project-wo
 import { ProjectDialog } from "./project-dialog";
 import { createPortal } from "react-dom";
 import type { Project } from "@/lib/projects/schema";
+import { PlanningArtifactPanel } from "./planning-artifact-panel";
+import { usePlanningArtifact } from "./use-planning-artifact";
+import { planningIsStale, refreshPlanningArtifact, revisePlanningArtifact, type PlanningArtifact } from "@/lib/plans/planning-artifact";
 import { FolderCogIcon, SettingsIcon } from "lucide-react";
 
 
@@ -47,6 +50,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     // Start with Muse docked on phones so the plan stays visible; the editor only renders client-side.
     const [photoRequest, setPhotoRequest] = useState<{ base: PlanDocument; sources: SourceLibrary; request: import("@/lib/plans/photography-client").PhotoRequest } | null>(null);
     const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 800px)").matches);
+    const [planningArtifacts, setPlanningArtifacts] = useState(project.state.planningArtifacts ?? []);
     const [sources, setSources] = useState<SourceLibrary>(project.state.sources);
     const sourcesRef = useRef(sources);
     const projectState = useRef(project.state);
@@ -58,6 +62,15 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const [sourceError, setSourceError] = useState<string | null>(null);
     const [markingEntrance, setMarkingEntrance] = useState(false);
     const [document, setDocument] = useState<PlanDocument | null>(project.state.document);
+    const planningArtifact = planningArtifacts.find(a => a.drawingId === (activeDrawingId ?? "legacy-drawing")) ?? null;
+    const changePlanning = (next: PlanningArtifact) => {
+        const items = [...(projectState.current.planningArtifacts ?? []).filter(a => a.drawingId !== next.drawingId), next];
+        projectState.current = { ...projectState.current, planningArtifacts: items };
+        setPlanningArtifacts(items); controls.change(projectState.current);
+    };
+    const planning = usePlanningArtifact({ document, sources, drawingId: activeDrawingId ?? "legacy-drawing", artifact: planningArtifact, onChange: changePlanning, locale });
+    const planningStale = useMemo(() => Boolean(planningArtifact && document && planningIsStale(planningArtifact, document, sources)), [planningArtifact, document, sources]);
+
     const [muviActivity, setMuviActivity] = useState<{ base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null>(null);
     const activeOperation = muviActivity?.base === document && muviActivity?.sources === sources ? muviActivity.operation : null;
     const [designPreview, setDesignPreview] = useState<{ base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null>(null);
@@ -95,6 +108,11 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const restoreInput = useRef<HTMLInputElement>(null);
     const request = useRef<AbortController | null>(null);
     const planRef = useRef(document);
+    const revisePlanning = async (brief: string, signal?: AbortSignal) => {
+        if (activePreview) throw new Error(t("Apply or discard the spatial draft before revising the planning document."));
+        setDetails(false); setDrawing(false); setCalibrating(false); setCropping(false); setMarkingEntrance(false); setFloorDraft(null); setPhotoRequest(null);
+        return planning.revise(brief, signal);
+    };
     const changeSources = (update: (current: SourceLibrary) => SourceLibrary) => {
         try {
             const next = SourceLibrarySchema.parse(update(sourcesRef.current));
@@ -170,6 +188,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     };
     const switchDrawing = (id: string) => {
         if (busy || id === activeDrawingId) return;
+        planning.cancel(); planning.setTarget(null);
         rememberEdits();
         showDrawing(activateDrawing(projectState.current, id));
     };
@@ -382,7 +401,12 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
           {activePreview && <p role="status" className="pointer-events-none absolute left-3 right-3 top-16 z-10 max-w-md line-clamp-2 rounded bg-surface px-3 py-2 text-xs text-ink">{t("Live draft · not saved")} · {activePreview.label}</p>}
-          {document ? !planTools ? <><SceneView sources={sources} exportDisabled={Boolean(activePreview)} photoRequest={photoRequest?.base === document && photoRequest?.sources === sources && !activePreview ? photoRequest.request : null} onPhotoClose={() => setPhotoRequest(null)} muviOperation={activeOperation} key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={selected} onSelect={activePreview ? () => {} : setSelected}/>{details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={activePreview ? () => {} : setSelected} sourceOnly={false} showOriginal={false} showSourceFallback drawing={(drawing || calibrating || cropping)} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {document ? !planTools ? <><SceneView onPlanningOpen={() => { planning.setOpen(true); setChatOpen(true); }} onPlanningCaptureReady={planning.onCaptureReady} sources={sources} exportDisabled={Boolean(activePreview)} photoRequest={photoRequest?.base === document && photoRequest?.sources === sources && !activePreview ? photoRequest.request : null} onPhotoClose={() => setPhotoRequest(null)} muviOperation={activeOperation} key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={selected} onSelect={activePreview ? () => {} : setSelected}/>{details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={activePreview ? () => {} : setSelected} sourceOnly={false} showOriginal={false} showSourceFallback drawing={(drawing || calibrating || cropping)} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {planning.open && document && <PlanningArtifactPanel artifact={planningArtifact} busy={planning.busy} progress={planning.progress} error={planning.error} stale={planningStale} target={planning.target}
+            onTarget={id => { planning.setTarget(id); setChatOpen(true); }} onClose={() => { planning.setOpen(false); planning.setTarget(null); requestAnimationFrame(() => window.document.querySelector<HTMLButtonElement>("[data-planning-trigger]")?.focus()); }}
+            onCreate={() => { setChatOpen(true); void revisePlanning(t("Create the complete planning document and participation guide, with photos of the space and each booth.")).catch(() => {}); }}
+            onRefresh={() => { if (planningArtifact) { const next = refreshPlanningArtifact(planningArtifact, document, sources); changePlanning({ ...next, history: [] }); } }}
+            onUndo={() => { const previous = planningArtifact?.history.at(-1); if (planningArtifact && previous) { const next = revisePlanningArtifact(planningArtifact, previous.content); changePlanning({ ...next, history: planningArtifact.history.slice(0, -1) }); } }} onCancel={planning.cancel}/>}
           {busy && <div className="ps-loading" role="status"><div className="ps-spinner"/><strong>{cropping ? t("Cropping your space") : t("Reading your drawing")}</strong><span>{cropping ? t("Keeping geometry inside the selected area.") : t("Extracting geometry and preparing the source preview.")}</span>{!cropping && <Button onClick={() => { request.current?.abort(); setBusy(false); }}>{t("Cancel")}</Button>}</div>}
         </div>
         <div className="ps-bottom-toolbar"><div className="ps-tool-buttons" hidden={!details}><Button variant={drawing ? "primary" : "ghost"} disabled={!document || !planTools || busy || (document.lines.length >= 100000)} onClick={() => { setMarkingEntrance(false); setFloorDraft(null); setDrawing((v) => !v); setCalibrating(false); setCropping(false); setMeasure(null); }}>{drawing ? t("Finish drawing") : t("+ Draw wall")}</Button><Button variant="ghost" disabled={!history.length || busy} onClick={undo}>{t("↶ Undo")}</Button></div><span>{floorDraft ? t("Click the interior corners, then Use floor outline") : cropping ? t("Click opposite corners of the space to keep") : calibrating ? t("Click two points along a known dimension") : drawing ? t("Click two endpoints · Esc cancels the segment") : !planTools ? t("Drag to orbit · scroll to zoom") : document ? t("Select an item and ask Muse") : t("Start with a drawing or explore the demo")}</span></div>
@@ -393,7 +417,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {museCollapsed && <button type="button" className="ps-muse-launcher" aria-expanded={false} aria-controls="muse-panel" aria-label={t("Talk to Muse")} title={selection ? selection.label : t("Talk to Muse")} onClick={() => setChatOpen(true)}><MuviAvatar size={40}/></button>}
         <div className="ps-chat-panel">
           {!document && <div className="p-5"><Button onClick={() => showDrawing(addDrawing(projectState.current, { id: crypto.randomUUID(), document: boothExample(), originalAssetId: null, selected: true }))}>{t("Start with the booth design example")}</Button></div>}
-          <StudioChat onPhotography={request => { if (document) { setDetails(false); setMarkingEntrance(false); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); setPhotoRequest({ base: document, sources, request }); setChatOpen(false); } }} onMuviOperation={setMuviActivity} onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
+          <StudioChat planningBusy={planning.busy} onPlanning={revisePlanning} onPlanningCancel={planning.cancel} planningContext={planning.open || planningArtifact ? { open: planning.open, target: planning.open ? planning.target : null, title: planningArtifact?.content.title ?? null, content: planningArtifact?.content ?? null } : null} onPhotography={request => { if (document) { setDetails(false); setMarkingEntrance(false); setDrawing(false); setCalibrating(false); setCropping(false); setFloorDraft(null); setPhotoRequest({ base: document, sources, request }); setChatOpen(false); } }} onMuviOperation={setMuviActivity} onDesignPreview={setDesignPreview} key={activeDrawingId ?? "empty"} sources={sources} document={document} onDocumentChange={change} onSources={() => setProjectSettings("sources")} selection={selection} onClearSelection={() => setSelected(null)} onCollapse={document ? () => setChatOpen(false) : undefined}/>
         </div>
 
 

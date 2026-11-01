@@ -1,5 +1,6 @@
 "use client";
 import { MUVI_OPERATION_LABELS, type MuviOperation } from "@/lib/muvi/operations";
+import { SECTION_LABELS, type PlanningContent } from "@/lib/plans/planning-artifact";
 import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -35,7 +36,11 @@ type Proposal = {
     base: PlanDocument;
     mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onDesignPreview, onMuviOperation, onPhotography }: {
+export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onDesignPreview, onMuviOperation, onPhotography, onPlanning, onPlanningCancel, planningContext, planningBusy = false }: {
+    onPlanningCancel?: () => void;
+    onPlanning?: (brief: string, signal?: AbortSignal) => Promise<string>;
+    planningBusy?: boolean;
+    planningContext?: { open: boolean; target: string | null; title: string | null; content: PlanningContent | null } | null;
     onPhotography?: (request: import("@/lib/plans/photography-client").PhotoRequest) => void;
     onMuviOperation?: (activity: { base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null) => void;
     onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
@@ -55,6 +60,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 document: body?.document ?? null,
                 selection: body?.selection ?? null,
                 locale: body?.locale,
+                planning: body?.planning ?? null,
                 sources: body?.sources ?? [],
                 messages: messages.slice(-24).map((message) => ({ role: message.role, parts: message.parts.filter((part) => part.type === "text").map((part) => ({ type: "text", text: part.text })) })),
             } }),
@@ -76,6 +82,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     if (liveDraft && (liveDraft.base !== document || liveDraft.sources !== sources)) setLiveDraft(null);
     const minPixels = 12;
     const composer = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => { if (planningContext?.target) composer.current?.focus(); }, [planningContext?.target]);
     const [progress, setProgress] = useState<RegionalProgress | null>(null);
     const [cancelRequested, setCancelRequested] = useState(false);
     const [reviewPhase, setReviewPhase] = useState<"regions" | "walls">("regions");
@@ -84,7 +91,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const currentContext = useRef({ document, sources, selection });
     useEffect(() => { currentContext.current = { document, sources, selection }; }, [document, sources, selection]);
     const responding = status === "submitted" || status === "streaming";
-    const busy = interpreting || preparing || responding;
+    const busy = interpreting || preparing || responding || planningBusy;
     const unknownCount = document?.lines.filter((line) => line.kind === "unknown").length ?? 0;
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
     async function interpret(mode: "interpret" | "design" = "interpret", brief = input.trim()) {
@@ -221,12 +228,14 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
         // Show the user's message immediately; intent routing can take a while.
         const userMessageId = generateId();
         let handedOff = false;
+        let planningHandedOff = false;
         setMessages(previous => [...previous, { id: userMessageId, role: "user", parts: [{ type: "text", text: message }] }]);
         try {
             const response = await fetch("/api/plans/intent", {
                 method: "POST", headers: { "Content-Type": "application/json" }, signal: abortController.signal,
                 body: JSON.stringify({
                     message, locale,
+                    planning: planningContext ? { open: planningContext.open, title: planningContext.title, target: planningContext.target } : null,
                     history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({
                         role: item.role, text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000),
                     })),
@@ -247,12 +256,18 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 if (!mounted.current) return;
                 abortController.signal.throwIfAborted();
                 handedOff = true;
-                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: document.texts } : null, sources: references } });
+                await sendMessage({ text: message, messageId: userMessageId }, { body: { locale, planning: planningContext?.content ?? null, selection: selection ?? null, document: document ? { ...document, preview: undefined, texts: document.texts } : null, sources: references } });
             } else {
                 handedOff = true;
                 setMessages(previous => [...previous,
                     { id: generateId(), role: "assistant", parts: [{ type: "text", text: decision.message }] },
                 ]);
+                if (decision.intent === "planning") {
+                    if (!onPlanning) throw new Error(t("Open the 3D workspace to revise the document."));
+                    planningHandedOff = true;
+                    const summary = await onPlanning(`${message}\n\n${decision.brief}`.slice(0, 6000), abortController.signal);
+                    if (mounted.current) setMessages(previous => [...previous, { id: generateId(), role: "assistant", parts: [{ type: "text", text: summary }] }]);
+                }
                 if (decision.intent === "photography") {
                     if (!onPhotography) throw new Error(t("Open the 3D workspace to take a photo."));
                     onPhotography({ id: generateId(), brief: message.slice(0, 6000), locale, history: messages.slice(-24).filter(item => item.role === "user" || item.role === "assistant").map(item => ({ role: item.role as "user" | "assistant", text: item.parts.filter(part => part.type === "text").map(part => part.text).join("\n").slice(0, 6000) })) });
@@ -268,7 +283,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             if (!handedOff) setMessages(previous => previous.filter(item => item.id !== userMessageId));
             setInput(current => current || text);
             setNotice(err instanceof Error && err.name === "AbortError"
-                ? t("Request cancelled. Your drawing is unchanged.")
+                ? t(planningHandedOff ? "Document request stopped. Any completed revisions and photos are kept." : "Request cancelled. Your drawing is unchanged.")
                 : err instanceof Error ? err.message : t("Muse could not determine your request. Please try again."));
         } finally {
             preparingRef.current = false;
@@ -280,6 +295,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const tools = interpreting || progress || interpretError || proposal || notice;
     const suggestions = [t("Design a furnished booth with partitions and displays"), t("Plan an interior around my brand references")];
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
+      {planningContext?.open && <p className="bg-selected px-3 py-2 text-xs text-ink" role="status">{t("Revising planning document")}{planningContext.target ? ` · ${document?.zones?.find(b => b.id === planningContext.target)?.label ?? document?.objects?.find(b => b.id === planningContext.target)?.label ?? (Object.hasOwn(SECTION_LABELS, planningContext.target) ? t(SECTION_LABELS[planningContext.target as keyof typeof SECTION_LABELS]) : planningContext.target)}` : ""}</p>}
       <header className="ps-conversation-head">
         <Link href="/muvi" target="_blank" rel="noopener noreferrer" aria-label={t("Meet Muvi in 3D (new tab)")}><MuviAvatar size={32}/></Link>
         {busy && <h2 className="ps-muse-status">{activeOperation ? t(MUVI_OPERATION_LABELS[activeOperation.operation.operation]) : t("Muse is replying…")}</h2>}
@@ -358,7 +374,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 <PromptInputButton size="icon-sm" variant="ghost" onClick={onSources} aria-label={t("Add sources")} title={t("Add sources")}>
                   <PaperclipIcon aria-hidden="true" />
                 </PromptInputButton>
-                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setLiveDraft(null); setMuviActivity(null); controller.current?.abort(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
+                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setLiveDraft(null); setMuviActivity(null); controller.current?.abort(); onPlanningCancel?.(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
                   <SquareIcon aria-hidden="true" />
                 </PromptInputButton>}
                 <PromptInputSubmit type="submit" size="icon-sm" variant="default" className={`ps-send${busy ? "" : " ml-auto"}`} disabled={busy || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>

@@ -8,6 +8,10 @@ export const deliverableScene = {
   widthMeters: 18, heightMeters: 12,
   warnings: ['기획용 예시 · 실제 시공 치수는 현장 확인이 필요합니다.'],
   wallHeight: 3,
+  zones: [
+    { id: 'A1', label: 'A1 · Brand showcase', purpose: 'booth', assignable: true, x: .3, y: .35, width: 4, depth: 3, rotation: 0 },
+    { id: 'A2', label: 'A2 · Partner experience', purpose: 'booth', assignable: true, x: .7, y: .35, width: 3, depth: 3, rotation: 0 },
+  ],
   objects: [
     { id: 'brand-wall', kind: 'partition', label: '브랜드 전시 벽', x: .5, y: .3, width: 5, depth: .2, height: 2.8, rotation: 0, color: '#536a80' },
     { id: 'demo-counter', kind: 'furniture', label: '체험 안내대', x: .5, y: .5, width: 2, depth: 1, height: 1.2, rotation: 0, color: '#887766' },
@@ -30,13 +34,5 @@ export async function createDeliverableProject(page: Page, withBrand = false) {
 export async function openDeliverableProject(page: Page, id: string) {
   await page.goto(`/?project=${id}`);
   await expect(page.locator('canvas')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Capture · PDF', exact: true })).toBeVisible();
-}
-export async function captureDeliverable(page: Page) {
-  await page.getByRole('button', { name: 'Capture · PDF', exact: true }).click();
-  const panel = page.getByTestId('deliverables-panel');
-  await expect(panel).toBeVisible();
-  await panel.getByRole('button', { name: 'Capture current view', exact: true }).click();
-  await expect(page.getByTestId('deliverable-capture')).toBeVisible({ timeout: 30000 });
-  return panel;
+  await expect(page.getByRole('button', { name: 'Planning document', exact: true })).toBeVisible();
 }
