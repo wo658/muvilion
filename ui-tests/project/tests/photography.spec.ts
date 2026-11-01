@@ -20,7 +20,7 @@ const intent = {
 };
 const baseShot = {
   id: 'initial-1', eye: [7, 1.65, 4], target: [0, 1.65, -.5], fov: 60, zoom: 1, aspect: 16 / 9,
-  cutaway: false, ceilingMode: 'hidden', showStructure: true, showOverhead: true,
+  cutaway: false, ceilingMode: 'solid', showStructure: true, showOverhead: true,
 };
 const initialShots = [[7, 1.65, 4], [8, 1.65, 3], [6, 1.65, 5], [8, 1.65, 5]].map((eye, i) => ({ ...baseShot, id: `initial-${i + 1}`, eye }));
 const revisedIntent = { ...intent, azimuth: 135, description: '반대편에서 전시대와 측면 설치물 사이의 접근 공간을 드러낸다.' };

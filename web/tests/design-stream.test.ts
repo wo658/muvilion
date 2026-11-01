@@ -11,6 +11,23 @@ function response(events: unknown[], tail = '') {
   return new Response(new ReadableStream({start(c){for(let i=0;i<bytes.length;i+=7)c.enqueue(bytes.slice(i,i+7));c.close();}}));
 }
 describe('live design drafts',()=>{
+  it('adds grouped furnishings beyond eighty up to the document limit without losing streamed geometry',async()=>{
+    const objects=Array.from({length:80},(_,i)=>({...object,id:`installation-${i}`}));
+    let draft={...base,objects};
+    const saved=JSON.stringify(draft);
+    for(let offset=80;offset<200;offset+=32){
+      const group=Array.from({length:Math.min(32,200-offset)},(_,i)=>({...object,id:`installation-${offset+i}`}));
+      draft=applyDesignPatch(draft,{...patch,objects:group}) as typeof draft;
+    }
+    expect(draft.objects).toHaveLength(200);
+    expect(JSON.parse(saved).objects).toHaveLength(80);
+    const delta=designPreview({...base,objects},draft,1,'Furnish the entire hall');
+    const events:DesignPreview[]=[];
+    await readDesignStream(response([delta,{type:'complete',result:{}}]),event=>events.push(event));
+    expect(previewDocument({...base,objects},events[0]).objects).toEqual(draft.objects);
+    expect(()=>applyDesignPatch(draft,{...patch,objects:[{...object,id:'over-limit'}]})).toThrow();
+    expect(()=>applyDesignPatch(base,{...patch,objects:objects.slice(0,33)})).toThrow();
+  });
   it('atomically adds, edits and removes without changing the saved base',()=>{
     const draft=applyDesignPatch(base,patch);
     expect(base.objects).toBeUndefined();

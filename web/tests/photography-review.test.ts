@@ -14,6 +14,15 @@ const decide = (decision:object) => mocks.generate.mockResolvedValue({toolCalls:
 beforeEach(()=>{vi.clearAllMocks();mocks.generate.mockReset();});
 
 describe("촬영 구도 개선",()=>{
+ it("도면에 없는 벽과 천장은 실측이 아닌 렌더링 가정으로 모델에게 알린다",async()=>{
+  decide({action:"select",shotId:candidate().shot.id,explanation:"무대와 공간을 보여줍니다.",intent:null});
+  expect((await POST(request())).status).toBe(200);
+  const content=mocks.generate.mock.calls[0][0].messages[0].content;
+  const {scene}=JSON.parse(content[0].text);
+  expect(scene.enclosure).toMatchObject({assumedWalls:true,assumedCeiling:true});
+  expect(scene.enclosure.ceiling.height).toBeGreaterThan(1.65);
+  expect(scene.ceiling).toBeUndefined();
+ });
  it("가려진 장면을 다시 촬영할 때 원래 제목과 설명 목적을 유지한다",async()=>{
   decide({action:"revise",shotId:null,explanation:"전경 가벽이 무대를 가려 반대쪽으로 이동합니다.",intent:{...intent,title:"새로운 장면",description:"다른 기획 의도",azimuth:135}});
   const response=await POST(request());

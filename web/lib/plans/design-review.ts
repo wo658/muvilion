@@ -10,7 +10,7 @@ export const DesignBriefSchema = z.object({
     label: z.string().min(1).max(300).describe("One requested deliverable, preserving quantities and brand intent."),
     target: z.enum(["objects", "zones"]),
     kinds: z.array(DesignObjectSchema.shape.kind).max(12).default([]).describe("Allowed object kinds; empty means any. Ignored for zones."),
-    minimum: z.number().int().min(0).max(80),
+    minimum: z.number().int().min(0).max(200),
   })).min(1).max(24),
 }).superRefine((brief, ctx) => {
   if (new Set(brief.requirements.map(r => r.id)).size !== brief.requirements.length)
@@ -22,7 +22,7 @@ export type DesignBrief = z.infer<typeof DesignBriefSchema>;
 
 export const DesignCoverageSchema = z.array(z.object({
   requirementId: z.string().min(1).max(80),
-  ids: z.array(z.string().min(1).max(100)).max(80),
+  ids: z.array(z.string().min(1).max(100)).max(200),
   decision: z.string().min(1).max(600).describe("How these elements implement the requested function and brand direction; disclose limitations."),
 })).max(24);
 
@@ -31,6 +31,10 @@ export const DesignReviewSchema = z.object({
   requirements: z.array(z.object({
     id: z.string(), label: z.string(), target: z.enum(["objects", "zones"]),
     minimum: z.number(), count: z.number(), satisfied: z.boolean(), decision: z.string(),
+    // Optional for reviews saved before actionable coverage diagnostics were added.
+    invalidIds: z.array(z.string()).optional(),
+    allowedKinds: z.array(DesignObjectSchema.shape.kind).optional(),
+    coverageEntryCount: z.number().int().nonnegative().optional(),
   })),
   complete: z.boolean(),
 });
@@ -45,7 +49,8 @@ export function reviewDesignCoverage(brief: DesignBrief, document: PlanDocument,
     const count = ids.filter(id => valid.has(id)).length;
     return { id: requirement.id, label: requirement.label, target: requirement.target, minimum: requirement.minimum,
       count, satisfied: Boolean(entry) && count === ids.length && count >= requirement.minimum,
-      decision: entry?.decision ?? "" };
+      decision: entry?.decision ?? "", invalidIds: ids.filter(id => !valid.has(id)),
+      allowedKinds: requirement.target === "objects" ? requirement.kinds : [], coverageEntryCount: entries.length };
   });
   return { direction: brief.direction, requirements, complete: requirements.every(item => item.satisfied) };
 }

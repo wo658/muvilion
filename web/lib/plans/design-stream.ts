@@ -8,8 +8,8 @@ export const DesignPatchSchema = z.object({
   label: z.string().min(1).max(200),
   objects: z.array(DesignObjectSchema).max(32),
   zones: z.array(ZoneSchema).max(32),
-  removeObjects: z.array(z.string()).max(80),
-  removeZones: z.array(z.string()).max(80),
+  removeObjects: z.array(z.string()).max(200),
+  removeZones: z.array(z.string()).max(200),
 });
 function merge<T extends { id: string }>(before: T[], updates: T[], removed: string[]) {
   if (new Set(updates.map(x => x.id)).size !== updates.length || new Set(removed).size !== removed.length || updates.some(x => removed.includes(x.id))) throw new Error("Conflicting patch IDs.");
@@ -23,7 +23,7 @@ export function applyDesignPatch(base: PlanDocument, patch: z.infer<typeof Desig
 }
 export const DesignPreviewSchema = z.object({
   type: z.literal("preview"), revision: z.number().int().positive(), label: z.string(),
-  objects: z.array(DesignObjectSchema).max(80), zones: z.array(ZoneSchema).max(80), warnings: z.array(z.string()), removeObjects: z.array(z.string()).max(80), removeZones: z.array(z.string()).max(80),
+  objects: PlanDocumentSchema.shape.objects.unwrap(), zones: PlanDocumentSchema.shape.zones.unwrap(), warnings: z.array(z.string()), removeObjects: z.array(z.string()).max(200), removeZones: z.array(z.string()).max(200),
 });
 export type DesignPreview = z.infer<typeof DesignPreviewSchema>;
 export function designPreview(before: PlanDocument, after: PlanDocument, revision: number, label: string): DesignPreview {

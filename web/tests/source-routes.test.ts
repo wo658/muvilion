@@ -59,7 +59,7 @@ describe("source-aware Muse routes", () => {
       options.prepareStep({ messages: options.messages, stepNumber: 1 });
       return { toolCalls: [{ toolName: "submit_design", input: {revision:1,summary:proposal.summary} }] };
     });
-    const response = await design(request({ document, selection: {id:"selected-booth",label:"Booth"}, drawingSelected: false, brief: "Keep open", sources: [source("chosen", true), source("excluded", false)] }));
+    const response = await design(request({ document, selection: {id:"selected-booth",label:"Booth"}, drawingSelected: false, brief: "Keep open with zoning only", sources: [source("chosen", true), source("excluded", false)] }));
     expect(response.status).toBe(200);
     const modelInput = JSON.stringify(calls.generate.mock.calls[0][0].messages);
     expect(modelInput).toContain("chosen content");

@@ -31,6 +31,8 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
       description: "First record the requested interior design deliverables and brand direction. Preserve requested quantities. Separate physical installations from zoning. This brief is fixed for this run; do not reduce scope to make checks pass.",
       inputSchema: DesignBriefSchema,
       execute: async brief => {
+        if (context.wholeFloorInteriorRequired && brief.scope !== "interior")
+          throw new Error("This request requires a furnished interior throughout the whole floor. Use interior scope; zoning and edit cannot replace physical decoration.");
         if (brief.scope === "edit" && (context.wholeFloorRequired || context.phase === "initial"))
           throw new Error("This request designs the whole floor. Use interior or zoning scope; edit cannot reduce its required extent.");
         reserveToolCall(context, "set_design_brief", 1);
@@ -65,7 +67,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         if (!context.brief) throw new Error("Call set_design_brief before reviewing a candidate.");
         const draft = applyDesignProposal({ ...context.draft, warnings: context.base.warnings }, { ...proposal, objects: proposal.objects ?? context.draft.objects ?? [] });
         const review = reviewDesignCoverage(context.brief, draft, proposal.coverage);
-        const floorCoverage = context.brief.scope === "edit" && !context.wholeFloorRequired ? undefined : reviewFloorCoverage(draft, context.brief.scope);
+        const floorCoverage = context.brief.scope === "edit" && !context.wholeFloorRequired ? undefined : reviewFloorCoverage(draft, context.wholeFloorInteriorRequired ? "interior" : context.brief.scope);
         if (floorCoverage && !floorCoverage.complete) review.complete = false;
         const geometryWarnings = designWarnings(draft);
         const usability = reviewUsability(draft);
@@ -75,7 +77,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
           context.revision++;
           context.review = review;
           publish(context, proposal.summary);
-          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), missing coverage AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
+          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
         }
         reserveToolCall(context, "review_design", 3);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);

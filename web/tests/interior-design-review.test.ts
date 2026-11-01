@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DesignBriefSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
+import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 
 const brief = DesignBriefSchema.parse({ scope: "interior", direction: "Warm timber lounge with teal partitions",
@@ -11,6 +11,22 @@ const document = PlanDocumentSchema.parse({schemaVersion:1,source:{name:"hall",f
 const coverage = (ids: string[]) => [{requirementId:"seats",ids,decision:"Paired seats face the product display."}];
 
 describe("interior deliverable coverage", () => {
+  it("identifies invalid evidence even when the requested quantity is already met", () => {
+    const result=reviewDesignCoverage(brief,document,coverage(["chair-1","chair-2","lounge","invented"]));
+    expect(result).toMatchObject({complete:false,requirements:[{minimum:2,count:2,satisfied:false,invalidIds:["lounge","invented"],allowedKinds:["furniture"],coverageEntryCount:1}]});
+    expect(reviewDesignCoverage(brief,document,coverage(["chair-1","chair-2"]))).toMatchObject({complete:true,requirements:[{invalidIds:[],coverageEntryCount:1}]});
+    expect(reviewDesignCoverage(brief,document,[])).toMatchObject({complete:false,requirements:[{coverageEntryCount:0}]});
+    expect(reviewDesignCoverage(brief,document,[...coverage(["chair-1"]),...coverage(["chair-2"])])).toMatchObject({complete:false,requirements:[{coverageEntryCount:2}]});
+  });
+  it("reviews all two hundred requested furnishings instead of silently reducing the quantity to eighty", () => {
+    const fullBrief=DesignBriefSchema.parse({...brief,requirements:[{...brief.requirements[0],label:"Two hundred event chairs",minimum:200}]});
+    const fullDocument=PlanDocumentSchema.parse({...document,objects:Array.from({length:200},(_,i)=>({...chair,id:`chair-${i}`}))});
+    const evidence=DesignCoverageSchema.parse(coverage(fullDocument.objects!.map(object=>object.id)));
+    expect(reviewDesignCoverage(fullBrief,fullDocument,evidence)).toMatchObject({complete:true,requirements:[{minimum:200,count:200,satisfied:true}]});
+    expect(reviewDesignCoverage(fullBrief,{...fullDocument,objects:fullDocument.objects!.slice(0,80)},evidence).complete).toBe(false);
+    expect(DesignBriefSchema.safeParse({...brief,requirements:[{...brief.requirements[0],minimum:201}]}).success).toBe(false);
+    expect(DesignCoverageSchema.safeParse(coverage([...evidence[0].ids,"chair-extra"])).success).toBe(false);
+  });
   it("does not accept an interior brief consisting only of zones", () => {
     expect(DesignBriefSchema.safeParse({...brief,requirements:[{id:"zone",label:"Lounge",target:"zones",minimum:1}]}).success).toBe(false);
   });

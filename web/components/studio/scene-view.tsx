@@ -31,6 +31,7 @@ import { Switch } from "../ui/switch";
 import { SettingsIcon } from "lucide-react";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { deriveWalls } from "@/lib/plans/walls";
+import { deriveEnclosure } from "@/lib/plans/enclosure";
 import { pointInFloor } from "@/lib/plans/footprint";
 import { DoubleSide, Shape } from "three";
 import { TOKENS } from "@/lib/ui/tokens";
@@ -56,6 +57,8 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   const span = Math.max(width, depth);
   const cameraOptions = useMemo(() => ({ position: [span * 0.75, span * 0.8, span * 0.9] as [number, number, number], fov: 40, near: 0.2, far: Math.max(100, span * 8) }), [span]);
   const walls = useMemo(() => deriveWalls(document, { pairParallelEdges: true }), [document]);
+  const enclosure = useMemo(() => deriveEnclosure(document), [document]);
+  const ceiling = document.ceiling ?? enclosure?.ceiling;
   const [cutaway, setCutaway] = useState(true);
   const [ceilingMode, setCeilingMode] = useState("hidden");
   const [view,setView]=useState<CameraView>("overview");
@@ -66,7 +69,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   const overviewCeiling=useRef("hidden");
   const changeView=(next:CameraView)=>{
     onPhotoClose?.();
-    if(next==="interior" && view!=="interior") {overviewCeiling.current=ceilingMode;if(document.ceiling)setCeilingMode("solid");}
+    if(next==="interior" && view!=="interior") {overviewCeiling.current=ceilingMode;if(ceiling)setCeilingMode("solid");}
     if(next!=="interior" && view==="interior") setCeilingMode(overviewCeiling.current);
     setExploreStatus(EXPLORE_HINT);setView(next);setCameraRevision(n=>n+1);
   };
@@ -77,6 +80,9 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   }, []);
   const renderedWallHeight = displayWallHeight(wallHeight, cutaway, !photographing && view === "interior");
   const showCeiling = ceilingMode !== "hidden";
+  const enclosedView = !cutaway || (!photographing && view === "interior");
+  const estimatedEnclosure = enclosedView && enclosure && (enclosure.assumedWalls || enclosure.assumedCeiling);
+  const enclosureNotice = estimatedEnclosure ? t("Room enclosure partly estimated · {height} m", { height: enclosure.ceiling.height }) : null;
   const floorShape = useMemo(() => {
     if (!document.floorBoundary?.length) return null;
     const shape = new Shape();
@@ -94,7 +100,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View settings")} title={t("View settings")}/>}><SettingsIcon/></PopoverTrigger>
       <PopoverContent align="end"><PopoverTitle>{t("View settings")}</PopoverTitle><FieldGroup>
         <Field orientation="horizontal"><FieldLabel htmlFor="cutaway-display">{t("Cutaway")}</FieldLabel><Switch id="cutaway-display" checked={cutaway} disabled={view === "interior"} onCheckedChange={setCutaway}/></Field>
-        <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!document.ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
+        <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="muvi-display">{t("Show Muvi")}</FieldLabel><Switch id="muvi-display" checked={showMuvi} onCheckedChange={setShowMuvi}/></Field>
@@ -103,12 +109,12 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
       </FieldGroup>
       <details className="mt-4 text-xs text-muted"><summary className="cursor-pointer">{t("View help and model information")}</summary>
         <p className="mt-2">{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom.")}</p>
-        <p className="mt-2">{document.ceiling?`${t("Ceiling")} ${document.ceiling.height} m · ${t(document.ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p>
+        <p className="mt-2">{ceiling?`${t("Ceiling")} ${ceiling.height} m · ${t(ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p>
         <p className="mt-2">{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p>
       </details></PopoverContent>
     </Popover>
   </div>;
-  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" gl={{ stencil: true }} shadows camera={cameraOptions} dpr={[1, 1.5]}>
+  return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}{enclosureNotice && <span className="block text-xs" data-testid="enclosure-note">{enclosureNotice}</span>}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" gl={{ stencil: true }} shadows camera={cameraOptions} dpr={[1, 1.5]}>
 
     <color attach="background" args={[TOKENS.sunken]} />
     <ambientLight intensity={exhibition?0.9:1.5} />
@@ -117,7 +123,10 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, -0.02, 0]}>{floorShape ? <shapeGeometry args={[floorShape]} /> : <planeGeometry args={[width, depth]} />}<meshStandardMaterial color={exhibition?"#b9b5af":TOKENS.floorIndoor} roughness={0.9} /></mesh>
     <lineLoop><bufferGeometry><bufferAttribute attach="attributes-position" args={[floorOutline, 3]}/></bufferGeometry><lineBasicMaterial color={TOKENS.edge}/></lineLoop>
     {floorShape && <Mask id={1} rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}><shapeGeometry args={[floorShape]}/><meshBasicMaterial side={DoubleSide}/></Mask>}
-    {floorShape && document.ceiling && showCeiling && <mesh rotation-x={-Math.PI / 2} position={[0, document.ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={document.ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
+    {floorShape && ceiling && showCeiling && <mesh name="room-ceiling" rotation-x={-Math.PI / 2} position={[0, ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
+    {enclosedView && enclosure?.walls.map(wall => <mesh name="assumed-room-wall" key={wall.id} position={[(wall.a.x + wall.b.x - width) / 2, wall.bottom + wall.height / 2, (wall.a.y + wall.b.y - depth) / 2]} rotation-y={-Math.atan2(wall.b.y - wall.a.y, wall.b.x - wall.a.x)} receiveShadow userData={{ navigationObstacle: true }}>
+      <boxGeometry args={[Math.hypot(wall.b.x - wall.a.x, wall.b.y - wall.a.y), wall.height, .08]}/><meshStandardMaterial color={TOKENS.venueExisting} roughness={.9}/>
+    </mesh>)}
     {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{if(document.floorBoundary && !pointInFloor({x:e.point.x/width+.5,y:e.point.z/depth+.5},document.floorBoundary))return;e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial {...(floorShape ? floorMask : {})} color={!photographing && selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={!photographing && selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
     <gridHelper args={[span * 1.5, 24, TOKENS.hairline, TOKENS.hairline]} position={[0, -0.03, 0]} />
     {walls.map((line) => {
@@ -152,7 +161,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     {showMuvi && !photographing && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
     <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
     <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected}/>
-  </Canvas></div></div>{photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
+  </Canvas>{photographing && enclosureNotice && <div data-testid="enclosure-note" className="pointer-events-none absolute bottom-2 left-2 rounded bg-surface/90 px-2 py-1 text-xs text-muted">{enclosureNotice}</div>}</div></div>{photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
 }
 
 function SceneUnavailable() {

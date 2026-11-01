@@ -9,6 +9,14 @@ const raw = {title:"Walk into the space",description:"A visitor looking into the
 const interior = {...raw,view:"interior" as const,framing:"subjects" as const};
 
 describe("visitor eye-level photography",()=>{
+ it("requests an enclosed interior even when the drawing has no saved ceiling",()=>{
+  const source={...room,ceiling:undefined};
+  const before=JSON.stringify(source);
+  const shots=generatePhotoCandidates(source,interior);
+  expect(shots).toHaveLength(4);
+  expect(shots.every(shot=>shot.ceilingMode==="solid"&&!shot.cutaway)).toBe(true);
+  expect(JSON.stringify(source)).toBe(before);
+ });
  it("defaults an unspecified view to an interior photograph and permits a general space request",()=>{
   const intent=PhotoIntentSchema.parse(raw);
   expect(intent.view).toBe("interior");

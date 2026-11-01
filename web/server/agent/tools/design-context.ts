@@ -9,6 +9,7 @@ import type { z } from "zod";
 
 export type DesignToolContext = {
   wholeFloorRequired?: boolean;
+  wholeFloorInteriorRequired?: boolean;
   publishedDraft?: PlanDocument;
   emitPreview?: (event: import("@/lib/plans/design-stream").DesignPreview) => void;
   base: PlanDocument;

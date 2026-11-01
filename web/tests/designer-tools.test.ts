@@ -15,6 +15,27 @@ const proposal = { zones:[{id:'program',label:'Stage program',purpose:'stage',x:
 const options = { toolCallId: 'test', messages: [], context: {} };
 
 describe('shared Designer Muse tools', () => {
+  it('returns exact invalid evidence IDs so the model can repair coverage without rewriting geometry',async()=>{
+    const c=context(),review=createDesignTools(c).review_design;
+    const bad={...proposal,coverage:[{...proposal.coverage[0],ids:['stage','stage-typo']}]};
+    const failure=await review.execute!(bad,options);
+    expect(failure).toMatchObject({designReview:{complete:false,requirements:[{count:1,minimum:1,satisfied:false,invalidIds:['stage-typo'],allowedKinds:['stage'],coverageEntryCount:1}]}});
+    expect(c.pendingImages).toHaveLength(0);
+    const geometry=JSON.stringify(c.draft.objects);
+    const repaired=await review.execute!({summary:proposal.summary,assumptions:[],coverage:proposal.coverage},options);
+    expect(repaired).toMatchObject({designReview:{complete:true}});
+    expect(JSON.stringify(c.draft.objects)).toBe(geometry);
+    expect(c.pendingImages).toHaveLength(2);
+  });
+  it('requires furnishings rather than letting whole-floor decoration downgrade to zoning',async()=>{
+    const c=Object.assign(context(),{wholeFloorRequired:true,wholeFloorInteriorRequired:true});c.brief=undefined;
+    const tools=createDesignTools(c);
+    await expect(tools.set_design_brief.execute!(context().brief!,options)).rejects.toThrow('furnished interior');
+    expect(c.calls.get('set_design_brief')).toBeUndefined();
+    const interior={...context().brief!,scope:'interior' as const};
+    await tools.set_design_brief.execute!(interior,options);
+    expect(c.brief).toMatchObject({scope:'interior'});
+  });
   it('blocks unusable collision-free seats without consuming review budget', async () => {
     const c=context(), review=createDesignTools(c).review_design;
     const seat={id:'chair',kind:'furniture' as const,label:'Chair',fixtureType:'event-chair' as const,x:.5,y:.3,width:.5,depth:.55,height:.85,rotation:0 as const,color:'#335577',useTargetId:'stage'};

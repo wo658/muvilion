@@ -13,10 +13,67 @@ function call(name:string, input:unknown) {
   if(name === 'review_design') input = {...input as object, coverage};
   return {content:[{type:'tool-call' as const,toolCallId:crypto.randomUUID(),toolName:name,input:JSON.stringify(input)}],finishReason:{unified:'tool-calls' as const,raw:undefined},usage,warnings:[]};
 }
-function input() {return DesignRequest.parse({brief:'Design an open gallery',sources:[],document:{schemaVersion:1,source:{name:'hall',format:'pdf',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:20,heightMeters:20,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'pdf-vector',floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]}});}
+function prose(reason:'stop'|'length'|'content-filter'='stop') {
+  return {content:[{type:'text' as const,text:'The reviewed layout is ready.'}],finishReason:{unified:reason,raw:undefined},usage,warnings:[]};
+}
+function input() {return DesignRequest.parse({brief:'Design only the zoning of an open gallery',sources:[],document:{schemaVersion:1,source:{name:'hall',format:'pdf',page:1,pages:1,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:20,heightMeters:20,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:'pdf-vector',floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]}});}
 beforeEach(()=>{handle.savedKey=undefined;vi.stubEnv('MUSE_IMAGE_ENABLED','false');});
 
 describe('Designer Muse SDK loop',()=>{
+  it.each(['stop','length'] as const)('recovers one missing submission after a successful visual review (%s)',async reason=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),prose(reason),call('submit_design',{revision:1,summary:'Reviewed submission'})]});handle.model=model;
+    const request=input(),original=JSON.stringify(request.document);
+    const result=await designPlan(request,new AbortController().signal);
+    expect(result.summary).toBe('Reviewed submission');expect(result.document.zones).toEqual(proposal.zones);
+    expect(JSON.stringify(request.document)).toBe(original);
+    expect(model.doGenerateCalls).toHaveLength(4);
+    const seen=model.doGenerateCalls[2],recovery=model.doGenerateCalls[3];
+    const images=(prompt:typeof seen.prompt)=>prompt.filter(m=>m.role==='user').flatMap(m=>m.content).filter(p=>p.type==='file');
+    expect(images(recovery.prompt)).toEqual(images(seen.prompt));expect(images(recovery.prompt)).toHaveLength(2);
+    expect(JSON.stringify(recovery.prompt)).toContain(request.brief);
+    expect(JSON.stringify(recovery.prompt)).toContain('The reviewed layout is ready.');
+    expect(recovery.tools?.map(t=>t.name)).toEqual(['submit_design']);expect(recovery.toolChoice?.type).toBe('auto');
+  });
+  it('does not keep retrying when the single submission recovery returns prose again',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),prose(),prose()]});handle.model=model;
+    await expect(designPlan(input(),new AbortController().signal)).rejects.toMatchObject({status:502});
+    expect(model.doGenerateCalls).toHaveLength(4);
+  });
+  it('rejects a stale revision produced by the submission recovery',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('review_design',proposal),prose(),call('submit_design',{revision:1,summary:'Stale'})]});handle.model=model;
+    await expect(designPlan(input(),new AbortController().signal)).rejects.toThrow('not been visually reviewed');
+    expect(model.doGenerateCalls).toHaveLength(5);
+  });
+  it('does not request submission of an unreviewed draft',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),prose()]});handle.model=model;
+    await expect(designPlan(input(),new AbortController().signal)).rejects.toMatchObject({status:502});
+    expect(model.doGenerateCalls).toHaveLength(2);
+  });
+  it('does not begin a submission recovery when the caller cancels after review',async()=>{
+    const controller=new AbortController();let step=0;
+    const model=new MockLanguageModelV4({doGenerate:async()=>{
+      if(step++===0)return call('set_design_brief',brief);
+      if(step===2)return call('review_design',proposal);
+      controller.abort();return prose();
+    }});handle.model=model;
+    await expect(designPlan(input(),controller.signal)).rejects.toMatchObject({status:499});
+    expect(model.doGenerateCalls).toHaveLength(3);
+  });
+  it('does not retry a filtered response even after a valid review',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),prose('content-filter')]});handle.model=model;
+    await expect(designPlan(input(),new AbortController().signal)).rejects.toMatchObject({status:502});
+    expect(model.doGenerateCalls).toHaveLength(3);
+  });
+  it('does not request submission after failed floor coverage preflight',async()=>{
+    const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',{...proposal,zones:[]}),prose()]});handle.model=model;
+    await expect(designPlan(input(),new AbortController().signal)).rejects.toMatchObject({status:502});
+    expect(model.doGenerateCalls).toHaveLength(3);
+  });
+  it('rejects a zoning-only answer to a request to decorate the entire floor',async()=>{
+    const request=input();request.brief='Decorate the entire hall with a complete event interior';
+    handle.model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})]});
+    await expect(designPlan(request,new AbortController().signal)).rejects.toMatchObject({status:502});
+  });
   it('rejects an initial whole-floor request without an outline before invoking the model',async()=>{
     const request=input();request.document.floorBoundary=undefined;
     const model=new MockLanguageModelV4({doGenerate:async()=>{throw new Error('must not call');}});handle.model=model;
