@@ -19,7 +19,7 @@ export const PhotoIntentSchema = z.object({
   framing: z.enum(["subjects", "venue"]).default("subjects").describe("subjects frames the selected targets, or installed objects when none are selected; venue with no target IDs explicitly frames the whole venue."),
   azimuth: z.number().min(0).max(360).describe("Camera direction around the target in degrees: 0 is positive X; 90 is positive Z."),
   elevation: z.number().min(15).max(75).describe("Downward viewing angle for overview/detail. Interior stays at eye height."),
-  distanceScale: z.number().min(0.75).max(2).describe("Increase to show more surrounding context."),
+  distanceScale: z.number().min(0.25).max(2).describe("For interior views, reduce toward 0.25–0.5 to approach small subjects along a clear aisle; increase to show more context. Elevated views preserve their subject-fitting margin."),
 });
 export type PhotoIntent = z.infer<typeof PhotoIntentSchema>;
 export const PhotoCandidateSchema = z.object({ shot: PhotoShotSchema, image: z.string().max(2_000_000).regex(/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/) });
