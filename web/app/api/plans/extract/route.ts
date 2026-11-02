@@ -16,6 +16,19 @@ export async function POST(request: Request) {
   if (!/\.(pdf|png|jpe?g|dxf)$/i.test(file.name)) return Response.json({ error: "Supported formats: PDF, PNG, JPG, DXF." }, { status: 415 });
   const page = Number(form.get("page") ?? 1);
   if (!Number.isInteger(page) || page < 1) return Response.json({ error: "Choose a valid page." }, { status: 400 });
+  if (request.headers.get("accept")?.includes("application/x-ndjson")) {
+    // Stream each reading step so the client commits preview, walls and scale/floor as separate operations.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = (event: unknown) => { if (!request.signal.aborted) controller.enqueue(encoder.encode(JSON.stringify(event) + "\n")); };
+        void extractDrawing(file, page, { signal: request.signal, onStep: send }).then(() => send({ type: "complete" })).catch(error => {
+          send({ type: "error", error: error instanceof PlanServiceError ? error.message : "Drawing reading failed or timed out. Check the file and retry." });
+        }).finally(() => { try { controller.close(); } catch { /* Client already disconnected. */ } });
+      },
+    });
+    return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" } });
+  }
   try {
     return Response.json(await extractDrawing(file, page, { signal: request.signal }));
   } catch (error) {

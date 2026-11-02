@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { z } from "zod";
 import { emptyProject, SampleProject, type DrawingSource } from "@/lib/projects/schema";
+import { hasDesignReferences } from "@/lib/sources/schema";
 import { extractDrawing } from "@/server/plans/extract";
 import { PlanServiceError } from "@/server/plans/errors";
 import { createProject, ProjectError } from "./store";
@@ -51,5 +52,5 @@ export async function createSampleProject(id: string, directory = samplesDirecto
     return { ...reference, originalAssetId };
   });
   const first = drawings[0];
-  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId }, assets });
+  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId, ...(hasDesignReferences(sources) ? { autoDesignPending: true } : {}) }, assets });
 }

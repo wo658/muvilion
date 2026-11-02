@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import sharp from "sharp";
 import { preparePages } from "@/server/plans/prepare";
 import { previewPdf } from "@/server/plans/pdf";
-import { pdfFile, dxfFile } from "./document-fixtures";
+import { pdfFile } from "./document-fixtures";
 
 const pixels = (preview: string) => sharp(Buffer.from(preview.split(',')[1], 'base64'));
 
@@ -34,12 +34,8 @@ describe("Node document preparation without a Python service", () => {
     const rotated = await sharp({ create: { width: 16, height: 8, channels: 3, background: '#ffffff' } }).withMetadata({ orientation: 6 }).jpeg().toBuffer();
     expect((await preparePages(new File([new Uint8Array(rotated)], 'rotated.jpg')))[0].source).toMatchObject({ width: 8, height: 16 });
   });
-  it("renders neutral DXF evidence and identifies unsupported annotation rendering", async () => {
-    const [page] = await preparePages(dxfFile());
-    expect(page.source).toMatchObject({ format: 'dxf', width: 1600, height: 800 });
-    expect(page.lines).toEqual([]);
-    expect(page.warnings.join(' ')).toContain('text, dimensions');
-    expect((await pixels(page.preview).stats()).channels[0].min).toBeLessThan(100);
+  it("rejects new DXF uploads before attempting conversion", async () => {
+    await expect(preparePages(new File(['0\nEOF\n'], 'hall.DXF'))).rejects.toMatchObject({ status: 415 });
   });
   it("rejects invalid files and terminates document work when the request is cancelled", async () => {
     await expect(preparePages(new File(['bad'], 'bad.pdf'))).rejects.toThrow('valid PDF');

@@ -20,6 +20,8 @@ export const ProjectState = z.object({
   drawings: z.array(DrawingSourceSchema).max(12).optional(),
   activeDrawingId: z.string().min(1).max(100).optional(),
   originalDrawingId: z.string().uuid().nullable().default(null),
+  /** Set at creation when brand references exist; cleared when Muse's first automatic interior design starts. */
+  autoDesignPending: z.boolean().optional(),
   /** Page to extract when the original has not been read yet (seeded samples). */
   originalDrawingPage: z.number().int().positive().optional(),
 }).superRefine((state, ctx) => {

@@ -12,7 +12,7 @@ const MAX_FILE = 20 * 1024 * 1024;
 /** A disposable worker keeps decoding off the request thread and can be terminated on cancellation. */
 export async function preparePages(file: File, page = 1, options: { signal?: AbortSignal; allPages?: boolean } = {}): Promise<PlanDocument[]> {
   if (!file.size || file.size > MAX_FILE) throw new PlanServiceError("Choose a non-empty file up to 20 MB.", 413);
-  if (!/\.(pdf|png|jpe?g|dxf)$/i.test(file.name)) throw new PlanServiceError("Supported formats: PDF, PNG, JPG, DXF.", 415);
+  if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) throw new PlanServiceError("Supported formats: PDF, PNG, JPG. Export CAD drawings to PDF first.", 415);
   if (!Number.isInteger(page) || page < 1) throw new PlanServiceError("Choose a valid page.", 400);
   const signal = AbortSignal.any([AbortSignal.timeout(60_000), ...(options.signal ? [options.signal] : [])]);
   signal.throwIfAborted();

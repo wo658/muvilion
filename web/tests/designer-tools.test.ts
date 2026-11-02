@@ -112,8 +112,11 @@ describe('shared Designer Muse tools', () => {
   it('returns overlapping physical envelopes before consuming visual review budget', async () => {
     const c=context(), review=createDesignTools(c).review_design;
     const collision={...proposal,objects:[proposal.objects[0],{...proposal.objects[0],id:'other'}]};
-    const failed=await review.execute!(collision,options) as {geometryWarnings?:string[]};
-    expect(failed.geometryWarnings?.join(' ')).toContain('overlaps');
+    const failed=await review.execute!(collision,options) as {rejected?:boolean;introducedWarnings?:string[]};
+    // A replacement that adds overlaps is rejected whole and not committed.
+    expect(failed.rejected).toBe(true);
+    expect(failed.introducedWarnings?.join(' ')).toContain('overlaps');
+    expect(c.revision).toBe(0);
     expect(c.artifacts).toHaveLength(0);
     expect(c.calls.get('review_design')).toBeUndefined();
     await review.execute!({...collision,objects:[proposal.objects[0],{...proposal.objects[0],id:'other',x:.85}]},options);

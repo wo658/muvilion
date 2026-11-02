@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ generate: vi.fn(), hasKey: true }));
 vi.mock('ai', async original => ({ ...await original<typeof import('ai')>(), generateText: mock.generate }));
 vi.mock('@/server/agent/model', () => ({ getModel: () => ({ hasKey: mock.hasKey, model: {} }) }));
+// Scale/floor measurement runs in parallel and is covered in plan-measure.test.ts; keep these model responses for wall tracing.
+vi.mock('@/server/plans/measure', () => ({ measureDrawing: async () => null }));
 import { traceWalls } from '@/server/plans/trace';
 import { PlanDocumentSchema } from '@/lib/plans/schema';
 const document = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'drawing.png', format: 'image', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', lines: [], texts: [], method: 'preview', warnings: [], widthMeters: null, heightMeters: null, scaleConfirmed: false });

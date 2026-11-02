@@ -27,23 +27,34 @@ import { getModelAsset, getMaterialAsset } from "@/lib/assets/catalog";
 import Link from "next/link";
 import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 import { MuviGreeting } from "@/components/muvi/muvi";
+/** Line review results remain a reviewed proposal; design runs commit operations live. */
 type Proposal = {
-    artifacts?: DesignArtifact[];
-    designReview?: z.infer<typeof DesignReviewSchema>;
     sources: SourceLibrary;
     document: PlanDocument;
     summary: string;
     base: PlanDocument;
-    mode: "interpret" | "design";
 };
-export function StudioChat({ document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onDesignPreview, onMuviOperation, onPhotography, onPlanning, onPlanningCancel, planningContext, planningBusy = false }: {
+/** One Muse design run: each operation is already saved; the run can be undone as a whole or continued after a stop. */
+type DesignRun = {
+    base: PlanDocument;
+    last: PlanDocument;
+    operations: number;
+    brief: string;
+    status: "running" | "complete" | "partial";
+    label?: string;
+    summary?: string;
+    artifacts?: DesignArtifact[];
+    designReview?: z.infer<typeof DesignReviewSchema>;
+};
+export function StudioChat({ autoDesign = null, onAutoDesignStart, document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onMuviOperation, onPhotography, onPlanning, onPlanningCancel, planningContext, planningBusy = false }: {
     onPlanningCancel?: () => void;
+    autoDesign?: { brief: string } | null;
+    onAutoDesignStart?: () => void;
     onPlanning?: (brief: string, signal?: AbortSignal) => Promise<string>;
     planningBusy?: boolean;
     planningContext?: { open: boolean; target: string | null; title: string | null; content: PlanningContent | null } | null;
     onPhotography?: (request: import("@/lib/plans/photography-client").PhotoRequest) => void;
     onMuviOperation?: (activity: { base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null) => void;
-    onDesignPreview?: (preview: { base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null) => void;
     onCollapse?: () => void;
 
     onSources: () => void;
@@ -70,16 +81,17 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const [interpreting, setInterpreting] = useState(false);
     const [interpretError, setInterpretError] = useState<string | null>(null);
     const [proposal, setProposal] = useState<Proposal | null>(null);
-    const [liveDraft, setLiveDraft] = useState<{ base: PlanDocument; sources: SourceLibrary; document: PlanDocument; label: string } | null>(null);
-    useEffect(() => { onDesignPreview?.(liveDraft); return () => onDesignPreview?.(null); }, [liveDraft, onDesignPreview]);
+    const [designRun, setDesignRun] = useState<DesignRun | null>(null);
+    // The latest document this run committed; only a change from anyone else stops the run.
+    const agentCommit = useRef<PlanDocument | null>(null);
     const [muviActivity, setMuviActivity] = useState<{ base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null>(null);
     const activeOperation = interpreting && muviActivity?.base === document && muviActivity?.sources === sources ? muviActivity : null;
     useEffect(() => { onMuviOperation?.(activeOperation); return () => onMuviOperation?.(null); }, [activeOperation, onMuviOperation]);
     const [notice, setNotice] = useState<string | null>(null);
     const controller = useRef<AbortController | null>(null);
     const mounted = useRef(true);
-    useEffect(() => { controller.current?.abort(); }, [document, sources]);
-    if (liveDraft && (liveDraft.base !== document || liveDraft.sources !== sources)) setLiveDraft(null);
+    useEffect(() => { if (document !== agentCommit.current) controller.current?.abort(); }, [document]);
+    useEffect(() => { controller.current?.abort(); }, [sources]);
     const minPixels = 12;
     const composer = useRef<HTMLTextAreaElement>(null);
     useEffect(() => { if (planningContext?.target) composer.current?.focus(); }, [planningContext?.target]);
@@ -94,14 +106,29 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     const busy = interpreting || preparing || responding || planningBusy;
     const unknownCount = document?.lines.filter((line) => line.kind === "unknown").length ?? 0;
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
+    // First automatic interior for a new project with brand references: run once, apply directly (Undo restores the empty space).
+    const autoStarted = useRef(false);
+    useEffect(() => {
+        if (!autoDesign || autoStarted.current || busy || !document) return;
+        // Start on the next task so a development remount (which aborts in-flight requests) cancels only the timer.
+        const timer = window.setTimeout(() => {
+            autoStarted.current = true;
+            onAutoDesignStart?.();
+            setMessages(previous => [...previous, { id: generateId(), role: "assistant", parts: [{ type: "text", text: t("Designing the first interior from your brand references. It is applied when ready.") }] }]);
+            void interpret("design", autoDesign.brief);
+        });
+        return () => window.clearTimeout(timer);
+        // interpret reads the current render's document and sources; this effect must start it once.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoDesign, busy, document]);
     async function interpret(mode: "interpret" | "design" = "interpret", brief = input.trim()) {
         if (!document || interpreting || (mode === "design" && (!brief.trim() || !document.scaleConfirmed)))
             return;
         const base = document;
+        let designOps = 0;
         setInterpreting(true);
         setInterpretError(null);
         setProposal(null);
-        setLiveDraft(null);
         setMuviActivity(null);
         setNotice(null);
         setProgress(null);
@@ -167,7 +194,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                         if (audit.errors.length)
                             setInterpretError(`${localizeMessage(locale, audit.errors[0])} ${t("Unchecked long walls remain unknown.")}`);
                     }
-                    setProposal({ sources, document: audited, summary: `${abortController.signal.aborted ? t("Analysis stopped. ") : ""}${coverage} ${auditSummary} ${t("{count} short lines preserved. Review before applying.", { count: planned.deferredCount })} ${completed < total || auditPartial ? t("Partial suggestions.") : ""}`, base, mode });
+                    setProposal({ sources, document: audited, summary: `${abortController.signal.aborted ? t("Analysis stopped. ") : ""}${coverage} ${auditSummary} ${t("{count} short lines preserved. Review before applying.", { count: planned.deferredCount })} ${completed < total || auditPartial ? t("Partial suggestions.") : ""}`, base });
                 }
                 else {
                     setNotice(`${outcome.cancelled ? t("Analysis stopped. ") : ""}${coverage} ${t("No suggestions were applied.")}`);
@@ -181,27 +208,47 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: true, brief, sources: await selectedReferences(sources, document) }), signal: designSignal });
                 const assertCurrent = () => {
                     designSignal.throwIfAborted();
-                    if (!mounted.current || currentContext.current.document !== base || currentContext.current.sources !== sources) throw new DOMException("Stale design", "AbortError");
+                    if (!mounted.current || currentContext.current.sources !== sources) throw new DOMException("Stale design", "AbortError");
                 };
-                let draft = base;
+                // Each streamed operation is validated on the server and committed here as one undo step.
+                let committed = base;
+                const commit = (next: PlanDocument, label?: string) => {
+                    committed = next;
+                    designOps++;
+                    agentCommit.current = next;
+                    onDocumentChange(next);
+                    setDesignRun(run => run && { ...run, last: next, operations: designOps, label: label ?? run.label });
+                };
+                agentCommit.current = base;
+                setDesignRun({ base, last: base, operations: 0, brief, status: "running" });
                 const body = await readDesignStream(response, event => {
                     assertCurrent();
-                    draft = previewDocument(draft, event);
-                    setLiveDraft({ base, sources, document: draft, label: event.label });
+                    commit(previewDocument(committed, event), event.label);
                 }, operation => {
                     assertCurrent();
-                    setMuviActivity({ base, sources, operation });
+                    setMuviActivity({ base: committed, sources, operation });
                 });
                 assertCurrent();
                 const result = PlanDocumentSchema.parse(body.document);
-                if (mounted.current)
-                    setProposal({ sources, document: result, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), designReview: body.designReview ? DesignReviewSchema.parse(body.designReview) : undefined, summary: typeof body.summary === "string" ? body.summary : t("Review the proposed changes."), base, mode });
+                // The final reviewed revision can be earlier than the last streamed operation.
+                if (JSON.stringify([result.objects ?? [], result.zones ?? []]) !== JSON.stringify([committed.objects ?? [], committed.zones ?? []]))
+                    commit({ ...committed, objects: result.objects, zones: result.zones, warnings: result.warnings }, t("Reviewed version"));
+                const summary = typeof body.summary === "string" ? body.summary : t("Design complete.");
+                setDesignRun(run => run && { ...run, status: "complete", summary, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), designReview: body.designReview ? DesignReviewSchema.parse(body.designReview) : undefined });
+                setMessages(previous => [...previous, { id: generateId(), role: "assistant", parts: [{ type: "text", text: summary }] }]);
             }
         }
         catch (err) {
-            setLiveDraft(null);
             if (!mounted.current)
                 return;
+            if (designOps > 0) {
+                // Saved operations stay; the run can be continued or undone as a whole.
+                setDesignRun(run => run && { ...run, status: "partial" });
+                setNotice(t("Muse stopped after {count} saved operations. Continue the design or undo it.", { count: designOps }));
+                if (!(err instanceof Error && err.name === "AbortError")) setInterpretError(err instanceof Error ? err.message : t("Muse could not finish the design."));
+                return;
+            }
+            setDesignRun(null);
             if (err instanceof Error && err.name === "AbortError") {
                 setNotice(t("Draft cancelled. Your drawing is unchanged."));
                 return;
@@ -293,7 +340,8 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
     }
     const changed = proposal?.document.lines.filter((line, i) => line.kind !== proposal.base.lines[i]?.kind).length ?? 0;
     const stale = proposal && (proposal.base !== document || proposal.sources !== sources);
-    const tools = interpreting || progress || interpretError || proposal || notice;
+    const tools = interpreting || progress || interpretError || proposal || designRun || notice;
+    const runUndoable = designRun && designRun.status !== "running" && designRun.operations > 0 && document === designRun.last;
     const suggestions = [t("Design a furnished booth with partitions and displays"), t("Plan an interior around my brand references")];
     return (<section className="ps-conversation" aria-label={t("Muse drawing assistant")}>
       {planningContext?.open && <p className="bg-selected px-3 py-2 text-xs text-ink" role="status">{t("Revising planning document")}{planningContext.target ? ` · ${document?.zones?.find(b => b.id === planningContext.target)?.label ?? document?.objects?.find(b => b.id === planningContext.target)?.label ?? (Object.hasOwn(SECTION_LABELS, planningContext.target) ? t(SECTION_LABELS[planningContext.target as keyof typeof SECTION_LABELS]) : planningContext.target)}` : ""}</p>}
@@ -324,34 +372,43 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
             <progress aria-label={reviewPhase === "walls" ? t("Long wall context batches reviewed") : t("Regions reviewed")} value={progress.completed} max={Math.max(1, progress.total)} className="h-1.5 w-full accent-accent"/>
             <p className="mt-1">{progress.completed} / {progress.total} {reviewPhase === "walls" ? t("long wall context batches reviewed") : t("regions reviewed")}{progress.failed > 0 ? t(" · {count} failed", { count: progress.failed }) : ""}{cancelRequested ? t(" · stopped") : ""}</p>
           </div>}
-          {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="self-start" onClick={() => { setCancelRequested(true); setLiveDraft(null); setMuviActivity(null); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
+          {interpreting && <Button type="button" size="sm" variant="outline" disabled={cancelRequested} className="self-start" onClick={() => { setCancelRequested(true); setMuviActivity(null); controller.current?.abort(); }}><SquareIcon aria-hidden="true" data-icon="inline-start" />{cancelRequested ? t("Stopping…") : t("Cancel analysis")}</Button>}
           {interpretError && <p role="alert" className="text-xs leading-relaxed text-bad">{localizeMessage(locale, interpretError)}</p>}
-          {proposal && <div className="ps-proposal">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
-            {proposal.mode === "design" && proposal.designReview && <div className="mt-3 text-xs leading-relaxed" aria-label={t("Interior design review")}>
+          {designRun && designRun.status === "running" && designRun.operations > 0 && <p role="status" className="text-xs text-muted">{t("{count} operations saved", { count: designRun.operations })}{designRun.label ? ` · ${designRun.label}` : ""}</p>}
+          {designRun && designRun.status !== "running" && <div className="ps-proposal">
+            {designRun.summary && <p className="text-sm leading-relaxed whitespace-pre-wrap">{designRun.summary}</p>}
+            {designRun.designReview && <div className="mt-3 text-xs leading-relaxed" aria-label={t("Interior design review")}>
               <p className="font-medium">{t("Interior design review")}</p>
-              <p className="mt-1">{proposal.designReview.direction}</p>
-              <ul className="mt-2 list-disc pl-4">{proposal.designReview.requirements.map(requirement => <li key={requirement.id} className="mt-2">
+              <p className="mt-1">{designRun.designReview.direction}</p>
+              <ul className="mt-2 list-disc pl-4">{designRun.designReview.requirements.map(requirement => <li key={requirement.id} className="mt-2">
                 {requirement.label} · {t("{count}/{minimum} elements linked", { count: requirement.count, minimum: requirement.minimum })}
                 <p className="text-muted">{requirement.decision}</p>
               </li>)}</ul>
               <p className="mt-2 text-muted">{t("Linked elements are checked separately from geometry. Brand fit and visual quality still need your review.")}</p>
             </div>}
-            {!!proposal.artifacts?.length && <details className="mt-3"><summary className="cursor-pointer text-xs">{t("Design review images ({count})", { count: proposal.artifacts.length })}</summary><div className="mt-2 flex flex-col gap-3">
-              {proposal.artifacts.map(artifact => <figure key={artifact.id}>
+            {!!designRun.artifacts?.length && <details className="mt-3"><summary className="cursor-pointer text-xs">{t("Design review images ({count})", { count: designRun.artifacts.length })}</summary><div className="mt-2 flex flex-col gap-3">
+              {designRun.artifacts.map(artifact => <figure key={artifact.id}>
                 <Image src={artifact.image} alt={artifact.title} width={960} height={720} unoptimized className="h-auto w-full rounded" />
                 <figcaption className="mt-1 text-[11px] text-muted">{artifact.kind === "concept" ? t("Generated concept · may differ from actual layout") : t("Layout schematic · materials and lighting omitted")} · {t("Review {revision}", { revision: artifact.revision })}</figcaption>
               </figure>)}
             </div></details>}
-            <p className="mt-2 text-[11px] text-muted">{proposal.mode === "design" ? t("{zones} zones · {objects} installations. Applying replaces the current design.", { zones: proposal.document.zones?.length ?? 0, objects: proposal.document.objects?.length ?? 0 }) : t("{count} line changes. Coordinates and dimensions stay unchanged.", { count: changed })}</p>
-          {proposal.mode === "design" && <p className="mt-2 text-xs" aria-label={t("Proposed assets")}>{t("Assets used")}: {[...new Set((proposal.document.objects ?? []).flatMap(object => [getModelAsset(object.modelAssetId)?.name, getMaterialAsset(object.materialAssetId)?.name].filter((name): name is string => Boolean(name))))].join(", ") || t("Basic shapes")}</p>}
+            <p className="mt-2 text-[11px] text-muted">{t(designRun.status === "partial" ? "Stopped · {count} operations saved. Undo steps back one operation at a time." : "{count} operations saved. Undo steps back one operation at a time.", { count: designRun.operations })} {t("{zones} zones · {objects} installations.", { zones: designRun.last.zones?.length ?? 0, objects: designRun.last.objects?.length ?? 0 })}</p>
+            <p className="mt-2 text-xs" aria-label={t("Proposed assets")}>{t("Assets used")}: {[...new Set((designRun.last.objects ?? []).flatMap(object => [getModelAsset(object.modelAssetId)?.name, getMaterialAsset(object.materialAssetId)?.name].filter((name): name is string => Boolean(name))))].join(", ") || t("Basic shapes")}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {designRun.status === "partial" && <Button type="button" size="sm" variant="default" className="ps-ink-button" disabled={busy || document !== designRun.last} onClick={() => void interpret("design", `${designRun.brief}\n\n${t("Continue the interrupted design. Keep every existing element and add only what is still missing.")}`.slice(0, 6000))}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Continue design")}</Button>}
+              <Button type="button" size="sm" variant="outline" disabled={!runUndoable || busy} title={runUndoable ? undefined : t("Available while the design is unchanged since this run.")} onClick={() => { if (runUndoable) { onDocumentChange(designRun.base); setDesignRun(null); setNotice(t("This design run was undone.")); } }}>{t("Undo this design run")}</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setDesignRun(null)}>{t("Dismiss")}</Button>
+            </div>
+          </div>}
+          {proposal && <div className="ps-proposal">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.summary}</p>
+            <p className="mt-2 text-[11px] text-muted">{t("{count} line changes. Coordinates and dimensions stay unchanged.", { count: changed })}</p>
             {stale && <p className="mt-2 text-xs text-amber">{t("The drawing or sources changed. Generate a new proposal before applying.")}</p>}
             <div className="mt-3 flex gap-2"><Button type="button" size="sm" disabled={Boolean(stale)} variant="default" className="ps-ink-button" onClick={() => { if (!stale) {
               onDocumentChange(proposal.document);
               setProposal(null);
-              setLiveDraft(null);
-              setNotice(t(proposal.mode === "design" ? "Interior proposal applied. Review the furnishings and brand expression in 3D." : "Proposal applied. Review the geometry against your source."));
-          } }}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Apply changes")}</Button><Button type="button" size="sm" variant="outline" onClick={() => { setProposal(null); setLiveDraft(null); }}>{t("Cancel")}</Button></div>
+              setNotice(t("Proposal applied. Review the geometry against your source."));
+          } }}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Apply changes")}</Button><Button type="button" size="sm" variant="outline" onClick={() => setProposal(null)}>{t("Cancel")}</Button></div>
           </div>}
           {notice && <p role="status" className="text-xs text-accent">{localizeMessage(locale, notice)}</p>}
         </div>}
@@ -375,7 +432,7 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                 <PromptInputButton size="icon-sm" variant="ghost" onClick={onSources} aria-label={t("Add sources")} title={t("Add sources")}>
                   <PaperclipIcon aria-hidden="true" />
                 </PromptInputButton>
-                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setLiveDraft(null); setMuviActivity(null); controller.current?.abort(); onPlanningCancel?.(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
+                {busy && <PromptInputButton size="icon-sm" variant="outline" className="ml-auto" onClick={() => { setMuviActivity(null); controller.current?.abort(); onPlanningCancel?.(); void stop(); }} aria-label={t("Stop")} title={t("Stop")}>
                   <SquareIcon aria-hidden="true" />
                 </PromptInputButton>}
                 <PromptInputSubmit type="submit" size="icon-sm" variant="default" className={`ps-send${busy ? "" : " ml-auto"}`} disabled={busy || !input.trim()} aria-label={preparing ? t("Preparing message…") : t("Send message")} title={preparing ? t("Preparing message…") : t("Send message")}>

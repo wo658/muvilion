@@ -5,7 +5,7 @@ import { z } from "zod";
 import { applyDesignProposal, PlanDesignProposal } from "@/lib/plans/muse";
 import { reviewFloorCoverage } from "@/lib/plans/floor-coverage";
 import { reviewUsability } from "@/lib/plans/usability";
-import { designWarnings } from "@/lib/plans/design";
+import { designWarnings, introducedWarnings } from "@/lib/plans/design";
 import { createToolRegistry, type ToolRegistration } from "./registry";
 import { addArtifact, reserveToolCall, type DesignToolContext } from "./design-context";
 import { renderDesign } from "./render-design";
@@ -44,12 +44,15 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "edit_design", category: "design", phases,
     create: context => tool({
-      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Build the live draft progressively using atomic groups (one booth's related components together). Upsert complete objects/zones by ID; remove by ID. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft. Does not save.",
+      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using atomic groups (one booth's related components together) that leave no new overlaps, out-of-floor objects or blocked circulation; a group that adds any is rejected whole. Upsert complete objects/zones by ID; remove by ID. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
       inputSchema: DesignPatchSchema,
       execute: async patch => {
         if (!context.brief) throw new Error("Set the design brief first.");
-        reserveToolCall(context, "edit_design", 16);
         const draft = applyDesignPatch({ ...context.draft, warnings: context.base.warnings }, patch);
+        // Each group is committed to the project as one operation, so it must not leave new geometry problems.
+        const introduced = introducedWarnings(context.draft, draft);
+        if (introduced.length) throw new Error(`Group rejected as a whole; the saved design is unchanged. Fix these issues it would introduce and send the complete group again: ${introduced.slice(0, 12).join(" ")}`);
+        reserveToolCall(context, "edit_design", 16);
         context.signal.throwIfAborted();
         context.draft = draft; context.revision++; context.review = undefined;
         publish(context, patch.label);
@@ -61,7 +64,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "review_design", category: "design", phases,
     create: context => tool({
-      description: "Review the accumulated draft by omitting objects/zones, or replace supplied collections completely. Check geometry, and render plan and isometric schematic views for visual review. Does not apply changes. Inspect the returned images before submit_design. Call again after changing a candidate.",
+      description: "Review the accumulated draft by omitting objects/zones, or replace supplied collections completely. Check geometry, and render plan and isometric schematic views for visual review. A replacement that passes is committed like an edit group. Inspect the returned images before submit_design. Call again after changing a candidate.",
       inputSchema: PlanDesignProposal.extend({ objects: PlanDesignProposal.shape.objects.optional(), coverage: DesignCoverageSchema }),
       execute: async proposal => {
         if (!context.brief) throw new Error("Call set_design_brief before reviewing a candidate.");
@@ -69,6 +72,8 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         const review = reviewDesignCoverage(context.brief, draft, proposal.coverage);
         const floorCoverage = context.brief.scope === "edit" && !context.wholeFloorRequired ? undefined : reviewFloorCoverage(draft, context.wholeFloorInteriorRequired ? "interior" : context.brief.scope);
         if (floorCoverage && !floorCoverage.complete) review.complete = false;
+        const introduced = proposal.objects || proposal.zones ? introducedWarnings(context.draft, draft) : [];
+        if (introduced.length) return { revision: context.revision, rejected: true, introducedWarnings: introduced, next: "This replacement was rejected as a whole and not saved because it introduces geometry problems. Fix them, or edit with edit_design groups, then review again." };
         const geometryWarnings = designWarnings(draft);
         const usability = reviewUsability(draft);
         if (!review.complete || floorCoverage && !floorCoverage.complete || geometryWarnings.length || usability.issues.length) {
@@ -110,7 +115,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "submit_design", category: "design", phases,
     create: () => tool({
-      description: "Submit the last visually reviewed candidate by its revision number for user approval. Do not repeat objects or zones; the server returns the exact reviewed draft. Explain aesthetic choices, reference alignment, tradeoffs, and unresolved geometry warnings in summary. This does not apply changes.",
+      description: "Finish the run with the last visually reviewed candidate by its revision number; it becomes the saved design, and the user can undo each operation or the whole run. Do not repeat objects or zones; the server returns the exact reviewed draft. Explain aesthetic choices, reference alignment, tradeoffs, and unresolved geometry warnings in summary.",
       inputSchema: ReviewedDesignSubmission,
     }),
   },

@@ -47,10 +47,15 @@ describe('live design drafts',()=>{
     await tools.edit_design.execute!(patch,options);
     await tools.review_design.execute!({summary:'Review',assumptions:[],coverage:[{requirementId:'stage',ids:['stage'],decision:'Present'}]},options);
     expect(c.review?.complete).toBe(true);
-    await tools.edit_design.execute!({...patch,objects:[{...object,x:.7}]},options);
+    await tools.edit_design.execute!({...patch,objects:[{...object,height:1.2}]},options);
     expect(c.review).toBeUndefined();
     expect(events.map(e=>e.revision)).toEqual([1,2,3]);
-    expect(previewDocument(base,events[2]).objects?.[0].x).toBe(.7);
+    expect(previewDocument(base,events[2]).objects?.[0].height).toBe(1.2);
+    // Each group is committed live, so a group that adds a geometry problem is rejected whole and nothing is emitted.
+    const before=c.draft;
+    await expect(tools.edit_design.execute!({...patch,objects:[{...object,x:.7}]},options)).rejects.toThrow('rejected as a whole');
+    expect(c.draft).toBe(before);
+    expect(events).toHaveLength(3);
     abort.abort();
     await expect(tools.edit_design.execute!(patch,options)).rejects.toThrow();
     expect(events).toHaveLength(3);

@@ -35,5 +35,8 @@ export async function traceWalls(document: PlanDocument, signal: AbortSignal) {
   const call = result.toolCalls.find((item) => item.toolName === "submit_trace");
   if (!call) throw new PlanServiceError("Muse did not return traced walls. Please retry.", 502);
   try { return applyTrace(document, call.input); }
-  catch { throw new PlanServiceError("Muse returned an invalid drawing reading. Please retry.", 502); }
+  catch (error) {
+    console.warn("[muse-trace] invalid", error instanceof Error ? error.message.slice(0, 300) : String(error));
+    throw new PlanServiceError("Muse returned an invalid drawing reading. Please retry.", 502);
+  }
 }

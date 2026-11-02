@@ -43,6 +43,7 @@ describe("sample projects", () => {
     expect(getAsset(project.id,lobby.originalAssetId!).mimeType).toBe('image/jpeg');
     expect(exportProject(project.id).assets).toHaveLength(2);
     expect(project.state.sources.items).toEqual([]);
+    expect(project.state.autoDesignPending).toBeUndefined();
   });
   it("persists authored references and downloadable briefs independently for each copy", async () => {
     const sources = [
@@ -57,6 +58,7 @@ describe("sample projects", () => {
     const first = await createSampleProject("venue", samples);
     const second = await createSampleProject("venue", samples);
     const saved = getProject(first.id);
+    expect(saved.state.autoDesignPending).toBe(true);
     expect(saved.state.sources.items.map(({ id, originalAssetId, ...source }) => {
       expect(id).toBeTruthy();
       if (source.kind === "brief") expect(originalAssetId).toBeTruthy();
