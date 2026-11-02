@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }), headers: async () => new Headers({ host: "localhost:3000" }) }));
 vi.mock("server-only", () => ({}));
 const providerOptions = vi.hoisted(() => vi.fn());
 vi.mock("@ai-sdk/openai-compatible", () => ({ createOpenAICompatible: (options: unknown) => { providerOptions(options); return () => ({}); } }));
@@ -30,7 +31,7 @@ describe("local Meta key settings", () => {
     const status = await GET(new Request("http://localhost:3000/api/settings/meta-key"));
     expect(status.headers.get("cache-control")).toBe("no-store");
     expect(await status.text()).not.toContain("saved-only");
-    const model = getModel({ MODEL_PROVIDER: "baseten", MODEL_API_KEY: "old-env-key" });
+    const model = await getModel({ MODEL_PROVIDER: "baseten", MODEL_API_KEY: "old-env-key" });
     expect(model.provider).toBe("meta");
     expect(model.hasKey).toBe(true);
     expect(providerOptions).toHaveBeenCalledWith(expect.objectContaining({ name: "meta", apiKey: "LLM|test|saved-only" }));
@@ -42,11 +43,11 @@ describe("local Meta key settings", () => {
     expect(storedMetaKey()).toBe("LLM|test|env-only");
     const response = await POST(request({ action: "remove" }));
     expect(await response.json()).toMatchObject({ stored: false, source: "environment" });
-    getModel();
+    await getModel();
     expect(providerOptions).toHaveBeenCalledWith(expect.objectContaining({ apiKey: "LLM|test|env-only" }));
   });
-  it("preserves Baseten configuration when no Meta key was saved", () => {
-    expect(getModel({ MODEL_PROVIDER: "baseten", BASETEN_API_KEY: "test-baseten" }).provider).toBe("baseten");
+  it("preserves Baseten configuration when no Meta key was saved", async () => {
+    expect((await getModel({ MODEL_PROVIDER: "baseten", BASETEN_API_KEY: "test-baseten" })).provider).toBe("baseten");
     expect(providerOptions).toHaveBeenCalledWith(expect.objectContaining({ apiKey: "test-baseten" }));
   });
   it("rejects invalid keys and absent imports without replacing the existing key", async () => {

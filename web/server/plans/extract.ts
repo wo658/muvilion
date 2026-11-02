@@ -8,7 +8,7 @@ import { museTracingAvailable, traceWalls } from "./trace";
 const TRACE_BUDGET_MS = 140_000;
 const RETRY_MIN_MS = 60_000;
 
-/** Each step is a complete document the client commits as its own operation: source preview, walls, then measured scale/floor. */
+/** Each step is a complete document the client commits as its own operation: source preview, walls with Muse scale, then the floor outline. */
 export type ReadingStep = { type: "preview" | "walls" | "measured"; document: PlanDocument };
 
 async function traceWithRetry(document: PlanDocument, file: File, page: number, signal: AbortSignal) {
@@ -27,11 +27,11 @@ async function traceWithRetry(document: PlanDocument, file: File, page: number, 
 }
 
 /** Uploads and samples share the same preview → model reading path. Wall reading retries once, then its error surfaces;
- * scale/floor measurement runs in parallel and its failure leaves them to the user. */
+ * the floor outline is read in parallel and its failure leaves it to the user. */
 export async function extractDrawing(file: File, page = 1, options: { signal?: AbortSignal; onStep?: (step: ReadingStep) => void } = {}): Promise<PlanDocument> {
   const signal = AbortSignal.any([AbortSignal.timeout(150_000), ...(options.signal ? [options.signal] : [])]);
   const [prepared] = await preparePages(file, page, { signal });
-  if (!museTracingAvailable()) {
+  if (!(await museTracingAvailable())) {
     const preview = { ...prepared, warnings: [...prepared.warnings, "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed."] };
     options.onStep?.({ type: "preview", document: preview });
     return preview;

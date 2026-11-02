@@ -211,8 +211,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             setError(t("Please choose a file smaller than 20 MB."));
             return;
         }
-        if (!/\.(pdf|png|jpe?g|dxf)$/i.test(file.name)) {
-            setError(t("Choose a PDF, PNG, JPG or DXF drawing."));
+        if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) {
+            setError(t("Choose a PDF, PNG or JPG drawing. Export CAD drawings to PDF first."));
             return;
         }
         request.current?.abort();
@@ -367,7 +367,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </div>
 
     </ProjectDialog>
-    <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
+    <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file)
         void extract(file); e.target.value = ""; }}/>
     <input ref={restoreInput} type="file" accept=".json" hidden onChange={async (e) => { const file = e.target.files?.[0]; if (file && file.size <= 400 * 1024 * 1024)
         restore(await file.text());

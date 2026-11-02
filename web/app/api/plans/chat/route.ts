@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const parsed = RequestBody.safeParse(body);
   if (!parsed.success) return Response.json({ error: "Invalid drawing conversation." }, { status: 400 });
   try {
-    const result = chatPlan(parsed.data, req.signal);
+    const result = await chatPlan(parsed.data, req.signal);
     return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream, onError: () => "Muse is unavailable. Check the API configuration and try again." }) });
   } catch (error) {
     if (error instanceof PlanServiceError) return Response.json({ error: error.message }, { status: error.status });

@@ -21,7 +21,7 @@ attribution behavior built into the tool.
 ## Repository layout
 
 - `web/` — Next.js app (pnpm): UI, Meta Model drawing/design workflows and the application API.
-- `web/server/plans/` — model orchestration and bounded PDF/image/DXF preview preparation.
+- `web/server/plans/` — model orchestration and bounded PDF/image preview preparation.
 - `web/lib/plans/schema.ts` — application drawing contract and runtime validation.
 - `fixtures/` — legacy authored venue fixtures used by presentation assets, not runtime computation.
 - Python/FastAPI, layout solvers and engine OpenAPI generation have been removed.
@@ -90,8 +90,9 @@ attribution behavior built into the tool.
   rejects literal colors outside the documented artwork exceptions (exhibition materials,
   the mascot). Do not weaken a threshold or widen an exception to make a change pass.
   Fix the token or the usage instead, and record any new exception in `web/design.md`.
-- Server-rendered source previews are evidence images. DXF previews remain neutral grey;
-  document paper/background colors are not interface styling.
+- Server-rendered source previews are evidence images, not interface styling.
+- New drawing uploads support PDF/PNG/JPG only. Preserve saved DXF previews, geometry
+  and originals in existing projects/exports; never re-render them on load.
 
 ## Muvi mascot
 

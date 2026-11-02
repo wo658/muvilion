@@ -21,6 +21,20 @@ function state() {
   }, sources: { version: 1, drawingSelected: false, items: [{ id: "concept", kind: "concept", name: "Mood", selected: true, text: "", notes: "Keep blue", images: ["data:image/png;base64,AQID"] }] } });
 }
 describe("SQLite projects and file ownership", () => {
+  it("reopens and round-trips saved DXF previews and edits without a DXF renderer", () => {
+    const input = state();
+    input.document!.source = { ...input.document!.source, name: "legacy.dxf", format: "dxf" };
+    input.document!.method = "dxf";
+    input.document!.lines = [{ id: "edited-wall", a: { x: .1, y: .2 }, b: { x: .8, y: .2 }, kind: "wall", origin: "manual", confidence: 1 }];
+    const project = createProject({ name: "Legacy CAD", state: input });
+    const original = uploadOriginal(project.id, "legacy.dxf", "application/dxf", new TextEncoder().encode("original CAD bytes"));
+    saveProject(project.id, { name: project.name, revision: 0, state: { ...project.state, originalDrawingId: original } });
+    const reopened = getProject(project.id);
+    const imported = createProject(exportProject(project.id));
+    expect(reopened.state.document).toEqual(input.document);
+    expect(imported.state.document).toEqual(input.document);
+    expect(new TextDecoder().decode(getAsset(imported.id, imported.state.originalDrawingId!).data)).toBe("original CAD bytes");
+  });
   it("persists drawing, sources and selection while storing images as deduplicated blobs", () => {
     const input = state();
     const p = createProject({ name: "Hall", state: input });

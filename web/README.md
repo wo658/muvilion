@@ -2,7 +2,7 @@
 
 Architecture: [overview](../architecture/README.md) · [ADRs](../architecture/adr/README.md).
 
-The home page is a drawing-first workspace: upload PDF, PNG/JPEG or optional DXF, crop a space, review evidence, calibrate a known distance, edit walls, place objects and inspect 3D. Muse chat uses the Vercel AI SDK; interpretation and layout proposals require explicit Apply.
+The home page is a drawing-first workspace: upload PDF or PNG/JPEG, crop a space, review evidence, calibrate a known distance, edit walls, place objects and inspect 3D. Muse chat uses the Vercel AI SDK; interpretation and layout proposals require explicit Apply.
 
 ## Run
 
@@ -20,7 +20,7 @@ preview with an explicit warning and no inferred walls/text; manual calibration/
 
 - PDF: PDF.js 6.5.438 renders the visible crop with its page rotation, using the bundled Node canvas implementation. No vector-line or text extraction runs.
 - Images: existing Sharp applies EXIF orientation, composites transparency onto paper, and bounds image size.
-- DXF: `dxf` 5.3.1 renders supported ASCII model-space geometry to a neutral preview. Its renderer omits text, dimensions and hatches; every DXF import warns to export PDF for complete evidence. Binary or non-UTF-8 CAD should be exported to PDF. There is no CAD-to-layout conversion.
+- New DXF uploads are unsupported. Export CAD drawings to PDF first. Existing DXF projects retain their saved previews, edits and original files; no DXF renderer is installed.
 - Meta Model reads the prepared image for walls, visible text and provisional dimensions. Uploads and samples use the same workflow. Failed model reading returns an error, never a local-extraction fallback.
 - Reference PDFs are supplied to Muse as page images; `text` stays empty until the model reads them in conversation. TXT/Markdown references keep their literal text.
 

@@ -9,11 +9,12 @@ import { PlanDocumentSchema } from '@/lib/plans/schema';
 const document = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: 'drawing.png', format: 'image', page: 1, pages: 1, width: 100, height: 100 }, preview: 'data:image/png;base64,AA==', lines: [], texts: [], method: 'preview', warnings: [], widthMeters: null, heightMeters: null, scaleConfirmed: false });
 afterEach(() => { mock.generate.mockReset(); mock.hasKey = true; });
 describe('model-only drawing interpretation', () => {
-  it('sends the source image and validates walls/text without confirming estimated scale', async () => {
-    mock.generate.mockResolvedValue({ finishReason: 'tool-calls', toolCalls: [{ toolName: 'submit_trace', input: { summary: 'Read', walls: [{ a: {x:.1,y:.1}, b: {x:.9,y:.1} }], texts: [{ text: '회의실', x: .2, y: .2 }], widthMeters: 30, heightMeters: 30, uncertainties: [] } }] });
+  it('sends the source image, validates walls/text and confirms scale from a printed dimension', async () => {
+    mock.generate.mockResolvedValue({ finishReason: 'tool-calls', toolCalls: [{ toolName: 'submit_trace', input: { summary: 'Read', walls: [{ a: {x:.1,y:.1}, b: {x:.9,y:.1} }], texts: [{ text: '회의실', x: .2, y: .2 }], scaleEvidence: [{ source: 'dimension', label: '24 m', value: 24, unit: 'm', a: { x: .1, y: .9 }, b: { x: .9, y: .9 } }], uncertainties: [] } }] });
     const result = await traceWalls(document, new AbortController().signal);
     expect(mock.generate.mock.calls[0][0].messages[0].content[1]).toMatchObject({ data: document.preview, mediaType: 'image/png' });
-    expect(result).toMatchObject({ method: 'muse', scaleConfirmed: false, widthMeters: 30 });
+    expect(result).toMatchObject({ method: 'muse', scaleConfirmed: true, scaleSource: 'muse', widthMeters: 30, heightMeters: 30 });
+    expect(mock.generate).toHaveBeenCalledTimes(1);
     expect(result.texts[0].text).toBe('회의실');
     expect(result.lines[0].origin).toBe('ai');
   });

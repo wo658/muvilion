@@ -8,7 +8,7 @@ import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { applyInterpretation, interpretationEvidence, PlanInterpretation } from "@/lib/plans/muse";
 
 export async function interpretPlan(document: z.infer<typeof PlanDocumentSchema>, reviewMode: unknown, signal: AbortSignal) {
-  const model = getModel();
+  const model = await getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   const result = await generateText({
     model: model.model,

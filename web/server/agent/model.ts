@@ -7,13 +7,16 @@ import { storedMetaKey } from "@/server/settings/store";
  *   MODEL_PROVIDER=meta (default) → Meta Model API, key format `LLM|{id}|{secret}`
  *   MODEL_PROVIDER=baseten        → Baseten-hosted open-weights Muse Spark
  */
+import { cookies, headers } from "next/headers";
+import { MODEL_MODE_COOKIE, selectMetaModel } from "@/lib/model-mode";
 import type { Env } from "@/lib/env";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 
 export type ModelHandle = { model: LanguageModel; provider: string; modelId: string; hasKey: boolean };
 
-export function getModel(env: Env = process.env): ModelHandle {
+export async function getModel(overrides?: Env): Promise<ModelHandle> {
+  const env = overrides ?? process.env;
   const saved = storedMetaKey();
   const which = saved ? "meta" : env.MODEL_PROVIDER ?? "meta";
   if (which === "baseten") {
@@ -26,7 +29,9 @@ export function getModel(env: Env = process.env): ModelHandle {
     });
     return { model: provider(modelId), provider: "baseten", modelId, hasKey: Boolean(env.BASETEN_API_KEY) };
   }
-  const modelId = env.META_MODEL ?? "muse-spark-1.3";
+  const configured = env.META_MODEL ?? "muse-spark-1.3";
+  const context = overrides ? null : await Promise.all([cookies(), headers()]);
+  const modelId = context ? selectMetaModel(configured, context[0].get(MODEL_MODE_COOKIE)?.value, context[1].get("host")) : configured;
   const provider = createOpenAICompatible({
     name: "meta",
     baseURL: env.META_BASE_URL ?? "https://api.meta.ai/v1",
