@@ -46,9 +46,11 @@ type DesignRun = {
     artifacts?: DesignArtifact[];
     designReview?: z.infer<typeof DesignReviewSchema>;
 };
-export function StudioChat({ autoDesign = null, onAutoDesignStart, document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onMuviOperation, onPhotography, onPlanning, onPlanningCancel, planningContext, planningBusy = false }: {
+export function StudioChat({ autoDesign = null, onAutoDesignStart, onOperation, document, onDocumentChange, sources = emptySources(), onSources, selection, onClearSelection, onCollapse, onMuviOperation, onPhotography, onPlanning, onPlanningCancel, planningContext, planningBusy = false }: {
     onPlanningCancel?: () => void;
     autoDesign?: { brief: string } | null;
+    /** Called after each committed design operation with the element IDs it changed; an empty list means the whole space. */
+    onOperation?: (ids: string[]) => void;
     onAutoDesignStart?: () => void;
     onPlanning?: (brief: string, signal?: AbortSignal) => Promise<string>;
     planningBusy?: boolean;
@@ -212,18 +214,19 @@ export function StudioChat({ autoDesign = null, onAutoDesignStart, document, onD
                 };
                 // Each streamed operation is validated on the server and committed here as one undo step.
                 let committed = base;
-                const commit = (next: PlanDocument, label?: string) => {
+                const commit = (next: PlanDocument, label?: string, ids: string[] = []) => {
                     committed = next;
                     designOps++;
                     agentCommit.current = next;
                     onDocumentChange(next);
+                    onOperation?.(ids);
                     setDesignRun(run => run && { ...run, last: next, operations: designOps, label: label ?? run.label });
                 };
                 agentCommit.current = base;
                 setDesignRun({ base, last: base, operations: 0, brief, status: "running" });
                 const body = await readDesignStream(response, event => {
                     assertCurrent();
-                    commit(previewDocument(committed, event), event.label);
+                    commit(previewDocument(committed, event), event.label, [...event.objects.map(item => item.id), ...event.zones.map(item => item.id)]);
                 }, operation => {
                     assertCurrent();
                     setMuviActivity({ base: committed, sources, operation });
@@ -236,6 +239,7 @@ export function StudioChat({ autoDesign = null, onAutoDesignStart, document, onD
                 const summary = typeof body.summary === "string" ? body.summary : t("Design complete.");
                 setDesignRun(run => run && { ...run, status: "complete", summary, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), designReview: body.designReview ? DesignReviewSchema.parse(body.designReview) : undefined });
                 setMessages(previous => [...previous, { id: generateId(), role: "assistant", parts: [{ type: "text", text: summary }] }]);
+                onOperation?.([]);
             }
         }
         catch (err) {
