@@ -1,16 +1,17 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { z } from "zod";
 import { emptyProject, SampleProject, type DrawingSource } from "@/lib/projects/schema";
 import { extractDrawing } from "@/server/plans/extract";
 import { PlanServiceError } from "@/server/plans/errors";
+import { SourceImage, SourceLibrarySchema } from "@/lib/sources/schema";
 import { createProject, ProjectError } from "./store";
 
 const Drawing = z.object({ name: z.string().min(1).max(100), file: z.string().regex(/^[\w-]+\/[\w.-]+\.(pdf|jpe?g|png)$/), page: z.number().int().positive().optional() });
 const Manifest = z.object({ projects: z.array(SampleProject.extend({ id: z.string().regex(/^[\w-]+$/), name: z.string().min(1).max(100), drawings: z.array(Drawing).min(1).max(12) })) }).refine(value => new Set(value.projects.map(p => p.id)).size === value.projects.length, "Duplicate sample project IDs");
-const mimeOf = (file: string) => file.endsWith(".pdf") ? "application/pdf" : file.endsWith(".png") ? "image/png" : "image/jpeg";
+const mimeOf = (file: string) => file.endsWith(".pdf") ? "application/pdf" : file.endsWith(".png") ? "image/png" : file.endsWith(".webp") ? "image/webp" : "image/jpeg";
 const SAMPLE_CONCURRENCY = 4;
 export const samplesDirectory = () => process.env.SAMPLES_DIR ?? resolve(process.cwd(), "../data/samples");
 
@@ -19,7 +20,7 @@ export function listSamples(directory = samplesDirectory()): SampleProject[] {
   let manifest: z.infer<typeof Manifest>;
   try { manifest = Manifest.parse(JSON.parse(readFileSync(resolve(directory, "samples.json"), "utf8"))); }
   catch { return []; }
-  return manifest.projects.filter(project => project.drawings.every(drawing => existsSync(resolve(directory, drawing.file))));
+  return manifest.projects.filter(project => project.drawings.every(drawing => existsSync(resolve(directory, drawing.file))) && (project.sources ?? []).every(source => (source.imageFiles ?? []).every(file => existsSync(resolve(directory, file)))));
 }
 
 /** Extract every drawing before the atomic SQLite create, preserving each original and PDF page. */
@@ -28,6 +29,29 @@ export async function createSampleProject(id: string, directory = samplesDirecto
   if (!sample) throw new ProjectError("Sample project not found.", 404);
   const failed = new AbortController();
   const runSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(1_200_000), failed.signal]);
+  const briefAssets: { id: string; name: string; mimeType: string; data: string }[] = [];
+  const sources = emptyProject().sources;
+  sources.items = (sample.sources ?? []).map(source => {
+    const { imageFiles, ...content } = source;
+    const images = (imageFiles ?? []).map(file => {
+      const path = resolve(directory, file);
+      if (statSync(path).size > 449_000) throw new ProjectError(`Invalid sample reference image: ${file}.`, 422);
+      const bytes = readFileSync(path);
+      const mime = mimeOf(file);
+      const valid = mime === "image/png" ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        : mime === "image/webp" ? bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP"
+        : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+      if (!valid || bytes.length > 449_000) throw new ProjectError(`Invalid sample reference image: ${file}.`, 422);
+      return SourceImage.parse(`data:${mime};base64,${bytes.toString("base64")}`);
+    });
+    const reference = { ...content, images: [...content.images, ...images], id: randomUUID() };
+    if (source.kind !== "brief") return reference;
+    const originalAssetId = randomUUID();
+    briefAssets.push({ id: originalAssetId, name: `${source.name.slice(0, 251)}.txt`, mimeType: "text/plain", data: Buffer.from(source.text, "utf8").toString("base64") });
+    return { ...reference, originalAssetId };
+  });
+  SourceLibrarySchema.parse(sources);
+  runSignal.throwIfAborted();
   const drawings: DrawingSource[] = new Array(sample.drawings.length);
   const assets: { id: string; name: string; mimeType: string; data: string }[] = new Array(sample.drawings.length);
   // Muse reads each drawing; a few at a time keeps a large sample responsive.
@@ -51,14 +75,6 @@ export async function createSampleProject(id: string, directory = samplesDirecto
   };
   await Promise.all(Array.from({ length: Math.min(SAMPLE_CONCURRENCY, sample.drawings.length) }, worker));
   runSignal.throwIfAborted();
-  const sources = emptyProject().sources;
-  sources.items = (sample.sources ?? []).map(source => {
-    const reference = { ...source, id: randomUUID() };
-    if (source.kind !== "brief") return reference;
-    const originalAssetId = randomUUID();
-    assets.push({ id: originalAssetId, name: `${source.name.slice(0, 251)}.txt`, mimeType: "text/plain", data: Buffer.from(source.text, "utf8").toString("base64") });
-    return { ...reference, originalAssetId };
-  });
   const first = drawings[0];
-  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId }, assets });
+  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId }, assets: [...assets, ...briefAssets] });
 }

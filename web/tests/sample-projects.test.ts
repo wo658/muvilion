@@ -19,7 +19,7 @@ beforeEach(() => {
     { id: "incomplete", name: "Missing", drawings: [{name:"Hall",file:"venue/hall.pdf"},{ name: "Missing", file: "venue/missing.jpg" }] },
   ] }));
   extract.mockReset();
-  extract.mockImplementation(async (file:File, page:number) => PlanDocumentSchema.parse({schemaVersion:1,source:{name:file.name,format:file.name.endsWith('.pdf')?'pdf':'image',page,pages:3,width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:null,heightMeters:null,scaleConfirmed:false,lines:[],texts:[],warnings:[],method:file.name.endsWith('.pdf')?'pdf-vector':'opencv'}));
+  extract.mockImplementation(async (file:File, page:number) => PlanDocumentSchema.parse({schemaVersion:1,source:{name:file.name,format:file.name.endsWith('.pdf')?'pdf':'image',page,pages:Math.max(3,page),width:100,height:100},preview:'data:image/png;base64,AA==',widthMeters:null,heightMeters:null,scaleConfirmed:false,lines:[],texts:[],warnings:[],method:file.name.endsWith('.pdf')?'pdf-vector':'opencv'}));
 });
 afterEach(() => { vi.unstubAllEnvs(); rmSync(directory, { recursive: true, force: true }); });
 
@@ -74,10 +74,31 @@ describe("sample projects", () => {
     expect(second.state.sources.items.every(item => !saved.state.sources.items.some(other => other.id === item.id))).toBe(true);
     expect(second.state.sources.items[0].originalAssetId).not.toBe(brief.originalAssetId);
   });
+  it("loads local concept images into persisted/exported sources without exposing file references", async () => {
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lF8AAAAASUVORK5CYII=", "base64");
+    writeFileSync(join(samples, "venue", "concept.png"), png);
+    writeFileSync(join(samples, "samples.json"), JSON.stringify({ projects: [{ id: "venue", name: "Venue", drawings: [{ name: "Hall", file: "venue/hall.pdf" }], sources: [{ kind: "concept", name: "Authored design", selected: true, notes: "Generated concept, not a product photo", imageFiles: ["venue/concept.png"] }] }] }));
+    const project = await createSampleProject("venue", samples);
+    const source = getProject(project.id).state.sources.items[0];
+    expect(source.kind).toBe("concept");
+    expect(source.images).toEqual([`data:image/png;base64,${png.toString("base64")}`]);
+    expect(source).not.toHaveProperty("imageFiles");
+    expect(exportProject(project.id).state.sources.items[0].images).toEqual(source.images);
+    rmSync(join(samples, "venue", "concept.png"));
+    expect(listSamples(samples)).toEqual([]);
+  });
+  it("rejects malformed bundled images without persisting a partial project", async () => {
+    writeFileSync(join(samples, "venue", "concept.png"), "not an image");
+    writeFileSync(join(samples, "samples.json"), JSON.stringify({ projects: [{ id: "venue", name: "Venue", drawings: [{ name: "Hall", file: "venue/hall.pdf" }], sources: [{ kind: "concept", name: "Bad image", selected: true, imageFiles: ["venue/concept.png"] }] }] }));
+    await expect(createSampleProject("venue", samples)).rejects.toThrow("Invalid sample reference image");
+    expect(extract).not.toHaveBeenCalled();
+    expect(listProjects()).toEqual([]);
+  });
   it("rejects invalid reference URLs and empty brief documents", () => {
     for (const source of [
       { kind: "brand", name: "Invalid URL", selected: true, url: "file:///tmp/secret" },
       { kind: "brief", name: "Empty brief", selected: true, text: "  " },
+      { kind: "concept", name: "Traversal", selected: true, imageFiles: ["../secret.png"] },
     ]) {
       writeFileSync(join(samples, "samples.json"), JSON.stringify({ projects: [
         { id: "venue", name: "Venue", drawings: [{ name: "Hall", file: "venue/hall.pdf" }], sources: [source] },
@@ -97,6 +118,16 @@ describe("sample projects", () => {
     await expect(createSampleProject('../samples.json',samples)).rejects.toThrow('not found');
     await expect(createSampleProject('incomplete',samples)).rejects.toThrow('not found');
     expect(extract).not.toHaveBeenCalled();
+  });
+  it("creates the shipped demos with usable concept images and source provenance", async () => {
+    for (const sample of listSamples(samplesDirectory())) {
+      const project = await createSampleProject(sample.id, samplesDirectory());
+      const concept = project.state.sources.items.find(source => source.kind === "concept");
+      expect(concept?.images[0]).toMatch(/^data:image\/webp;base64,/);
+      expect(concept?.notes).toContain("생성");
+      expect(project.state.sources.items.filter(source => source.url)).toHaveLength(3);
+      expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
+    }
   });
   it("ships three complete venue projects containing all 15 drawings", () => {
     expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['kintex',6],['moscone',7],['lvcc',2]]);
