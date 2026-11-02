@@ -10,7 +10,7 @@ const RETRY_MIN_MS = 60_000;
 export async function extractDrawing(file: File, page = 1, options: { signal?: AbortSignal } = {}): Promise<PlanDocument> {
   const signal = AbortSignal.any([AbortSignal.timeout(150_000), ...(options.signal ? [options.signal] : [])]);
   const [document] = await preparePages(file, page, { signal });
-  if (!museTracingAvailable()) return { ...document, warnings: [...document.warnings,
+  if (!(await museTracingAvailable())) return { ...document, warnings: [...document.warnings,
     "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed."] };
   const started = Date.now();
   for (let attempt = 1; ; attempt++) {

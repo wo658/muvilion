@@ -43,7 +43,7 @@ export async function photographPlan(input: PhotographyRequest, signal: AbortSig
     if (new Set(input.candidates.map(item => item.shot.id)).size !== input.candidates.length)
       fail("Candidate IDs must be unique.", "촬영 후보 ID가 중복되었습니다.", 400);
   }
-  const model = getModel();
+  const model = await getModel();
   if (!model.hasKey) fail("Muse is not configured. Add a Meta API key in Settings.", "설정에서 Meta API 키를 추가해주세요.", 503);
   // Do not transmit source raster or thousands of source annotations unnecessarily.
   const walls = input.document.lines.filter(line => line.kind === "wall");

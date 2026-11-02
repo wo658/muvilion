@@ -25,8 +25,8 @@ export const RequestBody = z.object({
   })).min(1).max(40),
 });
 
-export function chatPlan(input: z.infer<typeof RequestBody>, signal: AbortSignal) {
-  const handle = getModel();
+export async function chatPlan(input: z.infer<typeof RequestBody>, signal: AbortSignal) {
+  const handle = await getModel();
   if (!handle.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   return streamText({
     model: handle.model,

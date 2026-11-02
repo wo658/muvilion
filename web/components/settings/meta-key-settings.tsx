@@ -8,6 +8,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { MetaKeyStatus, type MetaKeyStatus as Status } from "@/lib/meta-key";
 import { useI18n } from "@/lib/i18n/provider";
 import { localizeMessage } from "@/lib/i18n/messages";
+import { ModelModeSettings } from "./model-mode-settings";
 
 export function MetaKeySettings() {
   const { t, locale } = useI18n();
@@ -42,6 +43,8 @@ export function MetaKeySettings() {
   }
 
   return <section className="flex flex-col gap-5" aria-labelledby="meta-key-heading">
+    <ModelModeSettings key={status?.activeProvider ?? "loading"}/>
+    <Separator/>
     <div className="flex flex-col gap-2">
       <h4 id="meta-key-heading" className="font-medium">{t("Meta API key")}</h4>
       <p className="settings-description">{t("Use one key across all projects on this computer.")}</p>
