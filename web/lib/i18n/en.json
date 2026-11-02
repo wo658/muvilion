@@ -865,5 +865,8 @@
   "Added {count} scene captures to the document.": "Added {count} scene captures to the document.",
   "Apply or discard the spatial draft before revising the planning document.": "Apply or discard the spatial draft before revising the planning document.",
   "Document request stopped. Any completed revisions and photos are kept.": "Document request stopped. Any completed revisions and photos are kept.",
-  "Document sections": "Document sections"
+  "Document sections": "Document sections",
+  "Sample preparation cancelled.": "Sample preparation cancelled.",
+  "Muse is reading the sample drawings. This may take a few minutes.": "Muse is reading the sample drawings. This may take a few minutes.",
+  "Cancel preparation": "Cancel preparation"
 }

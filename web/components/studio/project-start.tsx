@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { localizeMessage } from "@/lib/i18n/messages";
 
 /** Centered first step: start from your own drawing, a sample drawing, or nothing. */
-export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank, onCancel }: {
+export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank, onCancel, onStop }: {
   busy: boolean;
   error: string;
   notice: string;
@@ -17,6 +17,7 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
   onSample: (id: string) => void;
   onBlank: () => void;
   onCancel?: () => void;
+  onStop?: () => void;
 }) {
   const { t, locale } = useI18n();
   const input = useRef<HTMLInputElement>(null);
@@ -49,8 +50,9 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
       <button type="button" disabled={busy} onClick={() => onSample(sample.id)}><strong>{sample.name}</strong><span className="ml-2 text-muted">{t("{count} drawings", { count: sample.drawings.length })}</span><small className="mt-1 block text-muted">{sample.drawings.map(drawing => drawing.name).join(" · ")}</small></button>
     </li>)}</ul>}
     {message && <p className="pw-start-error" role="alert">{localizeMessage(locale, message)}</p>}
-    {busy && <p className="pw-start-status" role="status">{t("Preparing project drawings…")}</p>}
+    {busy && <p className="pw-start-status" role="status">{t(onStop ? "Muse is reading the sample drawings. This may take a few minutes." : "Preparing project drawings…")}</p>}
     <div className="pw-start-links">
+      {onStop && <Button onClick={onStop}>{t("Cancel preparation")}</Button>}
       <Button variant="ghost" disabled={busy} onClick={onBlank}>{t("Start with an empty project")}</Button>
       {onCancel && <Button variant="ghost" disabled={busy} onClick={onCancel}>{t("Cancel")}</Button>}
     </div>
