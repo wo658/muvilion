@@ -6,13 +6,14 @@
 
 | ADR | 결정 | 상태 |
 | --- | --- | --- |
-| [0001](0001-service-boundaries.md) | Next.js가 앱과 모델 작업, Python이 계산을 소유 | accepted |
+| [0001](0001-service-boundaries.md) | Next.js가 앱과 모델 작업, Python이 계산을 소유 | partially superseded by ADR-0008 |
 | [0002](0002-local-project-persistence.md) | 로컬 SQLite를 프로젝트·자산 정본으로 사용 | accepted |
-| [0003](0003-evidence-and-spatial-contracts.md) | 원본 근거·공간 편집 모델·엔진 계약 분리 | accepted |
+| [0003](0003-evidence-and-spatial-contracts.md) | 원본 근거·공간 편집 모델·엔진 계약 분리 | partially superseded by ADR-0008 |
 | [0004](0004-reviewed-design-proposals.md) | 요청 단위 모델 작업과 명시적 공간 변경 적용 | accepted |
 | [0005](0005-design-studio-scope.md) | 단일 제작 흐름 유지, 참가 플랫폼은 보류 | accepted |
 | [0006](0006-session-only-planning-output.md) | 세션 캡처 기반 일회성 기획서 출력 | superseded by ADR-0007 |
 | [0007](0007-persistent-planning-artifacts.md) | 도면별 영속 기획 문서와 파생 PDF 출력 | accepted |
+| [0008](0008-retire-layout-engine.md) | 기존 배치 최적화·검증·동선 계산 제거 | accepted |
 
 ## 읽고 갱신하기
 

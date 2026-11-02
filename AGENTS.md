@@ -20,14 +20,13 @@ attribution behavior built into the tool.
 
 ## Repository layout
 
-- `engine/` — Python 3.12 FastAPI server (uv): document extraction, OR-Tools layout,
-  and Shapely validation. No user/application state; computed layouts have an optional
-  bounded disk cache.
+- `engine/` — Python 3.12 FastAPI server (uv): document extraction only, pending
+  migration of document preparation. No layout solver, geometry validator or app state.
 - `web/` — Next.js app (pnpm): UI, model-assisted drawing workflows (Vercel AI SDK + Meta Model API),
   and the application API.
 - `fixtures/` — shared sample venue.
-- `engine/app/schemas.py` is the data contract. After changing it, run
-  `pnpm gen:engine-types` in `web/` and update `web/lib/engine/contract.ts` until
+- `engine/app/plan_schemas.py` is the document transport contract. After changing it, run
+  `pnpm gen:engine-types` in `web/` and update `web/lib/plans/schema.ts` until
   `pnpm typecheck` passes.
 
 ## Workflow
@@ -45,9 +44,9 @@ attribution behavior built into the tool.
 - Keep the existing Next.js + FastAPI architecture. Browser requests go through the
   Next.js API; Python is the internal computation service.
 - Next.js owns model calls, drawing workflow orchestration, responses, and serving examples.
-- Python owns document extraction (PDF/image/DXF), layout optimization, and geometry
-  validation. Keep it free of model calls, UI state, and persistent application state.
-  Its optional disk cache is disposable derived data, not a source of truth.
+- Python currently owns document extraction (PDF/image/DXF). Layout optimization,
+  walkable-area calculation and legacy geometry validation have been removed.
+  Keep it free of model calls, UI state, and persistent application state.
 - Keep HTTP handlers thin: parse and validate requests, call a feature service, and map
   results/errors to HTTP responses. Put reusable work in feature modules.
 - Do not add a third server, durable job system, or database just to reorganize code.
@@ -62,8 +61,8 @@ attribution behavior built into the tool.
   Follow `web/AGENTS.md` for the web boundary and `engine/AGENTS.md` for Python.
 - Centralize Python HTTP calls in the engine client, including document extraction.
   Reuse its configuration, response validation, timeout, cancellation, and error handling.
-- Treat Python response schemas as the source for the engine API contract, including
-  `engine/app/plan_schemas.py`. Regenerate OpenAPI/types after API schema changes and
+- Treat `engine/app/plan_schemas.py` as the document service contract.
+  Regenerate OpenAPI/types after API schema changes and
   reconcile affected web validators. UI editing state may extend the transport model.
 
 ## Examples and fixtures

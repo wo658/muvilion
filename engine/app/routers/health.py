@@ -9,5 +9,5 @@ router = APIRouter(tags=["health"])
 def health() -> dict:
     return {
         "status": "ok",
-        "versions": {pkg: version(pkg) for pkg in ("ortools", "shapely")},
+        "versions": {pkg: version(pkg) for pkg in ("pypdfium2", "pillow")},
     }

@@ -3,4 +3,4 @@ def test_health(client):
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "ok"
-    assert set(body["versions"]) == {"ortools", "shapely"}
+    assert set(body["versions"]) == {"pypdfium2", "pillow"}

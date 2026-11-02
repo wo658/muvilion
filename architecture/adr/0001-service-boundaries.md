@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: partially superseded by ADR-0008
 recorded: 2026-11-02
 ---
 # Next.js는 앱과 모델 작업, Python은 계산을 소유한다
+
+현재 변경: [ADR-0008](0008-retire-layout-engine.md)이 기존 배치·검증·동선 계산과 평면 계약 보존을 대체한다. 아래는 당시 결정 기록이다.
 
 화면·모델 작업·저장 상태와 도면 추출·기하 계산은 변경 이유와 실행 환경이 다르다. 기존 Next.js + FastAPI 구조를 유지하고, Next.js는 앱 API·모델 호출·작업 조율·프로젝트를, Python은 추출·최적화·검사를 소유한다. 계산 서버에 UI 상태나 모델 호출을 넣지 않아 경계를 유지하며, 재구성만을 위해 세 번째 서버·지속 작업 시스템·데이터베이스를 추가하지 않는다.
 

@@ -25,7 +25,7 @@ The root `AGENTS.md` also applies here.
 - Model configuration lives in `server/agent`; drawing/model workflows in `server/plans`;
   Python transport in `server/engine`; project storage and sample projects in
   `server/projects`.
-  `lib/engine` retains shared contracts and mock computation, not HTTP transport.
+  `lib/engine` retains generated document API types, not HTTP transport or mock computation.
 - The unified composer calls `/api/plans/intent` before dispatching chat, design, or
   interpretation. Keep routing decisions server-side, validate model output and enforce
   prerequisites in code. Ambiguous requests ask for clarification; failures must not

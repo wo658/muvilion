@@ -1,27 +1,12 @@
 import "server-only";
 /**
  * Typed HTTP client for the Python engine (FastAPI).
- * Every response is zod-validated against the contract mirrors in lib/engine/contract.ts and lib/plans/schema.ts,
+ * Every response is zod-validated against lib/plans/schema.ts,
  * so contract drift fails loudly at the boundary instead of deep in the agent.
  */
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 import type { z } from "zod";
-import {
-  HealthResponse,
-  LayoutResponse,
-  ValidateResponse,
-  type LayoutRequestInput,
-  type ValidateRequestInput,
-} from "@/lib/engine/contract";
-
 export interface EngineRequestOptions { signal?: AbortSignal; timeoutMs?: number }
-
-export interface Engine {
-  readonly kind: "http" | "mock";
-  health(options?: EngineRequestOptions): Promise<HealthResponse>;
-  layout(req: LayoutRequestInput, options?: EngineRequestOptions): Promise<LayoutResponse>;
-  validate(req: ValidateRequestInput, options?: EngineRequestOptions): Promise<ValidateResponse>;
-}
 
 export class EngineError extends Error {
   constructor(
@@ -37,18 +22,18 @@ export class EngineError extends Error {
 
 export interface HttpEngineOptions {
   baseUrl?: string;
-  /** Default timeout (ms) for short calls (health, validate). */
+  /** Default timeout (ms) for document extraction. */
   timeoutMs?: number;
   fetch?: typeof fetch;
 }
 
-export interface HttpEngine extends Engine {
+export interface HttpEngine {
   extract(file: File, page?: number, options?: EngineRequestOptions & { rasterPdf?: boolean }): Promise<PlanDocument>;
 }
 
 export function createHttpEngine(opts: HttpEngineOptions = {}): HttpEngine {
   const baseUrl = (opts.baseUrl ?? process.env.ENGINE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
-  const timeoutMs = opts.timeoutMs ?? Number(process.env.ENGINE_TIMEOUT_MS ?? 30_000);
+  const timeoutMs = opts.timeoutMs ?? Number(process.env.ENGINE_TIMEOUT_MS ?? 90_000);
   const doFetch = opts.fetch ?? fetch;
 
   async function call<S extends z.ZodType>(
@@ -98,17 +83,12 @@ export function createHttpEngine(opts: HttpEngineOptions = {}): HttpEngine {
   }
 
   return {
-    kind: "http",
-    health: (options) => call("GET", "/health", HealthResponse, undefined, Math.min(timeoutMs, 5_000), options),
-    // Solver time limit plus network/serialization headroom.
-    layout: (req, options) => call("POST", "/layout", LayoutResponse, req, (req.time_limit_s ?? 10) * 1000 + timeoutMs, options),
-    validate: (req, options) => call("POST", "/validate", ValidateResponse, req, timeoutMs, options),
     extract: (file, page = 1, options) => {
       const body = new FormData();
       body.set("file", file);
       body.set("page", String(page));
       if (options?.rasterPdf) body.set("raster_pdf", "true");
-      return call("POST", "/plans/extract", PlanDocumentSchema, body, 90_000, options);
+      return call("POST", "/plans/extract", PlanDocumentSchema, body, timeoutMs, options);
     },
   };
 }
