@@ -16,7 +16,7 @@ function upload(name = "hall.pdf") {
   const body = new FormData(); body.set("file", new File(["%PDF-test"], name));
   return new Request("http://localhost/upload", { method: "POST", body });
 }
-afterEach(() => { vi.unstubAllGlobals(); trace.run.mockReset(); trace.available = true; });
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); trace.run.mockReset(); trace.available = true; });
 
 describe("Muse wall tracing", () => {
   it("squares nearly axis-aligned walls, clamps to the frame and drops degenerate segments", () => {
@@ -39,14 +39,28 @@ describe("Muse wall tracing", () => {
     expect(traced).toMatchObject({ widthMeters: 40, heightMeters: 30, scaleConfirmed: false });
     expect(traced.warnings).toContain("Door widths unclear");
   });
-  it("traces uploaded PDFs and falls back to extracted lines when Muse fails", async () => {
+  it("traces uploaded PDFs, retries once and then falls back to extracted lines", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn(async () => Response.json(plan)));
     trace.run.mockResolvedValueOnce({ ...plan, method: "muse", lines: [] });
     expect((await (await extract(upload())).json()).method).toBe("muse");
-    trace.run.mockRejectedValueOnce(new Error("timeout"));
+    trace.run.mockRejectedValueOnce(new Error("no tool call")).mockResolvedValueOnce({ ...plan, method: "muse", lines: [] });
+    expect((await (await extract(upload())).json()).method).toBe("muse");
+    trace.run.mockRejectedValue(new Error("timeout"));
     const fallback = await (await extract(upload())).json();
+    expect(trace.run).toHaveBeenCalledTimes(5);
     expect(fallback.lines).toEqual(plan.lines);
     expect(fallback.warnings[0]).toContain("Muse could not trace");
+  });
+  it("re-extracts dense vector PDFs as raster pages before tracing", async () => {
+    const transport = vi.fn(async (_url: unknown, options?: RequestInit) => (options!.body as FormData).get("raster_pdf")
+      ? Response.json(plan) : Response.json({ detail: "Drawing exceeds the 100,000-line extraction resource limit." }, { status: 413 }));
+    vi.stubGlobal("fetch", transport);
+    trace.run.mockResolvedValueOnce({ ...plan, method: "muse", lines: [] });
+    expect((await (await extract(upload())).json()).method).toBe("muse");
+    expect(transport).toHaveBeenCalledTimes(2);
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ detail: "Too dense" }, { status: 413 })));
+    expect((await extract(upload("hall.png"))).status).toBe(413);
   });
   it("leaves images and unconfigured Muse on the engine path", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ...plan, source: { ...plan.source, format: "image" }, method: "opencv" })));

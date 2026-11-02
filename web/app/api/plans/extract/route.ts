@@ -1,5 +1,5 @@
-import { createHttpEngine, EngineError } from "@/server/engine/client";
-import { museTracingAvailable, traceWalls } from "@/server/plans/trace";
+import { EngineError } from "@/server/engine/client";
+import { extractDrawing } from "@/server/plans/extract";
 
 export const maxDuration = 240;
 const MAX_FILE = 20 * 1024 * 1024;
@@ -17,14 +17,7 @@ export async function POST(request: Request) {
   const page = Number(form.get("page") ?? 1);
   if (!Number.isInteger(page) || page < 1) return Response.json({ error: "Choose a valid page." }, { status: 400 });
   try {
-    const plan = await createHttpEngine().extract(file, page, { signal: request.signal });
-    // PDFs are traced by Muse for a quick concept model; engine lines remain the fallback.
-    if (plan.source.format !== "pdf" || !museTracingAvailable()) return Response.json(plan);
-    try { return Response.json(await traceWalls(plan, request.signal)); }
-    catch (error) {
-      if (request.signal.aborted) throw error;
-      return Response.json({ ...plan, warnings: ["Muse could not trace this drawing, so the extracted lines are shown instead.", ...plan.warnings].slice(0, 100) });
-    }
+    return Response.json(await extractDrawing(file, page, request.signal));
   } catch (error) {
     if (error instanceof EngineError && error.status !== undefined) {
       if (error.status >= 400) {
