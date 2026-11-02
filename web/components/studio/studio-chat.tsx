@@ -169,7 +169,8 @@ export function StudioChat({ document, onDocumentChange, sources = emptySources(
                     setInterpretError(`${localizeMessage(locale, outcome.errors[0])} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
-                const designSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(430_000)]);
+                // Outlast the server's 600 s design budget (route maxDuration 630 s) so its own timeout error reaches the user.
+                const designSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(640_000)]);
                 const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: true, brief, sources: await selectedReferences(sources, document) }), signal: designSignal });
                 const assertCurrent = () => {
                     designSignal.throwIfAborted();
