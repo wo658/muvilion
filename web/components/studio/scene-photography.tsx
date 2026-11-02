@@ -42,7 +42,8 @@ function waitTick(signal: AbortSignal): Promise<void> {
 }
 
 const settingsMatch = (settings: PhotoSettings, shot: PhotoShot) =>
-  settings.cutaway === shot.cutaway && settings.ceilingMode === shot.ceilingMode &&
+  // Legacy shots may request cutaway; wall geometry now always keeps its height.
+  settings.ceilingMode === shot.ceilingMode &&
   settings.showStructure === shot.showStructure && settings.showOverhead === shot.showOverhead;
 
 /** Uses the mounted production scene; never copies scene JSX or changes the live camera to render candidates. */
@@ -119,7 +120,7 @@ export function ScenePhotography({ settings, onReady }: {
           const image = renderPhoto(scene, photoCamera, renderer);
           active.throwIfAborted();
           if (!image.startsWith("data:image/jpeg;base64,")) throw new Error("The photo could not be captured. Try again.");
-          return { shot, image };
+          return { shot: { ...shot, cutaway: false }, image };
         } finally {
           busy = false;
         }

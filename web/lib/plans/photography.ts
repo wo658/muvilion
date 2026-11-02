@@ -157,7 +157,7 @@ export function generatePhotoCandidates(document: PlanDocument, intent: PhotoInt
       if (blockedObject) continue;
       if (eye[1] < (document.wallHeight ?? 3) && world && !canStand({x:eye[0]+width/2,y:eye[2]+depth/2}, {...world, objects:[], boundary:undefined, ceilingHeight:undefined}, .2)) continue;
     }
-    candidates.push({ id: `photo-${round}-${candidates.length + 1}`, eye, target, fov: intent.view === "interior" ? 60 : 40, zoom: 1, aspect: 16 / 9, cutaway: intent.view !== "interior", ceilingMode: intent.view === "interior" ? "solid" : "hidden", showStructure: true, showOverhead: true });
+    candidates.push({ id: `photo-${round}-${candidates.length + 1}`, eye, target, fov: intent.view === "interior" ? 60 : 40, zoom: 1, aspect: 16 / 9, cutaway: false, ceilingMode: intent.view === "interior" ? "solid" : "hidden", showStructure: true, showOverhead: true });
     if (candidates.length === 4) break;
   }
   return candidates;

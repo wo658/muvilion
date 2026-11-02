@@ -1,24 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { displayWallHeight, isWallCutaway, partitionLabel } from "@/lib/plans/overview";
+import { partitionLabel } from "@/lib/plans/overview";
 import { PlanDocumentSchema, type PlanDocument, type DesignObject } from "@/lib/plans/schema";
 import { applyDesignProposal, planChatContext } from "@/lib/plans/muse";
 import { cropEvidence } from "@/lib/plans/crop";
 const object: DesignObject = { id: "wall", kind: "partition", label: "Divider", x: .5, y: .5, width: 3, depth: .2, height: 2.4, rotation: 0, color: "#ffffff", provenance: "manual" };
 const document: PlanDocument = { schemaVersion: 1, source: { name: "hall", format: "image", page: 1, pages: 1, width: 100, height: 100 }, preview: "data:image/png;base64,AA==", widthMeters: 10, heightMeters: 10, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: "opencv", objects: [object], entrances: [{ id: "entry", label: "Main entry", x: .2, y: .5, rotation: 90 }] };
 describe("venue overview", () => {
- it("cuts away only the overview; interior retains physical heights", () => {
-  expect(displayWallHeight(6, true, false)).toBe(1.1);
-  expect(displayWallHeight(6, true, true)).toBe(6);
-  expect(displayWallHeight(.7, true, false)).toBe(.7);
-  expect(displayWallHeight(6, false, false)).toBe(6);
- });
- it("never cuts walls below a visible ceiling, including photo settings", () => {
-  expect(isWallCutaway(true, false, true)).toBe(false);
-  expect(isWallCutaway(true, true, false)).toBe(false);
-  expect(isWallCutaway(false, false, false)).toBe(false);
-  expect(isWallCutaway(true, false, false)).toBe(true);
-  expect(displayWallHeight(3, isWallCutaway(true, false, true), false)).toBe(3);
- });
  it("preserves entrance markings and manual provenance for unchanged proposals", () => {
   const result = applyDesignProposal(document, { summary: "Unchanged", objects: [{ ...object, provenance: "ai" }], assumptions: [] });
   expect(result.entrances).toEqual(document.entrances);

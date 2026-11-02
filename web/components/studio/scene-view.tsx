@@ -16,7 +16,7 @@ import { Component, useCallback, useEffect, useMemo, useRef, useState, type Reac
 import { MuviRoaming } from "@/components/muvi/muvi-roaming";
 import { useMotionPaused } from "@/components/muvi/use-motion-paused";
 import { SceneLabel } from "./scene-label";
-import { displayWallHeight, isWallCutaway, VENUE_COLORS } from "@/lib/plans/overview";
+import { VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
 import { Mask, useMask } from "@react-three/drei/core/Mask";
 import { ExhibitionObject } from "./exhibition-object";
@@ -66,7 +66,6 @@ export default function SceneView({ focus = null, document, wallHeight, selected
   const walls = useMemo(() => deriveWalls(document, { pairParallelEdges: true }), [document]);
   const enclosure = useMemo(() => deriveEnclosure(document), [document]);
   const ceiling = document.ceiling ?? enclosure?.ceiling;
-  const [cutaway, setCutaway] = useState(true);
   const [ceilingMode, setCeilingMode] = useState("hidden");
   const [view,setView]=useState<CameraView>("overview");
   const [cameraRevision,setCameraRevision]=useState(0);
@@ -84,7 +83,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
   const [showStructure, setShowStructure] = useState(true);
   const [showOverhead, setShowOverhead] = useState(true);
   const applyPhotoSettings = useCallback((shot: PhotoShot) => {
-    setCutaway(shot.cutaway); setCeilingMode(shot.ceilingMode); setShowStructure(shot.showStructure); setShowOverhead(shot.showOverhead);
+    setCeilingMode(shot.ceilingMode); setShowStructure(shot.showStructure); setShowOverhead(shot.showOverhead);
   }, []);
   useEffect(() => {
     if (!photoRenderer || !onPlanningCaptureReady) return;
@@ -101,13 +100,8 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     } });
     return () => onPlanningCaptureReady(null);
   }, [photoRenderer, document, onPlanningCaptureReady, applyPhotoSettings]);
-  // Keep the cutaway preference for roofless overviews; a visible ceiling must
-  // always meet the room envelope, including photography and transparent roofs.
   const showCeiling = ceilingMode !== "hidden";
-  const effectiveCutaway = isWallCutaway(cutaway, !photographing && view === "interior", showCeiling);
-  const renderedWallHeight = displayWallHeight(wallHeight, effectiveCutaway, !photographing && view === "interior");
-  const enclosedView = !effectiveCutaway;
-  const estimatedEnclosure = enclosedView && enclosure && (enclosure.assumedWalls || enclosure.assumedCeiling);
+  const estimatedEnclosure = enclosure && (enclosure.assumedWalls || enclosure.assumedCeiling);
   const enclosureNotice = estimatedEnclosure ? t("Room enclosure partly estimated · {height} m", { height: enclosure.ceiling.height }) : null;
   const floorShape = useMemo(() => {
     if (!document.floorBoundary?.length) return null;
@@ -125,7 +119,6 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     </ToggleGroup>
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View settings")} title={t("View settings")}/>}><SettingsIcon/></PopoverTrigger>
       <PopoverContent align="end"><PopoverTitle>{t("View settings")}</PopoverTitle><FieldGroup>
-        <Field orientation="horizontal"><FieldLabel htmlFor="cutaway-display">{t("Cutaway")}</FieldLabel><Switch id="cutaway-display" checked={effectiveCutaway} disabled={view === "interior" || showCeiling} onCheckedChange={setCutaway}/></Field>
         <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
@@ -150,7 +143,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     <lineLoop><bufferGeometry><bufferAttribute attach="attributes-position" args={[floorOutline, 3]}/></bufferGeometry><lineBasicMaterial color={TOKENS.edge}/></lineLoop>
     {floorShape && <Mask id={1} rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}><shapeGeometry args={[floorShape]}/><meshBasicMaterial side={DoubleSide}/></Mask>}
     {floorShape && ceiling && showCeiling && <mesh name="room-ceiling" rotation-x={-Math.PI / 2} position={[0, ceiling.height, 0]} receiveShadow><shapeGeometry args={[floorShape]}/><meshStandardMaterial side={DoubleSide} color={ceiling.color} roughness={0.85} transparent={ceilingMode==="transparent"} opacity={ceilingMode==="transparent"?0.18:1} depthWrite={ceilingMode!=="transparent"}/></mesh>}
-    {enclosedView && enclosure?.walls.map(wall => <mesh name="assumed-room-wall" key={wall.id} position={[(wall.a.x + wall.b.x - width) / 2, wall.bottom + wall.height / 2, (wall.a.y + wall.b.y - depth) / 2]} rotation-y={-Math.atan2(wall.b.y - wall.a.y, wall.b.x - wall.a.x)} receiveShadow userData={{ navigationObstacle: true }}>
+    {enclosure?.walls.map(wall => <mesh name="assumed-room-wall" key={wall.id} position={[(wall.a.x + wall.b.x - width) / 2, wall.bottom + wall.height / 2, (wall.a.y + wall.b.y - depth) / 2]} rotation-y={-Math.atan2(wall.b.y - wall.a.y, wall.b.x - wall.a.x)} receiveShadow userData={{ navigationObstacle: true }}>
       <boxGeometry args={[Math.hypot(wall.b.x - wall.a.x, wall.b.y - wall.a.y), wall.height, .08]}/><meshStandardMaterial color={TOKENS.venueExisting} roughness={.9}/>
     </mesh>)}
     {document.scaleConfirmed && (document.zones ?? []).map(zone => <mesh key={zone.id} rotation={[-Math.PI/2,0,zone.rotation*Math.PI/180]} position={[(zone.x-0.5)*width,0.015,(zone.y-0.5)*depth]} onClick={view==="interior"?undefined:e=>{if(document.floorBoundary && !pointInFloor({x:e.point.x/width+.5,y:e.point.z/depth+.5},document.floorBoundary))return;e.stopPropagation();onSelect(zone.id);}}><planeGeometry args={[zone.width,zone.depth]}/><meshBasicMaterial {...(floorShape ? floorMask : {})} color={!photographing && selected===zone.id?TOKENS.accent:exhibition?(zone.purpose==="lounge"?"#d2bfa7":"#263b58"):TOKENS.zoneOverlay} transparent opacity={!photographing && selected===zone.id?0.3:exhibition?.65:.13} depthWrite={false} side={DoubleSide}/></mesh>)}
@@ -160,8 +153,8 @@ export default function SceneView({ focus = null, document, wallHeight, selected
       const bx = line.b.x - width / 2, bz = line.b.y - depth / 2;
       const length = Math.hypot(bx - ax, bz - az);
       if (length < 0.001) return null;
-      return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, renderedWallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow={enclosedView} onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
-        <boxGeometry args={[length, renderedWallHeight, line.thickness]} /><meshStandardMaterial color={!photographing && selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : VENUE_COLORS.existing} roughness={0.8} />
+      return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, wallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
+        <boxGeometry args={[length, wallHeight, line.thickness]} /><meshStandardMaterial color={!photographing && selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : VENUE_COLORS.existing} roughness={0.8} />
       </mesh>;
     })}
     {document.scaleConfirmed && (document.objects ?? []).filter(object => object.kind === "beam" ? showStructure : ["light","hanging-sign","canopy"].includes(object.kind) ? showOverhead : true).map((object) => <group key={object.id} position={[(object.x - 0.5) * width, object.elevation ?? 0, (object.y - 0.5) * depth]} rotation={[0, -object.rotation * Math.PI / 180, 0]}>
@@ -181,11 +174,11 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     {(document.entrances ?? []).map(entrance => <group key={entrance.id} position={[(entrance.x-.5)*width,0.08,(entrance.y-.5)*depth]} rotation-y={entrance.rotation*Math.PI/180}>
       <mesh rotation-x={-Math.PI/2}><ringGeometry args={[0.55,0.85,32]}/><meshBasicMaterial color={VENUE_COLORS.entrance} side={DoubleSide} depthWrite={false}/></mesh>
       <mesh rotation-x={-Math.PI/2} position={[0,0.02,-0.25]}><circleGeometry args={[0.45,3]}/><meshBasicMaterial color={VENUE_COLORS.entrance} side={DoubleSide}/></mesh>
-      <SceneLabel position={[0,Math.max(renderedWallHeight,1.2)+0.6,0]} text={`↳ ${entrance.label}`} color={VENUE_COLORS.entrance} onSelect={() => onSelect(entrance.id)}/>
+      <SceneLabel position={[0,Math.max(wallHeight,1.2)+0.6,0]} text={`↳ ${entrance.label}`} color={VENUE_COLORS.entrance} onSelect={() => onSelect(entrance.id)}/>
     </group>)}
     {!photographing && view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
     {showMuvi && !photographing && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
-    <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
+    <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway: false, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
     <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected} focus={focus}/>
   </Canvas>{photographing && enclosureNotice && <div data-testid="enclosure-note" className="pointer-events-none absolute bottom-2 left-2 rounded bg-surface/90 px-2 py-1 text-xs text-muted">{enclosureNotice}</div>}</div></div>{!exporting && photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
 }

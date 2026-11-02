@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { PlanDocument } from "@/lib/plans/schema";
-import { displayWallHeight, isWallCutaway } from "@/lib/plans/overview";
 import { deriveEnclosure } from "@/lib/plans/enclosure";
 
 const room: PlanDocument = {schemaVersion:1,source:{name:"Room",format:"image",page:1,pages:1,width:100,height:100},preview:"data:image/png;base64,AA==",widthMeters:20,heightMeters:12,scaleConfirmed:true,lines:[],texts:[],warnings:[],method:"opencv",floorBoundary:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]};
@@ -53,28 +52,23 @@ describe("display-only interior enclosure", () => {
     expect(shell.walls.some(w => w.a.y === 6 && w.b.y === 6)).toBe(false);
     expect(JSON.stringify(scene)).toBe(before);
   });
-  it("joins source wall tops to the roof even when the saved view requests cutaway", () => {
+  it("joins full-height source wall tops to the roof", () => {
     const scene: PlanDocument = {...room,wallHeight:3,ceiling:{height:6,status:"confirmed",color:"#ffffff"},lines:[
       {id:"left",a:{x:0,y:0},b:{x:.4,y:0},kind:"wall",origin:"manual",confidence:1},
       {id:"right",a:{x:.6,y:0},b:{x:1,y:0},kind:"wall",origin:"manual",confidence:1},
       {id:"inside",a:{x:.2,y:.5},b:{x:.8,y:.5},kind:"wall",origin:"manual",confidence:1},
     ]};
     const shell = deriveEnclosure(scene)!;
-    for (const ceilingMode of ["solid", "transparent"]) {
-      const cutaway = isWallCutaway(true, false, ceilingMode !== "hidden");
-      const wallTop = displayWallHeight(scene.wallHeight!, cutaway, false);
-      expect(cutaway).toBe(false);
-      const extensions = shell.walls.filter(w => w.a.y === 0 && w.b.y === 0);
-      expect(extensions).toHaveLength(2);
-      for (const wall of extensions) {
-        expect(wall.bottom).toBe(wallTop);
-        expect(wall.bottom + wall.height).toBe(scene.ceiling!.height);
-      }
-      expect(extensions.map(w => [w.a.x,w.b.x])).toEqual([[0,8],[12,20]]);
-      expect(shell.walls.some(w => w.a.y === 6 && w.b.y === 6)).toBe(false);
-      expect(wallTop).toBe(3);
+    const wallTop = scene.wallHeight!;
+    const extensions = shell.walls.filter(w => w.a.y === 0 && w.b.y === 0);
+    expect(extensions).toHaveLength(2);
+    for (const wall of extensions) {
+      expect(wall.bottom).toBe(wallTop);
+      expect(wall.bottom + wall.height).toBe(scene.ceiling!.height);
     }
-    expect(displayWallHeight(3, isWallCutaway(true, false, false), false)).toBe(1.1);
+    expect(extensions.map(w => [w.a.x,w.b.x])).toEqual([[0,8],[12,20]]);
+    expect(shell.walls.some(w => w.a.y === 6 && w.b.y === 6)).toBe(false);
+    expect(wallTop).toBe(3);
   });
   it("retains entrance openings with a lintel instead of placing a wall across the doorway", () => {
     const shell = deriveEnclosure({...room,entrances:[{id:"door",label:"Entry",x:.5,y:0,rotation:0}]})!;

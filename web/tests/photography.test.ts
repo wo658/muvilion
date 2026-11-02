@@ -13,7 +13,7 @@ beforeEach(()=>{vi.clearAllMocks();mocks.hasKey=true;});
 describe("공간 촬영",()=>{
  it("선택한 대상 주위를 촬영하고 도면을 변경하지 않는다",()=>{
   const before=JSON.stringify(document); const shots=generatePhotoCandidates(document,intent);
-  expect(shots).toHaveLength(4);expect(shots.every(shot=>PhotoShotSchema.safeParse(shot).success)).toBe(true);
+  expect(shots).toHaveLength(4);expect(shots.every(shot=>PhotoShotSchema.safeParse(shot).success && !shot.cutaway)).toBe(true);
   expect(shots[0].target).toEqual([expect.closeTo(2),.5,0]);expect(JSON.stringify(document)).toBe(before);
   expect(generatePhotoCandidates(document,{...intent,targetIds:["missing"]})).toEqual([]);
  });

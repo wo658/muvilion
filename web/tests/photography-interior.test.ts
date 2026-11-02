@@ -99,7 +99,7 @@ describe("visitor eye-level photography",()=>{
  it("preserves explicit elevated shots and leaves the document unchanged",()=>{
   const before=JSON.stringify(room);
   const shots=generatePhotoCandidates(room,{...interior,view:"overview"});
-  expect(shots).toHaveLength(4);expect(shots.every(s=>s.eye[1]>EYE_HEIGHT&&s.cutaway&&s.fov===40)).toBe(true);
+  expect(shots).toHaveLength(4);expect(shots.every(s=>s.eye[1]>EYE_HEIGHT&&!s.cutaway&&s.fov===40)).toBe(true);
   expect(JSON.stringify(room)).toBe(before);
  });
 });
