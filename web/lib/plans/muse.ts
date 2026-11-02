@@ -3,7 +3,7 @@ import { z } from "zod";
 import { PlanDocumentSchema, type PlanDocument } from "./schema";
 import { designWarnings } from "./design";
 
-/** Muse can label observed geometry; it cannot invent coordinates or confirm dimensions. */
+/** Line review: Muse labels observed geometry here; it cannot invent coordinates or confirm dimensions. Upload tracing lives in ./trace. */
 export const PlanInterpretation = z.object({
   summary: z.string().min(1).max(2000),
   classifications: z.array(z.object({

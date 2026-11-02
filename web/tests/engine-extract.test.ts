@@ -3,6 +3,8 @@ import { createHttpEngine, EngineError } from "@/server/engine/client";
 import { POST as extract } from "@/app/api/plans/extract/route";
 import { POST as pdf } from "@/app/api/sources/pdf/route";
 
+vi.mock("@/server/plans/trace", () => ({ museTracingAvailable: () => false, traceWalls: vi.fn() }));
+
 const plan = {
   schemaVersion: 1, source: { name: "hall.pdf", format: "pdf", page: 1, pages: 2, width: 100, height: 100 },
   preview: "data:image/png;base64,AA==", widthMeters: null, heightMeters: null, scaleConfirmed: false,
