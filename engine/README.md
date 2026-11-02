@@ -1,5 +1,7 @@
 # Drawing and geometry engine
 
+Architecture: [overview](../architecture/README.md) · [ADRs](../architecture/adr/README.md).
+
 FastAPI service for drawing extraction, with reusable CP-SAT booth placement and
 Shapely geometry validation. Studio currently calls only `/plans/extract`.
 Layout and validation are retained for future integration, not applied to Studio
