@@ -2,6 +2,7 @@ import { resolvePhysicalDimensions } from "@/lib/assets/dimensions";
 import { z } from "zod";
 import { PlanDocumentSchema, type PlanDocument } from "./schema";
 import { designWarnings } from "./design";
+import { wallSurfaceIssues } from "./wall-surfaces";
 
 /** Line review: Muse labels observed geometry here; it cannot invent coordinates or confirm dimensions. Upload tracing lives in ./trace. */
 export const PlanInterpretation = z.object({
@@ -63,6 +64,7 @@ export function planChatContext(document: Omit<PlanDocument, "preview"> | null) 
     zones: document.zones ?? [],
     ceiling: document.ceiling ?? null,
     wallHeight: document.wallHeight ?? null,
+    wallSurfaces: document.wallSurfaces ?? [],
     heightStatus: document.ceiling?.status ?? "unknown",
     visibilityPolicy: "All physical elements are supplied regardless of 3D display toggles; hiding never removes a height or collision constraint.",
     objects: document.objects ?? [],
@@ -88,6 +90,7 @@ export const PlanDesignProposal = z.object({
   summary: z.string().min(1).max(2000),
   zones: PlanDocumentSchema.shape.zones.describe("Complete proposed space-zone list. Omit to preserve existing zones; [] explicitly clears them. Zones do not create walls."),
   objects: PlanDocumentSchema.shape.objects.unwrap(),
+  wallSurfaces: PlanDocumentSchema.shape.wallSurfaces.describe("Complete wall surface designs; omit to preserve, [] to clear. Never alters source wall geometry."),
   assumptions: z.array(z.string().max(300)).max(12),
 });
 
@@ -113,7 +116,9 @@ export function applyDesignProposal(document: PlanDocument, input: unknown): Pla
     const unchanged = previousShape && Object.keys(shape).length === Object.keys(previousShape).length && Object.entries(shape).every(([key, value]) => previousShape[key as keyof typeof previousShape] === value);
     return { ...shape, provenance: unchanged ? previous?.provenance : "ai" as const };
   });
-  const next = PlanDocumentSchema.parse({ ...document, zones, objects });
+  const next = PlanDocumentSchema.parse({ ...document, zones, objects, wallSurfaces: proposal.wallSurfaces ?? document.wallSurfaces });
+  const surfaceIssues = wallSurfaceIssues(next);
+  if (surfaceIssues.length) throw new Error(surfaceIssues.join(" "));
   return {
     ...next,
     warnings: [...new Set([...document.warnings, "Muse layout is a concept, not a verified construction or safety plan.", ...proposal.assumptions, ...designWarnings(next)])].slice(0, 100),

@@ -45,6 +45,24 @@ export const PlanLineSchema = z.object({
   kind: z.enum(["unknown", "wall", "dimension"]),
   origin: z.enum(["vector", "raster", "cad", "manual", "ai"]), confidence: z.number().min(0).max(1),
 });
+/** Surface artwork is attached to evidence walls or planned partitions; it adds no solid geometry. */
+export const WallSurfaceSchema = z.object({
+  id: z.string().min(1).max(100), label: z.string().min(1).max(100),
+  hostType: z.enum(["wall", "partition"]),
+  hostId: z.string().min(1).max(100).describe("Existing wall line ID or planned partition object ID. Never invent a host."),
+  side: z.enum(["front", "back"]).describe("Front is local +depth; wall local width follows source a to b, partition width follows its rotation."),
+  start: z.number().min(0).max(1).describe("Start fraction along the host width, from its local left edge."),
+  end: z.number().min(0).max(1),
+  elevation: z.number().min(0).max(30), height: z.number().positive().max(30),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  materialAssetId: z.enum(MATERIAL_ASSET_IDS).optional(),
+  graphic: z.enum(["none", "stripe", "frame"]).default("none"),
+  graphicColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  text: z.string().max(120).optional().describe("Literal wall lettering, not a description of an image or a claimed logo."),
+  textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+}).refine(surface => surface.end > surface.start, "Surface end must follow start.");
+export type WallSurface = z.infer<typeof WallSurfaceSchema>;
+
 export const PlanDocumentSchema = z.object({
   schemaVersion: z.literal(1),
   entrances: z.array(z.object({ id: z.string().min(1).max(100), label: z.string().min(1).max(80), x: z.number().min(0).max(1), y: z.number().min(0).max(1), rotation: z.number().min(0).max(360) })).max(30).optional(),
@@ -69,10 +87,11 @@ export const PlanDocumentSchema = z.object({
   ceiling: CeilingSchema.optional(),
   wallHeight: z.number().positive().max(30).optional(),
   objects: z.array(DesignObjectSchema).max(200).optional(),
+  wallSurfaces: z.array(WallSurfaceSchema).max(200).optional(),
 }).superRefine((doc, ctx) => {
   if (new Set(doc.lines.map(line => line.id)).size !== doc.lines.length)
     ctx.addIssue({ code: "custom", message: "Line IDs must be unique", path: ["lines"] });
-  for (const key of ["zones", "objects", "entrances"] as const) {
+  for (const key of ["zones", "objects", "entrances", "wallSurfaces"] as const) {
     const values = doc[key] ?? [];
     if (new Set(values.map(value => value.id)).size !== values.length)
       ctx.addIssue({ code: "custom", message: `${key} IDs must be unique`, path: [key] });

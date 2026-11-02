@@ -20,6 +20,8 @@
 | [0012](0012-muse-scale-floor-auto-design.md) | Muse가 축척·바닥 외곽선을 정하고 첫 인테리어를 자동 적용 | accepted, amended by ADR-0013 |
 | [0013](0013-atomic-muse-operations.md) | Muse 작업을 원자적 operation 단위로 즉시 커밋 | accepted |
 
+| [0014](0014-wall-surface-designs.md) | 기존 벽·가벽의 표면 디자인을 근거와 분리해 저장 | accepted |
+
 ## 읽고 갱신하기
 
 `accepted`는 현재 채택된 결정, `proposed`는 검토 중, `deprecated`는 더 이상 권장하지 않는 결정이다. `superseded by ADR-NNNN`은 대체 문서가 있음을 뜻한다. 새 결정에는 다음 번호를 쓰고, 맥락·선택·이유를 먼저 짧게 적는다. 영향·제약·코드 근거·재검토 조건은 필요할 때 덧붙인다.

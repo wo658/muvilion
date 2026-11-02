@@ -2,6 +2,8 @@ import "server-only";
 import sharp from "sharp";
 import type { PlanDocument } from "@/lib/plans/schema";
 import { isSeat, seatDirection } from "@/lib/plans/usability";
+import { wallSurfaceFrame } from "@/lib/plans/wall-surfaces";
+import { deriveWalls } from "@/lib/plans/walls";
 import { objectBounds } from "@/lib/plans/design";
 
 /** Deterministic geometry preview, not a photoreal render or an eye-level view. */
@@ -47,6 +49,24 @@ export async function renderDesign(document: PlanDocument, view: "plan" | "isome
     if (isSeat(object)) {
       const f = seatDirection(object.rotation), c = project(object.x*width,object.y*depth,top+.01), tip = project(object.x*width+f.x*object.depth*.45,object.y*depth+f.y*object.depth*.45,top+.01);
       pieces.push(`<line x1="${c[0]}" y1="${c[1]}" x2="${tip[0]}" y2="${tip[1]}" stroke="#ef4444" stroke-width="2"/><circle cx="${tip[0]}" cy="${tip[1]}" r="2" fill="#ef4444"/>`);
+    }
+  }
+  const surfaceWalls = deriveWalls(document, { pairParallelEdges: true });
+  const escape = (text: string) => text.replace(/[&<>"']/g, value => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[value]!);
+  for (const surface of document.wallSurfaces ?? []) {
+    const frame = wallSurfaceFrame(document, surface, surfaceWalls); if (!frame) continue;
+    const point = (u: number, v: number) => project(frame.x + Math.cos(frame.angle) * u, frame.y + Math.sin(frame.angle) * u, frame.elevation + v);
+    if (view === "plan") {
+      const a = point(-frame.width / 2, 0), b = point(frame.width / 2, 0);
+      pieces.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${surface.color}" stroke-width="4"/>`);
+    } else {
+      pieces.push(polygon([point(-frame.width / 2, 0), point(frame.width / 2, 0), point(frame.width / 2, frame.height), point(-frame.width / 2, frame.height)], surface.color));
+      if (surface.graphic === "stripe") pieces.push(polygon([point(-frame.width / 2, frame.height * .16), point(frame.width / 2, frame.height * .16), point(frame.width / 2, frame.height * .28), point(-frame.width / 2, frame.height * .28)], surface.graphicColor ?? surface.textColor ?? surface.color));
+      if (surface.graphic === "frame") {
+        for (const [cx, cy, w, h] of [[0, frame.height * .06, frame.width * .9, frame.height * .025], [0, frame.height * .94, frame.width * .9, frame.height * .025], [-frame.width * .44, frame.height / 2, frame.width * .025, frame.height * .9], [frame.width * .44, frame.height / 2, frame.width * .025, frame.height * .9]])
+          pieces.push(polygon([point(cx-w/2,cy-h/2),point(cx+w/2,cy-h/2),point(cx+w/2,cy+h/2),point(cx-w/2,cy+h/2)], surface.graphicColor ?? surface.textColor ?? surface.color));
+      }
+      if (surface.text) { const c = point(0, frame.height / 2); pieces.push(`<text x="${c[0]}" y="${c[1]}" text-anchor="middle" font-size="12" fill="${surface.textColor ?? surface.graphicColor ?? surface.color}">${escape(surface.text)}</text>`); }
     }
   }
   for (const entrance of document.entrances ?? []) {
