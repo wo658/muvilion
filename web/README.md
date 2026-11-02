@@ -2,26 +2,28 @@
 
 Architecture: [overview](../architecture/README.md) · [ADRs](../architecture/adr/README.md).
 
-The home page is a drawing-first workspace: upload PDF, PNG/JPEG or optional DXF, crop a space, review evidence, calibrate a known distance, edit walls, place objects and inspect 3D. Muse chat uses the Vercel AI SDK; interpretation and layout proposals require explicit Apply.
+The home page is a drawing-first workspace: upload PDF or PNG/JPEG, crop a space, review evidence, calibrate a known distance, edit walls, place objects and inspect 3D. Muse chat uses the Vercel AI SDK; interpretation and layout proposals require explicit Apply.
 
 ## Run
 
 ```sh
-# engine/
-uv sync
-uv run uvicorn app.main:app --reload
 # web/
 pnpm install
 pnpm dev
 ```
 
-Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignored `web/.env.local`. Existing model provider configuration is reused. Extraction/manual editing work without a model key. The studio needs the actual Python engine, not ENGINE_MOCK.
+Set `MODEL_API_KEY` in gitignored `web/.env.local`, or enter a Meta API key in Settings.
+Node.js 24+ is the only application runtime. Without a model key, imports show the source
+preview with an explicit warning and no inferred walls/text; manual calibration/editing remains available.
 
 ## Pipeline
 
-- PDF: pdfplumber vectors/text + PDFium preview; OpenCV supplements raster content.
-- Images: Pillow orientation + OpenCV line candidates. Raster OCR is not implemented.
-- DXF: ezdxf ASCII modelspace entities; optional, no PDF-to-DXF conversion. Binary DXF and CAD layer/dimension relationships are not supported.
+- PDF: PDF.js 6.5.438 renders the visible crop with its page rotation, using the bundled Node canvas implementation. No vector-line or text extraction runs.
+- Images: existing Sharp applies EXIF orientation, composites transparency onto paper, and bounds image size.
+- New DXF uploads are unsupported. Export CAD drawings to PDF first. Existing DXF projects retain their saved previews, edits and original files; no DXF renderer is installed.
+- Meta Model reads the prepared image for walls, visible text and provisional dimensions. Uploads and samples use the same workflow. Failed model reading returns an error, never a local-extraction fallback.
+- Reference PDFs are supplied to Muse as page images; `text` stays empty until the model reads them in conversation. TXT/Markdown references keep their literal text.
+
 - `lib/plans/schema.ts`: normalized evidence, confirmed scale and editable objects.
 - Muse interprets fixed line IDs using 4×4 spatial regions, padded image crops and batches of up to 250 candidates, with at most three requests in flight. Every selected candidate is assigned once; default minimum length is 12 preview pixels (adjustable 2–24). Shorter evidence is preserved and explicitly reported as deferred. Long new wall candidates (at least 12% of the shorter preview dimension) undergo a second pass against the full-page image to reject floor trenches and grid lines; unchecked or rejected long walls stay unknown. Short room walls retain the regional result, because full-page downscaling obscures their detail. Failures/cancellation retain partial proposals without applying them automatically.
 - Derived 3D walls merge collinear overlapping evidence and gaps up to 5 mm after scale confirmation. Conservative parallel pairs infer thickness; source IDs and geometry remain available. Door-size gaps and ambiguous edge triples remain separate. Heights stay provisional.
@@ -29,7 +31,9 @@ Set `ENGINE_URL` (default http://localhost:8000) and `MODEL_API_KEY` in gitignor
 - SVG review + React Three Fiber preview; JSON import/export and local SQLite projects.
 - Trace a simple interior floor polygon in the studio drawing settings after confirming scale. It defines usable floor and ceiling surfaces without inventing walls. Cropping clears scale and floor review.
 
-Extraction no longer truncates at 1,200 lines or 400 text items. The engine explicitly rejects pages over 100,000 lines, 20,000 text items, or its text/entity resource budgets instead of returning partial evidence. All extracted lines start unknown. Scale requires confirmation. 3D uses schematic wall thickness/height; this is a concept editor, not construction-grade reconstruction or an evacuation validator. Crowd simulation, registration queues and the old replay/review APIs have been removed. The Python layout solver, validation rules and walkable-area geometry remain available for future integration.
+Document uploads are limited to 20 MB; raster inputs to 30 megapixels; previews to 2400 pixels on their longest side. Reference PDFs support up to 12 pages and a 24 MB preview budget. Rendering runs in a disposable Node worker with a 60-second timeout and cancellation. Scale always requires user confirmation. Existing project methods (`pdf-vector`, `opencv`, `dxf`) remain read-compatible; new documents use `preview` or `muse`.
+
+Python/FastAPI, OR-Tools, Shapely, layout/validation endpoints, walkable-area calculation, caches, mocks and generated engine contracts are removed. Existing web geometry and data checks remain; proposals are not measured circulation simulations or safety certification.
 
 ## Space design and heights
 
@@ -47,7 +51,7 @@ The same document drives 2D, 3D, Muse and export. Objects have height and option
 
 Studio controls use shadcn Base UI primitives mapped to Muse semantic colors. Analysis, model information and visibility settings are collapsed by default in Simple view. Camera transitions respect reduced-motion preferences. Third-party component attribution is in `licenses/shadcn-ui-MIT.txt`.
 
-Muse drafts zones and installations with explicit review/Apply, preserving source evidence, scale, floor boundary and ceiling review. This uses live model proposals with deterministic geometry checks; the legacy OR-Tools BoothSpec packing engine is not a general 3D design solver and is not invoked here. Ceiling surfaces are level and objects schematic; sloped roofs, detailed trusses, lighting simulation and structural/rigging verification are not implemented.
+Muse drafts zones and installations with explicit review/Apply, preserving source evidence, scale, floor boundary and ceiling review. This uses live model proposals with deterministic geometry checks; the legacy OR-Tools BoothSpec packing engine has been removed. Ceiling surfaces are level and objects schematic; sloped roofs, detailed trusses, lighting simulation and structural/rigging verification are not implemented.
 
 ## Starting a project
 
@@ -55,7 +59,7 @@ With no projects (or a link to a project that no longer exists), the app opens a
 start from your own drawing, a sample drawing, or an empty project. Sample drawings are listed in
 `data/samples/samples.json` (sources and redistribution notes in `data/samples/README.md`); choosing
 one copies it into SQLite as a new project. Drawings are stored as the project's original and
-extracted when the project opens, so the Python engine must be running. Set `SAMPLES_DIR` to read
+prepared and read by Muse when the project opens. Set `SAMPLES_DIR` to read
 samples from another directory.
 
 ## Checks
@@ -67,13 +71,13 @@ pnpm lint
 pnpm build
 ```
 
-Engine checks: `uv run pytest`, `uv run ruff check .`. Regenerate engine OpenAPI types with `pnpm gen:engine-types` after contract changes.
+`lib/plans/schema.ts` is the document contract. There is no engine API or generated OpenAPI step.
 
 ## Project sources
 
 Project settings open the Sources manager for concept images (PNG/JPG/WebP), brand URL bookmarks with notes, and planning documents (PDF/TXT/Markdown). The active drawing and every attached reference are included in Muse context; legacy selection flags no longer exclude attached references. Workspace geometry remains a spatial constraint. Drawing analysis reviews the active drawing. URL bodies are not fetched.
 
-Images are resized locally. Planning PDFs are rendered and text-extracted through the existing Python extraction service, with every page included (up to 12 pages, 20 MB per upload). Scanned PDFs provide page images even when no text is extractable. DOCX/PPTX are not supported; export these to PDF first. The library permits 12 references and a 10 MB serialized content budget.
+Images are resized locally. Planning PDFs are rendered in Next.js and attached as page images for Muse to read, with every page included (up to 12 pages, 20 MB per upload). No local text extraction or OCR runs. DOCX/PPTX are not supported; export these to PDF first. The library permits 12 references and a 10 MB serialized content budget.
 
 SQLite is the authoritative store for named projects, drawing geometry and edits, source previews/text/notes, and per-drawing planning documents. Original uploaded drawings and references are stored as BLOBs alongside preview images in the same database. Replacing a drawing retains the project's reference library. The toolbar creates, names and switches projects; edits autosave with revision checks to prevent another tab's changes from being silently overwritten. Failed saves retain the editor state and offer retry or export.
 
@@ -110,8 +114,7 @@ Ordinary drawing projects and their source assets remain in the existing project
 ## Server code
 
 `app/api` owns HTTP parsing, status codes, and streaming responses. `server/agent` owns
-model configuration; `server/plans` executes drawing workflows; `server/engine` is the
-single Python transport (including multipart extraction); `server/projects` stores projects
+model configuration; `server/plans` executes drawing workflows and prepares source previews; `server/projects` stores projects
 and creates sample projects. Runtime entry points import `server-only`. Shared schemas and pure
 transformations stay in `lib/`.
 

@@ -76,13 +76,11 @@
         },
         {
           "name": "Moscone North/South · 전시층",
-          "file": "moscone/northsouth-exhibit.pdf",
-          "rasterPdf": true
+          "file": "moscone/northsouth-exhibit.pdf"
         },
         {
           "name": "Moscone North/South · 로비층",
-          "file": "moscone/northsouth-lobby.pdf",
-          "rasterPdf": true
+          "file": "moscone/northsouth-lobby.pdf"
         },
         {
           "name": "Moscone South · 상층 메자닌",

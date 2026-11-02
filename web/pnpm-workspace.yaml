@@ -2,3 +2,5 @@ allowBuilds:
   esbuild: true
   sharp: false
   unrs-resolver: false
+minimumReleaseAgeExclude:
+  - pdfjs-dist@6.5.438

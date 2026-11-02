@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const extract = vi.hoisted(() => vi.fn());
-vi.mock("@/server/engine/client", () => ({ createHttpEngine: () => ({ extract }) }));
-vi.mock("@/server/plans/trace", () => ({ museTracingAvailable: () => false, traceWalls: vi.fn() }));
+vi.mock("@/server/plans/extract", () => ({ extractDrawing: extract }));
 import { getAsset, getProject, listProjects, exportProject } from "@/server/projects/store";
 import { createSampleProject, listSamples, samplesDirectory } from "@/server/projects/samples";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
@@ -16,7 +15,7 @@ beforeEach(() => {
   writeFileSync(join(samples, "venue", "hall.pdf"), "%PDF-1.7 test");
   writeFileSync(join(samples, "venue", "lobby.jpg"), "image fixture");
   writeFileSync(join(samples, "samples.json"), JSON.stringify({ projects: [
-    { id: "venue", name: "Venue", drawings: [{ name: "Hall", file: "venue/hall.pdf", page: 3, rasterPdf: true }, { name: "Lobby", file: "venue/lobby.jpg" }] },
+    { id: "venue", name: "Venue", drawings: [{ name: "Hall", file: "venue/hall.pdf", page: 3 }, { name: "Lobby", file: "venue/lobby.jpg" }] },
     { id: "incomplete", name: "Missing", drawings: [{name:"Hall",file:"venue/hall.pdf"},{ name: "Missing", file: "venue/missing.jpg" }] },
   ] }));
   extract.mockReset();
@@ -37,7 +36,7 @@ describe("sample projects", () => {
     expect(extract.mock.calls.map(args=>[args[0].name,args[1]])).toEqual([['hall.pdf',3],['lobby.jpg',1]]);
     const [hall,lobby]=project.state.drawings!;
     expect(project.state.activeDrawingId).toBe(hall.id);
-    expect(extract.mock.calls[0][2].rasterPdf).toBe(true);
+    expect(extract.mock.calls[0][2].signal).toBeInstanceOf(AbortSignal);
     expect(project.state.document?.source.page).toBe(3);
     expect(hall.originalAssetId).not.toBe(lobby.originalAssetId);
     expect(Buffer.from(getAsset(project.id,hall.originalAssetId!).data).toString()).toBe('%PDF-1.7 test');
@@ -87,7 +86,7 @@ describe("sample projects", () => {
     }
   });
   it("leaves no partial project after extraction failure or cancellation", async () => {
-    extract.mockImplementationOnce(extract.getMockImplementation()!).mockRejectedValueOnce(new Error('engine unavailable'));
+    extract.mockImplementationOnce(extract.getMockImplementation()!).mockRejectedValueOnce(new Error('model unavailable'));
     await expect(createSampleProject('venue',samples)).rejects.toThrow('Could not read');
     expect(listProjects()).toHaveLength(0);
     const abort=new AbortController();abort.abort();

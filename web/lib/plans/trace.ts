@@ -14,6 +14,7 @@ export const ScaleEvidence = z.object({
 export type ScaleEvidence = z.infer<typeof ScaleEvidence>;
 /** Muse traces walls from the page image. Coordinates are approximate and scale stays unconfirmed. */
 export const PlanTrace = z.object({
+  texts: z.array(z.object({ text: z.string().min(1).max(2000), x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).max(1000).optional(),
   summary: z.string().min(1).max(2000),
   walls: z.array(z.object({ a: Point, b: Point })).max(400),
   scaleEvidence: z.array(ScaleEvidence).max(8).default([]),
@@ -125,18 +126,20 @@ export function scaleFromEvidence(document: PlanDocument, evidence: ScaleEvidenc
   return { widthMeters, heightMeters, source: best[0].item.source, label: best[0].item.label, spread };
 }
 
-/** Replace extracted lines and their warnings with Muse's traced walls; keep source text and leave scale for the user to confirm. */
+/** Use image-grounded model walls/text, preserving rendering warnings and unconfirmed scale. */
 export function applyTrace(document: PlanDocument, input: unknown): PlanDocument {
   const trace = PlanTrace.parse(input);
   const lines = traceLines(trace);
-  if (!lines.length) throw new Error("Muse did not find any walls in this drawing.");
   const scale = document.widthMeters || document.heightMeters ? null : scaleFromEvidence(document, trace.scaleEvidence);
   return {
     ...document,
     lines,
+    texts: trace.texts?.map((item, index) => ({ ...item, id: `muse-text-${index + 1}` })) ?? document.texts,
     method: "muse",
     ...(scale ? { widthMeters: scale.widthMeters, heightMeters: scale.heightMeters, scaleConfirmed: false } : {}),
     warnings: [...new Set([
+      ...document.warnings,
+      ...(!lines.length ? ["Muse found no walls. Review the source image before designing."] : []),
       "Muse traced these walls from the drawing image. They are a concept approximation; check them against the source drawing.",
       scale ? `Scale estimated from ${DESCRIPTION[scale.source]} (${scale.label}). Confirm scale before design.` : "No scale reference was found in this drawing. Enter its real dimensions before design.",
       ...(scale && scale.spread > 0.15 ? [`Scale references disagree by ${Math.round(scale.spread * 100)}%. Check the dimensions.`] : []),

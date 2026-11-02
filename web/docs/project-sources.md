@@ -1,6 +1,8 @@
 # Project drawing sources
 
-Open **Sources → Add source → ＋ Drawing** to add another PDF, PNG, JPG or DXF to the current project. Use **Open drawing** on a source to switch the workspace. A project holds up to 12 drawing sources plus 12 shared reference materials; each uploaded file may be up to 20 MB.
+Open **Sources → Add source → ＋ Drawing** to add another PDF, PNG or JPG to the current project. Use **Open drawing** on a source to switch the workspace. A project holds up to 12 drawing sources plus 12 shared reference materials; each uploaded file may be up to 20 MB.
+
+Export CAD drawings to PDF before uploading. Existing DXF projects and backups keep their saved previews, original assets and edits without a DXF converter.
 
 Each drawing keeps its geometry, scale, floor boundary, entrances and design objects in the project saved to SQLite. Opening another page in **Drawing settings** creates a source for that PDF page; reopening a previously opened page restores its edits instead of extracting it again. The last active drawing is restored after autosave and reload.
 

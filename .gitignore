@@ -32,7 +32,7 @@ __pycache__/
 # Worktrees
 .worktrees/
 
-# Engine layout memo (see engine/app/layout/cache.py)
+# Legacy disposable layout cache (never commit local cache files)
 engine/.cache/
 
 # Local tooling state
