@@ -43,7 +43,7 @@ export type SpaceCeiling = z.infer<typeof CeilingSchema>;
 export const PlanLineSchema = z.object({
   id: z.string().min(1).max(100), a: PointSchema, b: PointSchema,
   kind: z.enum(["unknown", "wall", "dimension"]),
-  origin: z.enum(["vector", "raster", "cad", "manual"]), confidence: z.number().min(0).max(1),
+  origin: z.enum(["vector", "raster", "cad", "manual", "ai"]), confidence: z.number().min(0).max(1),
 });
 export const PlanDocumentSchema = z.object({
   schemaVersion: z.literal(1),
@@ -59,7 +59,7 @@ export const PlanDocumentSchema = z.object({
   lines: z.array(PlanLineSchema).max(100000),
   texts: z.array(z.object({ id: z.string().max(100), text: z.string().max(2000),
     x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).max(20000),
-  warnings: z.array(z.string().max(2000)).max(100), method: z.enum(["pdf-vector", "opencv", "dxf"]),
+  warnings: z.array(z.string().max(2000)).max(100), method: z.enum(["pdf-vector", "opencv", "dxf", "muse"]),
   floorBoundary: z.array(PointSchema).min(3).max(128).refine(isSimpleFootprint, "Floor outline must be a non-intersecting polygon with area.").optional(),
   walkStart: PointSchema.optional(),
   zones: z.array(ZoneSchema).max(200).optional(),
