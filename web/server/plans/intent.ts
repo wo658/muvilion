@@ -23,7 +23,7 @@ Respond in the requested locale. This classifier never executes tools or changes
 export async function classifyPlanIntent(input: z.infer<typeof IntentRequest>, signal: AbortSignal): Promise<IntentDecision> {
   const requestId = randomUUID();
   const started = Date.now();
-  const model = getModel();
+  const model = await getModel();
   const report = (reason: string, details: Record<string, unknown> = {}) => console.error("[plan-intent]", JSON.stringify({
     requestId, reason, provider: model.provider, modelId: model.modelId,
     elapsedMs: Date.now() - started, ...details,

@@ -869,5 +869,16 @@
   "Drawing reading cancelled.": "Drawing reading cancelled.",
   "PDF preview cancelled.": "PDF preview cancelled.",
   "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.": "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.",
-  "For CAD drawings, export a PDF before uploading.": "For CAD drawings, export a PDF before uploading."
+  "For CAD drawings, export a PDF before uploading.": "For CAD drawings, export a PDF before uploading.",
+  "Model data use": "Model data use",
+  "Use Contributor pricing": "Use Contributor pricing",
+  "Allow Meta to use the prompts, drawings, reference files and responses sent to Muse Spark to train and improve its models in exchange for discounted API pricing. Uncheck to use Standard without training use.": "Allow Meta to use the prompts, drawings, reference files and responses sent to Muse Spark to train and improve its models in exchange for discounted API pricing. Uncheck to use Standard without training use.",
+  "This choice applies to this browser's next requests, including its open tabs. It does not change other visitors' choices or undo data already sent. Muse Image is separate.": "This choice applies to this browser's next requests, including its open tabs. It does not change other visitors' choices or undo data already sent. Muse Image is separate.",
+  "Contributor enabled for this browser.": "Contributor enabled for this browser.",
+  "Standard enabled for this browser.": "Standard enabled for this browser.",
+  "Contributor selection is unavailable for the configured provider or model.": "Contributor selection is unavailable for the configured provider or model.",
+  "Could not update model data settings. Reopen Settings and try again.": "Could not update model data settings. Reopen Settings and try again.",
+  "Sample preparation cancelled.": "Sample preparation cancelled.",
+  "Muse is reading the sample drawings. This may take a few minutes.": "Muse is reading the sample drawings. This may take a few minutes.",
+  "Cancel preparation": "Cancel preparation"
 }

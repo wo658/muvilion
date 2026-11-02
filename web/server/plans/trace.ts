@@ -1,16 +1,16 @@
 import { REFINE_INSTRUCTIONS, TRACE_INSTRUCTIONS } from "./prompts";
 import "server-only";
 import { PlanServiceError } from "./errors";
-import { generateText, tool } from "ai";
+import { generateText, tool, type LanguageModel } from "ai";
 import { getModel } from "@/server/agent/model";
 import type { PlanDocument } from "@/lib/plans/schema";
 import sharp from "sharp";
 import { applyRefinement, applyTrace, needsRefinement, PlanTrace, ReferenceLocation, refinementWindow, traceEvidence, type ScaleEvidence } from "@/lib/plans/trace";
 
-export const museTracingAvailable = () => getModel().hasKey;
+export const museTracingAvailable = async () => (await getModel()).hasKey;
 
 export async function traceWalls(document: PlanDocument, signal: AbortSignal) {
-  const model = getModel();
+  const model = await getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   signal.throwIfAborted();
   const result = await generateText({
@@ -37,12 +37,12 @@ export async function traceWalls(document: PlanDocument, signal: AbortSignal) {
   if (!call) throw new PlanServiceError("Muse did not return traced walls. Please retry.", 502);
   const trace = PlanTrace.safeParse(call.input);
   if (!trace.success) throw new PlanServiceError("Muse returned an invalid drawing reading. Please retry.", 502);
-  const scaleEvidence = await Promise.all(trace.data.scaleEvidence.map(item => refineReference(document, item, signal)));
+  const scaleEvidence = await Promise.all(trace.data.scaleEvidence.map(item => refineReference(model.model, document, item, signal)));
   return applyTrace(document, { ...trace.data, scaleEvidence });
 }
 
 /** Second look at a short scale bar or dimension on an enlarged crop; any failure keeps the first reading. */
-async function refineReference(document: PlanDocument, item: ScaleEvidence, signal: AbortSignal): Promise<ScaleEvidence> {
+async function refineReference(model: LanguageModel, document: PlanDocument, item: ScaleEvidence, signal: AbortSignal): Promise<ScaleEvidence> {
   const { width, height } = document.source;
   if (!needsRefinement(item, width, height)) return item;
   try {
@@ -54,7 +54,7 @@ async function refineReference(document: PlanDocument, item: ScaleEvidence, sign
       .extract({ left, top, width: Math.max(1, Math.min(meta.width! - left, Math.ceil(window.width * meta.width!))), height: Math.max(1, Math.min(meta.height! - top, Math.ceil(window.height * meta.height!))) })
       .resize({ width: 1024, height: 1024, fit: "inside" }).png().toBuffer();
     const result = await generateText({
-      model: getModel().model,
+      model,
       instructions: REFINE_INSTRUCTIONS,
       messages: [{ role: "user", content: [
         { type: "text", text: JSON.stringify({ reference: { source: item.source, label: item.label, value: item.value, unit: item.unit } }) },

@@ -67,7 +67,7 @@ describe("Muse asset references", () => {
       call("review_design", { coverage, summary: "CC0 라운지", objects: [coffee, wall], zones:[{id:'lounge',label:'Lounge',purpose:'lounge',x:.55,y:.5,width:8,depth:2,rotation:0,assignable:false}], assumptions: [] }),
       call("submit_design", { revision:1, summary: "CC0 라운지" }),
     ] });
-    vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
+    vi.mocked(getModel).mockResolvedValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(200);
     expect((await response.json()).document.objects[0].modelAssetId).toBe("modern_coffee_table_01");
@@ -85,14 +85,14 @@ describe("Muse asset references", () => {
       call("search_design_assets", { category: "all", query: "" }),
       call("submit_design", { summary: "bad", objects: [{ ...chair, modelAssetId: "invented" }], assumptions: [] }),
     ] });
-    vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
+    vi.mocked(getModel).mockResolvedValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(502);
     expect(await response.json()).not.toHaveProperty("document");
   });
   it("bounds repeated searches and fails rather than fabricating a submitted design", async () => {
     const model = new MockLanguageModelV4({ doGenerate: async () => call("search_design_assets", { category: "all", query: "" }) });
-    vi.mocked(getModel).mockReturnValue({ model, hasKey: true, provider: "test", modelId: "test" });
+    vi.mocked(getModel).mockResolvedValue({ model, hasKey: true, provider: "test", modelId: "test" });
     const response = await POST(request());
     expect(response.status).toBe(502);
     expect(model.doGenerateCalls.length).toBeLessThanOrEqual(10);

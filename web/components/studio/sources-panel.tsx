@@ -24,7 +24,8 @@ type Props = {
 
 export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
   const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const uploadRequest = useRef<AbortController | null>(null);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; uploadRequest.current?.abort(); }; }, []);
   const { t, locale } = useI18n();
   const [preview, setPreview] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -56,15 +57,23 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     addTrigger.current?.focus();
   }
   async function upload(file: File, kind: "concept" | "brief") {
+    if (uploadRequest.current) return;
+    const controller = new AbortController();
+    uploadRequest.current = controller;
     setUploading(true); setError(null);
     try {
-      const source = await readReference(file, kind);
+      const source = await readReference(file, kind, controller.signal);
+      controller.signal.throwIfAborted();
       const originalAssetId = await onUploadOriginal(file);
-      if (alive.current) { add({ ...source, originalAssetId }); setQuery(""); }
+      controller.signal.throwIfAborted();
+      if (alive.current && uploadRequest.current === controller) { add({ ...source, originalAssetId }); setQuery(""); }
     } catch (error) {
-      if (alive.current) setError(error instanceof Error ? error.message : "Could not add this source.");
+      if (alive.current && !controller.signal.aborted && uploadRequest.current === controller) setError(error instanceof Error ? error.message : "Could not add this source.");
     } finally {
-      if (alive.current) setUploading(false);
+      if (uploadRequest.current === controller) {
+        uploadRequest.current = null;
+        if (alive.current) setUploading(false);
+      }
     }
   }
   return <section className="ps-sources" aria-label={t("Project sources")}>
@@ -87,7 +96,7 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     </div>}
     <input ref={concept} type="file" accept=".png,.jpg,.jpeg,.webp" hidden aria-label={t("Add concept image")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "concept"); }}/>
     <input ref={brief} type="file" accept=".pdf,.txt,.md" hidden aria-label={t("Add planning document")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "brief"); }}/>
-    {uploading && <p role="status" className="ps-source-feedback">{t("Preparing source preview…")}</p>}
+    {uploading && <div className="ps-source-feedback"><p role="status">{t("Preparing source preview…")}</p><Button onClick={() => { uploadRequest.current?.abort(); uploadRequest.current = null; setUploading(false); }}>{t("Cancel preparation")}</Button></div>}
     {error && <p role="alert" className="ps-source-error">{localizeMessage(locale, error)}</p>}
     <section className="ps-source-group" aria-labelledby="source-drawings-heading">
       <header className="ps-source-group-heading">

@@ -42,6 +42,8 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Opening local projects…");
   const [switching, setSwitching] = useState(false);
+  const sampleRequest = useRef<AbortController | null>(null);
+  const [readingSample, setReadingSample] = useState(false);
   const session = useRef<ProjectSession | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -86,7 +88,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   useEffect(() => {
     const leave = (event: BeforeUnloadEvent) => { if (session.current?.pending) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", leave);
-    return () => { window.removeEventListener("beforeunload", leave); if (timer.current) clearTimeout(timer.current); };
+    return () => { sampleRequest.current?.abort(); window.removeEventListener("beforeunload", leave); if (timer.current) clearTimeout(timer.current); };
   }, []);
   async function flush() {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
@@ -105,6 +107,33 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
     catch (error) { setError(error instanceof Error ? error.message : "Could not open project."); }
     finally { setSwitching(false); }
   }
+  async function startSample(id: string) {
+    if (sampleRequest.current) return;
+    const controller = new AbortController();
+    sampleRequest.current = controller;
+    setSwitching(true); setReadingSample(true); setError(""); setNotice("");
+    try {
+      await flush();
+      controller.signal.throwIfAborted();
+      const next = await createSampleProject(id, controller.signal);
+      controller.signal.throwIfAborted();
+      if (sampleRequest.current !== controller) return;
+      activate(next);
+      setProjects(await listProjects());
+    } catch (error) {
+      if (!controller.signal.aborted && sampleRequest.current === controller) setError(error instanceof Error ? error.message : "Could not open project.");
+    } finally {
+      if (sampleRequest.current === controller) {
+        sampleRequest.current = null;
+        setSwitching(false); setReadingSample(false);
+      }
+    }
+  }
+  function cancelSample() {
+    sampleRequest.current?.abort(); sampleRequest.current = null;
+    setSwitching(false); setReadingSample(false); setError("");
+    setNotice("Sample preparation cancelled.");
+  }
   const switchProject = (id: string) => open(() => loadProject(id));
   /** Stores the drawing as the project's original; Studio extracts it when the project opens. */
   const startWithDrawing = (file: File) => open(async () => {
@@ -118,7 +147,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   }
   if (!ready) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button></>}</main>;
   const start = <ProjectStart busy={switching} error={starting ? error : ""} notice={notice}
-    onDrawing={file => void startWithDrawing(file)} onSample={file => void open(() => createSampleProject(file))}
+    onDrawing={file => void startWithDrawing(file)} onSample={id => void startSample(id)} onStop={readingSample ? cancelSample : undefined}
     onBlank={() => void open(() => createProject(t("Untitled project")))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
   function navigate(href: string) { void flush().then(() => window.location.assign(href)).catch(() => {}); }
   const controls: ProjectControls | null = project && {
@@ -189,6 +218,6 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
           {error && <><span role="alert">{localizeMessage(locale, error)}</span><Button onClick={() => { if (session.current) session.current.failure = null; void flush().catch(() => {}); }}>{t("Retry save")}</Button></>}
         </div>}
     </nav>
-    <div className="pw-editor" inert={switching || undefined}>{starting || !project ? start : <Editor key={project.id} project={project} controls={controls!}/>}</div>
+    <div className="pw-editor" inert={switching && !readingSample || undefined}>{starting || !project ? start : <Editor key={project.id} project={project} controls={controls!}/>}</div>
   </div>;
 }

@@ -869,5 +869,16 @@
   "Drawing reading cancelled.": "도면 읽기를 취소했어요.",
   "PDF preview cancelled.": "PDF 미리보기를 취소했어요.",
   "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.": "원본 미리보기만 표시해요. 벽과 문자를 읽으려면 설정에서 Meta API 키를 추가해 주세요. 축척은 아직 확인되지 않았어요.",
-  "For CAD drawings, export a PDF before uploading.": "CAD 도면은 PDF로 내보낸 뒤 업로드해 주세요."
+  "For CAD drawings, export a PDF before uploading.": "CAD 도면은 PDF로 내보낸 뒤 업로드해 주세요.",
+  "Model data use": "모델 데이터 사용",
+  "Use Contributor pricing": "학습 데이터 제공 할인 사용",
+  "Allow Meta to use the prompts, drawings, reference files and responses sent to Muse Spark to train and improve its models in exchange for discounted API pricing. Uncheck to use Standard without training use.": "할인된 API 요금으로 사용하는 대신, Muse Spark에 전송하는 요청·도면·참고 파일·응답을 Meta의 모델 학습과 개선에 제공하는 데 동의합니다. 체크를 해제하면 학습에 사용하지 않는 Standard를 사용합니다.",
+  "This choice applies to this browser's next requests, including its open tabs. It does not change other visitors' choices or undo data already sent. Muse Image is separate.": "이 브라우저의 열린 탭을 포함해 다음 요청부터 적용됩니다. 다른 방문자의 선택에는 영향을 주지 않으며, 이미 전송한 데이터에는 소급 적용되지 않습니다. Muse Image는 별도입니다.",
+  "Contributor enabled for this browser.": "이 브라우저에서 Contributor를 사용합니다.",
+  "Standard enabled for this browser.": "이 브라우저에서 Standard를 사용합니다.",
+  "Contributor selection is unavailable for the configured provider or model.": "현재 제공자 또는 모델에서는 Contributor를 선택할 수 없습니다.",
+  "Could not update model data settings. Reopen Settings and try again.": "모델 데이터 설정을 반영하지 못했습니다. 설정을 다시 열어 재시도해주세요.",
+  "Sample preparation cancelled.": "샘플 준비를 취소했습니다.",
+  "Muse is reading the sample drawings. This may take a few minutes.": "Muse가 샘플 도면을 읽고 있습니다. 몇 분 정도 걸릴 수 있습니다.",
+  "Cancel preparation": "준비 취소"
 }

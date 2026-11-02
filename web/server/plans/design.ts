@@ -26,7 +26,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
   const wholeFloorInteriorRequired = requiresWholeFloorInterior(document, brief);
   if (wholeFloorRequired && (!document.floorBoundary?.length || !document.scaleConfirmed))
     throw new PlanServiceError("Review the interior floor outline and confirm scale in Drawing settings before designing the whole floor. Image margins are not event space.", 400);
-  const model = getModel();
+  const model = await getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   const runSignal = AbortSignal.any([signal, AbortSignal.timeout(600_000)]);
   const context: DesignToolContext = {

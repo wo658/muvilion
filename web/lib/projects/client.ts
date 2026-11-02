@@ -16,4 +16,4 @@ export async function uploadOriginal(id: string, file: File): Promise<string> {
 }
 export const exportProject = async (id: string) => ProjectExport.parse(await callProject(`/api/projects/${id}/export`));
 export const listSamples = async () => z.array(SampleProject).parse(await callProject("/api/projects/samples"));
-export const createSampleProject = async (id: string) => Project.parse(await callProject("/api/projects/samples", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }));
+export const createSampleProject = async (id: string, signal?: AbortSignal) => Project.parse(await callProject("/api/projects/samples", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }), signal }));
