@@ -30,6 +30,12 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 - App Settings uses a centered dialog and a centered content column up to 640px wide. Each section has a heading; setting rows pair left-aligned labels/descriptions with right-aligned controls. Use separators between API key actions and stack rows on narrow screens. Keep the section navigation, scrollable content and keyboard dismissal.
 
+## Drawing import
+
+Uploads and samples render bounded source previews in Next.js, then Meta Model reads walls and visible text. No local OCR, line detector, solver or Python service runs. Without a model key, show the source preview with an explicit no-reading warning; never imply geometry was extracted. A configured model failure is an error, not a fallback to local geometry. PDF reference pages are attached as images for Muse to read in context. Scale remains unconfirmed.
+
+New drawings accept PDF, PNG and JPG only. The file picker and API reject DXF, with CAD-to-PDF guidance in both languages. Existing DXF projects keep their saved previews, originals and edits; do not re-render them on load. PDF coordinates follow the visible crop and rotation. Existing saved geometry/provenance is not reinterpreted on reload.
+
 ## Physical dimensions
 
 One scene unit is one metre. Object width/depth/height are local outer bounds before rotation; rotation swaps the footprint axes, never the stored dimensions. Model objects use catalog native metre bounds (5 mm input rounding is normalized); changed proportions are rejected by design tools. A mismatched legacy asset is shown as its declared-size box with a warning, never as a silently shrunken model. Schematic fixtures use the declared assumption sizes in `lib/assets/fixtures.ts`; mesh outer bounds, 2D footprints and collision boxes share those sizes. Partitions of arbitrary length use exact schematic geometry or multiple native-size modules. Never relabel a truss as a phone stand or a coffee table as a work desk.
@@ -69,11 +75,11 @@ Only `en` (Eng) and `ko` (한국어) are supported. App Settings changes the UI 
 
 `lib/i18n/en.json` and `ko.json` are the language packs. Both must have matching keys and interpolation parameters. Use `useI18n().t()` in components and `translate()` in pure helpers. Keep full sentences together when numbers or word order differ.
 
-Language changes preserve the conversation, composer, loaded drawing, undo history and selected sources. New Muse requests include the language enum. Historical messages, imported source text, filenames, user labels and external engine diagnostics remain original evidence; never silently rewrite them.
+Language changes preserve the conversation, composer, loaded drawing, undo history and selected sources. New Muse requests include the language enum. Historical messages, imported source text, filenames, user labels and import diagnostics remain original evidence; never silently rewrite them.
 
 ## Verification
 
-For UI review across this project, capture one representative desktop view in English (1920 × 1080) per task. Do not produce mobile captures or additional screenshots unless explicitly requested. This capture preference does not change the application’s default language or functional test coverage. Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web and engine checks before merging.
+For UI review across this project, capture one representative desktop view in English (1920 × 1080) per task. Do not produce mobile captures or additional screenshots unless explicitly requested. This capture preference does not change the application’s default language or functional test coverage. Check both languages in the conversation, sources, settings, drawing controls, 2D and 3D views. Verify refresh persistence, keyboard dismissal, mobile overflow and draft preservation. Run the repository's web checks before merging.
 
 ## Chat components
 

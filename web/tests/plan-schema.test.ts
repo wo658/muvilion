@@ -17,13 +17,14 @@ describe("plan evidence boundary", () => {
     expect(PlanDocumentSchema.safeParse({...document,lines:[...document.lines,...document.lines]}).success).toBe(false);
     expect(PlanDocumentSchema.safeParse({...document,lines:[{...document.lines[0],a:{x:2,y:0}}]}).success).toBe(false);
   });
-  it("rejects incompatible service results", async () => {
+  it("rejects malformed PDFs without an external extraction service", async () => {
     vi.stubGlobal("fetch",vi.fn().mockResolvedValue(Response.json({wrong:"contract"})));
     const form = new FormData();form.set("file",new File(["%PDF-"],"test.pdf"));
     const response=await POST(new Request("http://localhost/api/plans/extract",{method:"POST",body:form}));
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(422);
+    expect(fetch).not.toHaveBeenCalled();
   });
-  it("does not call service for unsupported files", async () => {
+  it("rejects unsupported files before document preparation", async () => {
     const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
     const form=new FormData();form.set("file",new File(["x"],"test.exe"));
     expect((await POST(new Request("http://localhost/api/plans/extract",{method:"POST",body:form}))).status).toBe(415);

@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     if (!(file instanceof File) || !file.size || file.size > 20 * 1024 * 1024 || !/\.pdf$/i.test(file.name)) return Response.json({ error: "Choose a PDF up to 20 MB." }, { status: 400 });
     return Response.json(await previewPdf(file, request.signal));
   } catch (error) {
+    if (request.signal.aborted) return Response.json({ error: "PDF preview cancelled." }, { status: 499 });
     if (error instanceof PlanServiceError) return Response.json({ error: error.message }, { status: error.status });
-    return Response.json({ error: "PDF preview failed. Check the file and that the Python engine is running." }, { status: 503 }); }
+    return Response.json({ error: "PDF preview failed. Check the file and retry." }, { status: 503 }); }
 }

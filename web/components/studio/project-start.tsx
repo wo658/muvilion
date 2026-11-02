@@ -26,7 +26,7 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
   useEffect(() => { listSamples().then(setSamples, () => setSamples([])); }, []);
   const pick = (file: File | undefined) => {
     if (!file) return;
-    if (!/\.(pdf|png|jpe?g|dxf)$/i.test(file.name)) setProblem("Choose a PDF, PNG, JPG or DXF drawing.");
+    if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) setProblem("Choose a PDF, PNG or JPG drawing. Export CAD drawings to PDF first.");
     else if (file.size > 20 * 1024 * 1024) setProblem("Please choose a file smaller than 20 MB.");
     else { setProblem(""); onDrawing(file); }
   };
@@ -35,11 +35,12 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
     <Link href="/muvi" target="_blank" rel="noopener noreferrer" className="mx-auto" aria-label={t("Meet Muvi (new tab)")}><MuviAvatar size={88}/></Link>
     <h1 id="pw-start-title">{t("How would you like to start?")}</h1>
     <p className="pw-start-lead">{t("Bring a floor plan and design the space with Muse.")}</p>
+    <p className="text-sm text-muted">{t("For CAD drawings, export a PDF before uploading.")}</p>
     {notice && <p className="pw-start-notice" role="status">{localizeMessage(locale, notice)}</p>}
-    <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,.dxf" hidden onChange={event => { pick(event.target.files?.[0]); event.target.value = ""; }}/>
+    <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg" hidden onChange={event => { pick(event.target.files?.[0]); event.target.value = ""; }}/>
     <div className="pw-start-options">
       <button type="button" className="pw-start-option" disabled={busy} onClick={() => input.current?.click()}>
-        <strong>{t("Start with my drawing")}</strong><span>{t("PDF, PNG, JPG or DXF · up to 20 MB")}</span>
+        <strong>{t("Start with my drawing")}</strong><span>{t("PDF, PNG, JPG · up to 20 MB")}</span>
       </button>
       <button type="button" className="pw-start-option" disabled={busy || !samples?.length} aria-expanded={showSamples} aria-controls="pw-samples" onClick={() => setShowSamples(value => !value)}>
         <strong>{t("Start with a sample")}</strong><span>{samples === null ? t("Loading samples…") : samples.length ? t("{count} sample projects", { count: samples.length }) : t("No sample drawings in this checkout")}</span>

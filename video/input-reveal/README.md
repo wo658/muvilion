@@ -19,10 +19,10 @@ No Apple or Spline footage, music, logos or design files are used. The film uses
 
 ## Reproduce
 
-With the engine and web app running on their usual ports, run `node --import tsx ../video/input-reveal/prepare.mts` from `web/`. It calls the actual Next.js extraction endpoint, crops the real document and creates a **new** local project containing the PDF, brief and brand source. It never overwrites an existing project. `generated/` contains local IDs, requests and raw model events and is ignored.
+With the web app running, run `node --import tsx ../video/input-reveal/prepare.mts` from `web/`. It calls the actual Next.js extraction endpoint, crops the real document and creates a **new** local project containing the PDF, brief and brand source. It never overwrites an existing project. `generated/` contains local IDs, requests and raw model events and is ignored.
 
 Muse generation uses the same `/api/plans/design` NDJSON endpoint as the app. The final reviewed response contains 27 objects and 6 zones. Two explicit manual adjustments removed a plant/stage overlap and expanded the stage zone to include its backdrop; see `generation-summary.json`. The result is saved to the new project, then the app's camera is recorded. `finalize.mts` documents this recorded run's review edits; it is not a general postprocessor for other model runs. Source inputs and model output are retained locally for provenance. No previous fictional Atelier footage is used.
 
 From `video/`, run `npm run dev` and open **Muvilion-Input-Reveal**, or `npm run render:inputs` for an MP4. `python3 video/input-reveal/build-audio.py` from the repository root regenerates the original cue without external samples. Font is Apple SD Gothic Neo on macOS, with a sans-serif fallback.
 
-For crisp PDF cards, run `engine/.venv/bin/python video/input-reveal/render-pdf-assets.py` from the repository root after preparing the inputs. This renders the same original PDF and crop at 1400px width; the app document retains the original engine extraction.
+For crisp PDF cards, run `python3 video/input-reveal/render-pdf-assets.py` (optional offline video tooling; install `pypdfium2` and `Pillow` in a separate environment) from the repository root after preparing the inputs. This renders the same original PDF and crop at 1400px width; this historical video keeps its recorded source geometry. The current application does not require Python.

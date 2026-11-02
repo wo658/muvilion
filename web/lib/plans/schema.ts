@@ -59,7 +59,7 @@ export const PlanDocumentSchema = z.object({
   lines: z.array(PlanLineSchema).max(100000),
   texts: z.array(z.object({ id: z.string().max(100), text: z.string().max(2000),
     x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).max(20000),
-  warnings: z.array(z.string().max(2000)).max(100), method: z.enum(["pdf-vector", "opencv", "dxf", "muse"]),
+  warnings: z.array(z.string().max(2000)).max(100), method: z.enum(["preview", "muse", "pdf-vector", "opencv", "dxf"]),
   floorBoundary: z.array(PointSchema).min(3).max(128).refine(isSimpleFootprint, "Floor outline must be a non-intersecting polygon with area.").optional(),
   walkStart: PointSchema.optional(),
   zones: z.array(ZoneSchema).max(200).optional(),

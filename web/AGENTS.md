@@ -18,14 +18,13 @@ The root `AGENTS.md` also applies here.
   browser file handling, and view state belong on the browser side, not in `server/`.
 - SQLite is authoritative for project state and uploaded assets. Do not add browser
   persistence (IndexedDB/localStorage) for projects.
-- Keep secrets, model configuration, filesystem access, and Python connection configuration
+- Keep secrets, model configuration, filesystem access, and document preparation
   on the server. Do not expose them through `NEXT_PUBLIC_*` variables.
-- Route Python requests through the common engine client. Preserve request cancellation,
-  operation-specific timeouts, and response validation when migrating existing calls.
+- Document previews use bounded request-scoped Node workers in `server/plans/`. Preserve
+  cancellation, timeouts and result validation. Do not reintroduce a Python service.
 - Model configuration lives in `server/agent`; drawing/model workflows in `server/plans`;
-  Python transport in `server/engine`; project storage and sample projects in
-  `server/projects`.
-  `lib/engine` retains shared contracts and mock computation, not HTTP transport.
+  document preparation also in `server/plans`; project storage and samples in `server/projects`.
+  Shared document schemas live in `lib/plans`.
 - The unified composer calls `/api/plans/intent` before dispatching chat, design, or
   interpretation. Keep routing decisions server-side, validate model output and enforce
   prerequisites in code. Ambiguous requests ask for clarification; failures must not
