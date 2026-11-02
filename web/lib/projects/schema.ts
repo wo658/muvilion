@@ -48,8 +48,9 @@ export const SampleDrawing = z.object({ name: z.string(), file: z.string(), page
 export type SampleDrawing = z.infer<typeof SampleDrawing>;
 /** Sample inputs contain authored references, never persisted project/asset identifiers. */
 export const SampleSource = ReferenceSourceSchema.omit({ id: true, originalAssetId: true }).extend({
-  kind: z.enum(["brand", "brief"]),
-}).refine(source => source.kind !== "brief" || source.text.trim().length > 0, "Sample briefs need document text");
+  kind: z.enum(["brand", "brief", "concept"]),
+  imageFiles: z.array(z.string().regex(/^[\w-]+\/[\w.-]+\.(png|jpe?g|webp)$/)).max(12).optional(),
+}).refine(source => source.images.length + (source.imageFiles?.length ?? 0) <= 12, "Too many sample images").refine(source => source.kind !== "brief" || source.text.trim().length > 0, "Sample briefs need document text");
 export const SampleProject = z.object({ id: z.string(), name: z.string(), drawings: z.array(SampleDrawing).min(1).max(12), sources: z.array(SampleSource).max(12).optional() });
 export type SampleProject = z.infer<typeof SampleProject>;
 export const ProjectExport = z.object({ projectVersion: z.literal(2), name: z.string(), state: ProjectState, assets: z.array(AssetBundle) });
