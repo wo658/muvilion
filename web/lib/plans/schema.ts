@@ -56,6 +56,9 @@ export const PlanDocumentSchema = z.object({
   preview: z.string().max(12_000_000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/),
   widthMeters: z.number().positive().max(10000).nullable(),
   heightMeters: z.number().positive().max(10000).nullable(), scaleConfirmed: z.boolean(),
+  /** Who confirmed scale. Absent on legacy documents (treated as user-confirmed). Muse measures a printed scale bar or dimension. */
+  scaleSource: z.enum(["user", "muse"]).optional(),
+  scaleEvidence: z.string().max(300).optional(),
   lines: z.array(PlanLineSchema).max(100000),
   texts: z.array(z.object({ id: z.string().max(100), text: z.string().max(2000),
     x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).max(20000),

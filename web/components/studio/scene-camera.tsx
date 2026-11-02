@@ -4,8 +4,9 @@ import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { PerspectiveCamera } from 'three';
 import type { PlanDocument } from '@/lib/plans/schema';
-import { interiorPose, overviewPose, type CameraView } from '@/lib/plans/camera';
-export function SceneCamera({document,view,revision,selected,photography=false}:{photography?:boolean;document:PlanDocument;view:CameraView;revision:number;selected:string|null}) {
+import { floorBox, fitDistance, framePose, interiorPose, itemsBox, overviewPose, topPose, type CameraView } from '@/lib/plans/camera';
+/** `focus` follows Muse's committed operations: changed element IDs (empty = whole floor) and a key that changes per operation. */
+export function SceneCamera({document,view,revision,selected,focus=null,photography=false}:{photography?:boolean;document:PlanDocument;view:CameraView;revision:number;selected:string|null;focus?:{ids:string[];key:number}|null}) {
  const ref=useRef<CameraControlsImpl>(null);
  const size=useThree(state=>state.size);
  const get=useThree(state=>state.get);
@@ -19,12 +20,12 @@ export function SceneCamera({document,view,revision,selected,photography=false}:
   const camera=get().camera;
   if(camera instanceof PerspectiveCamera) {camera.fov=40;camera.updateProjectionMatrix();}
   const animate=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const pose=view==='interior'?interiorPose(document):overviewPose(document);
+  const aspect=size.width/Math.max(1,size.height);
+  const pose=view==='interior'?interiorPose(document):view==='top'?topPose(document,aspect):overviewPose(document,aspect);
   if(!pose)return;
   controls.minDistance=view==='interior'?0.01:0.1;
-  controls.maxDistance=view==='interior'?0.01:span*4;
+  controls.maxDistance=view==='interior'?0.01:Math.max(span*4,fitDistance(floorBox(document),aspect)*1.5);
   void controls.zoomTo(1,false);
-  if(view==='top') {void controls.setLookAt(0,span,0.001,0,0,0,animate);return;}
   if(view==='selection'&&x!==undefined&&y!==undefined&&w&&d){
    const object=document.objects?.find(o=>o.id===selected);
    const z=object?.elevation??0,h=object?.height??0.1;
@@ -37,6 +38,17 @@ export function SceneCamera({document,view,revision,selected,photography=false}:
  // Do not reset the camera on ordinary edits or selection changes. Buttons request a new view.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[view,revision,width,depth,photography,get]);
+ // Follow each committed Muse operation in the overview/top views; never move an interior walk or a photo camera.
+ useEffect(()=>{
+  const controls=ref.current;
+  if(!controls||!focus||photography||view==='interior')return;
+  const aspect=size.width/Math.max(1,size.height);
+  const box=focus.ids.length?itemsBox(document,focus.ids):null;
+  const pose=box?framePose(box,aspect):overviewPose(document,aspect);
+  void controls.setLookAt(...pose.eye,...pose.target,!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+ // Only a new operation moves the camera; the document it reads is the committed result of that operation.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[focus?.key]);
  const A=CameraControlsImpl.ACTION;
  const interior=view==='interior'&&!photography;
  return <CameraControls ref={ref} makeDefault minPolarAngle={0.08} maxPolarAngle={photography||interior?Math.PI-0.08:Math.PI/2.02} minZoom={0.5} maxZoom={3} smoothTime={0.22} mouseButtons={{left:A.ROTATE,middle:interior?A.NONE:A.DOLLY,right:interior?A.NONE:A.TRUCK,wheel:interior?A.ZOOM:A.DOLLY}} touches={{one:A.TOUCH_ROTATE,two:interior?A.TOUCH_ZOOM:A.TOUCH_DOLLY_TRUCK,three:interior?A.NONE:A.TOUCH_TRUCK}} />;

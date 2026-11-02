@@ -81,3 +81,14 @@ export function designWarnings(document: PlanDocument, locale: Locale = "en"): s
   }
   return messages;
 }
+
+/** Geometry issues present after an edit but not before it. Each live design operation must not add any. */
+export function introducedWarnings(before: PlanDocument, after: PlanDocument): string[] {
+  const remaining = new Map<string, number>();
+  for (const warning of designWarnings(before)) remaining.set(warning, (remaining.get(warning) ?? 0) + 1);
+  return designWarnings(after).filter(warning => {
+    const count = remaining.get(warning) ?? 0;
+    if (count) remaining.set(warning, count - 1);
+    return !count;
+  });
+}

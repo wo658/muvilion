@@ -5,7 +5,7 @@ import { generateText, tool, type LanguageModel } from "ai";
 import { getModel } from "@/server/agent/model";
 import type { PlanDocument } from "@/lib/plans/schema";
 import sharp from "sharp";
-import { applyRefinement, applyTrace, needsRefinement, PlanTrace, ReferenceLocation, refinementWindow, traceEvidence, type ScaleEvidence } from "@/lib/plans/trace";
+import { applyRefinement, applyTrace, decodeToolInput, needsRefinement, PlanTrace, ReferenceLocation, refinementWindow, traceEvidence, type ScaleEvidence } from "@/lib/plans/trace";
 
 export const museTracingAvailable = async () => (await getModel()).hasKey;
 
@@ -35,7 +35,7 @@ export async function traceWalls(document: PlanDocument, signal: AbortSignal) {
   if (result.finishReason === "length") throw new PlanServiceError("Muse could not finish reading this drawing. Try a smaller region.", 502);
   const call = result.toolCalls.find((item) => item.toolName === "submit_trace");
   if (!call) throw new PlanServiceError("Muse did not return traced walls. Please retry.", 502);
-  const trace = PlanTrace.safeParse(call.input);
+  const trace = PlanTrace.safeParse(decodeToolInput(call.input));
   if (!trace.success) throw new PlanServiceError("Muse returned an invalid drawing reading. Please retry.", 502);
   const scaleEvidence = await Promise.all(trace.data.scaleEvidence.map(item => refineReference(model.model, document, item, signal)));
   return applyTrace(document, { ...trace.data, scaleEvidence });

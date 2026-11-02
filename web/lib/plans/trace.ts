@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { PlanDocument, PlanLine } from "./schema";
+import { isSimpleFootprint } from "./footprint";
+import type { PlanMeasure } from "./measure";
 
 const Point = z.object({ x: z.number(), y: z.number() });
 /** Where the drawing states a real size. Muse locates it; code turns it into metres. */
@@ -21,6 +23,15 @@ export const PlanTrace = z.object({
   uncertainties: z.array(z.string().max(300)).max(12),
 });
 export type PlanTrace = z.infer<typeof PlanTrace>;
+
+/** Some model responses stringify nested arrays/objects in tool arguments; decode those top-level fields before validation. */
+export function decodeToolInput(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  return Object.fromEntries(Object.entries(input).map(([key, value]) => {
+    if (typeof value !== "string" || !/^\s*[[{]/.test(value)) return [key, value];
+    try { return [key, JSON.parse(value)]; } catch { return [key, value]; }
+  }));
+}
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 const AXIS_SNAP = 0.01;
@@ -131,19 +142,49 @@ export function applyTrace(document: PlanDocument, input: unknown): PlanDocument
   const trace = PlanTrace.parse(input);
   const lines = traceLines(trace);
   const scale = document.widthMeters || document.heightMeters ? null : scaleFromEvidence(document, trace.scaleEvidence);
+  // Muse confirms scale only from a printed length (scale bar or dimension) whose readings agree; areas and module assumptions stay estimates.
+  const confirmed = scale && scaleIsMeasured(scale);
   return {
     ...document,
     lines,
     texts: trace.texts?.map((item, index) => ({ ...item, id: `muse-text-${index + 1}` })) ?? document.texts,
     method: "muse",
-    ...(scale ? { widthMeters: scale.widthMeters, heightMeters: scale.heightMeters, scaleConfirmed: false } : {}),
+    ...(scale ? { widthMeters: scale.widthMeters, heightMeters: scale.heightMeters, scaleConfirmed: Boolean(confirmed), ...(confirmed ? { scaleSource: "muse" as const, scaleEvidence: `${DESCRIPTION[scale.source]} (${scale.label})`.slice(0, 300) } : {}) } : {}),
     warnings: [...new Set([
       ...document.warnings,
       ...(!lines.length ? ["Muse found no walls. Review the source image before designing."] : []),
       "Muse traced these walls from the drawing image. They are a concept approximation; check them against the source drawing.",
-      scale ? `Scale estimated from ${DESCRIPTION[scale.source]} (${scale.label}). Confirm scale before design.` : "No scale reference was found in this drawing. Enter its real dimensions before design.",
+      scale ? confirmed ? `Muse set the scale from ${DESCRIPTION[scale.source]} (${scale.label}). Re-measure in Drawing settings if it looks wrong.` : `Scale estimated from ${DESCRIPTION[scale.source]} (${scale.label}). Confirm scale before design.` : "No scale reference was found in this drawing. Enter its real dimensions before design.",
       ...(scale && scale.spread > 0.15 ? [`Scale references disagree by ${Math.round(scale.spread * 100)}%. Check the dimensions.`] : []),
       ...trace.uncertainties,
     ])].slice(0, 40),
   };
+}
+
+/** A stated length read consistently is precise enough to confirm; areas, module sizes and disagreeing references are not. */
+export function scaleIsMeasured(scale: NonNullable<ReturnType<typeof scaleFromEvidence>>) {
+  return (scale.source === "scale-bar" || scale.source === "dimension") && scale.spread <= 0.05;
+}
+
+/** Keep a Muse floor outline only when it is a valid simple polygon inside the frame. */
+export function traceFloor(points: PlanMeasure["floorBoundary"]) {
+  if (!points) return null;
+  const outline = points.map(point => ({ x: clamp(point.x), y: clamp(point.y) }));
+  return isSimpleFootprint(outline) ? outline : null;
+}
+
+/** Muse's traced floor outline; never replaces a reviewed one. */
+export function applyMeasure(document: PlanDocument, measure: PlanMeasure | null): PlanDocument {
+  const floor = document.floorBoundary ? null : traceFloor(measure?.floorBoundary);
+  if (!floor) return document;
+  return { ...document, floorBoundary: floor, warnings: [...new Set([...document.warnings, "Muse traced the interior floor outline. Adjust it in Drawing settings if it includes non-event areas."])].slice(0, 40) };
+}
+
+/** Reading steps arrive as committed operations; merge each into the drawing as it is now so user scale/floor edits made meanwhile survive. */
+export function mergeReading(current: PlanDocument, step: "walls" | "measured", reading: PlanDocument): PlanDocument {
+  const warnings = [...new Set([...current.warnings, ...reading.warnings])].slice(0, 100);
+  const scale = !current.scaleConfirmed && !current.widthMeters && reading.widthMeters
+    ? { widthMeters: reading.widthMeters, heightMeters: reading.heightMeters, scaleConfirmed: reading.scaleConfirmed, scaleSource: reading.scaleSource, scaleEvidence: reading.scaleEvidence } : {};
+  if (step === "walls") return { ...current, lines: reading.lines, texts: reading.texts, method: reading.method, warnings, ...scale };
+  return { ...current, warnings, ...(!current.floorBoundary && reading.floorBoundary ? { floorBoundary: reading.floorBoundary } : {}) };
 }

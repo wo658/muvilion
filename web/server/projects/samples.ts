@@ -8,6 +8,7 @@ import { extractDrawing } from "@/server/plans/extract";
 import { PlanServiceError } from "@/server/plans/errors";
 import { SourceImage, SourceLibrarySchema } from "@/lib/sources/schema";
 import { createProject, ProjectError } from "./store";
+import { hasDesignReferences } from "@/lib/sources/schema";
 
 const Drawing = z.object({ name: z.string().min(1).max(100), file: z.string().regex(/^[\w-]+\/[\w.-]+\.(pdf|jpe?g|png)$/), page: z.number().int().positive().optional() });
 const Manifest = z.object({ projects: z.array(SampleProject.extend({ id: z.string().regex(/^[\w-]+$/), name: z.string().min(1).max(100), drawings: z.array(Drawing).min(1).max(12) })) }).refine(value => new Set(value.projects.map(p => p.id)).size === value.projects.length, "Duplicate sample project IDs");
@@ -76,5 +77,5 @@ export async function createSampleProject(id: string, directory = samplesDirecto
   await Promise.all(Array.from({ length: Math.min(SAMPLE_CONCURRENCY, sample.drawings.length) }, worker));
   runSignal.throwIfAborted();
   const first = drawings[0];
-  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId }, assets: [...assets, ...briefAssets] });
+  return createProject({ name: sample.name, state: { ...emptyProject(), sources, document: first.document, drawings, activeDrawingId: first.id, originalDrawingId: first.originalAssetId, ...(hasDesignReferences(sources) ? { autoDesignPending: true } : {}) }, assets: [...assets, ...briefAssets] });
 }

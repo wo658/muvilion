@@ -48,7 +48,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 /** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
-export default function SceneView({ document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose, sources, exportDisabled = false, onPlanningOpen, onPlanningCaptureReady }: { onPlanningOpen?: () => void; onPlanningCaptureReady?: (api: PlanningCapture | null) => void; sources?: SourceLibrary; exportDisabled?: boolean; document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
+export default function SceneView({ focus = null, document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose, sources, exportDisabled = false, onPlanningOpen, onPlanningCaptureReady }: { onPlanningOpen?: () => void; onPlanningCaptureReady?: (api: PlanningCapture | null) => void; focus?: { ids: string[]; key: number } | null; sources?: SourceLibrary; exportDisabled?: boolean; document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
   const { t } = useI18n();
   const [photoRenderer, setPhotoRenderer] = useState<PhotoRenderer | null>(null);
   const [capturingPlanning, setCapturingPlanning] = useState(false);
@@ -188,7 +188,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     {!photographing && view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
     {showMuvi && !photographing && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
     <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway: effectiveCutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
-    <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected}/>
+    <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected} focus={focus}/>
   </Canvas>{photographing && enclosureNotice && <div data-testid="enclosure-note" className="pointer-events-none absolute bottom-2 left-2 rounded bg-surface/90 px-2 py-1 text-xs text-muted">{enclosureNotice}</div>}</div></div>{!exporting && photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
 }
 

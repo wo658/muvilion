@@ -1,0 +1,24 @@
+---
+status: accepted
+recorded: 2026-11-03
+---
+# Muse 작업은 원자적 operation 단위로 즉시 커밋한다
+
+[ADR-0004](0004-reviewed-design-proposals.md)는 공간 설계 결과 전체를 검토된 제안으로 돌려주고 사용자 Apply로 반영했다. 설계 한 번이 수 분 걸리는데 중간 실패·취소·연결 종료 시 그동안 만든 결과가 모두 사라졌고(Moscone West L3 첫 자동 설계: `edit_design` 8회 뒤 6.9분째 취소, 저장 0), 되돌리기도 설계 전체 한 단계뿐이었다. 사용자 결정에 따라 Muse의 작업을 operation 단위로 쪼개 도착 즉시 프로젝트에 커밋한다. ADR-0004의 설계 Apply 단계와 [ADR-0012](0012-muse-scale-floor-auto-design.md)의 "첫 자동 설계만 예외" 규칙을 대체한다. 선 검토(line review) 결과는 계속 제안 + Apply다.
+
+## 단위
+
+- 설계: `edit_design` 한 번(라벨이 붙은 묶음, 최대 32개 요소, 예: 부스 하나와 구성품)과 통과한 `review_design` 교체가 operation 하나다. 요소 하나는 너무 잘고(200개 = 되돌리기 200번), 실행 전체는 너무 굵다. 최종 검토 리비전이 마지막 스트리밍 결과와 다르면 그 차이도 operation 하나로 커밋한다.
+- 도면 읽기: 원본 미리보기(도면 열기) → 벽 추적 → 축척·바닥 외곽선 측정. 뒤 단계 실패는 앞 단계를 남긴다. 단계는 현재 도면에 병합하므로 그사이 사용자가 정한 축척·외곽선을 덮어쓰지 않는다.
+
+## 원자성과 검증
+
+- 서버가 operation마다 적용 전후 기하 경고를 비교해 새 겹침·바닥/도면 밖·통로 막힘·벽 교차가 생기면 묶음 전체를 거부하고 모델에 오류를 돌려준다. 거부된 묶음은 초안과 프로젝트 어디에도 남지 않는다. 좌석·테이블 짝 같은 사용성 검사와 바닥 전체 할당·요구사항 연결은 중간 단계에서 일시적으로 미충족일 수 있어 기존처럼 `review_design`에서 확인한다.
+- 클라이언트는 스트리밍 이벤트 하나를 일반 편집과 같은 되돌리기 한 단계로 커밋한다. 실행이 커밋한 문서 외의 변경(사용자 편집)이나 참고 자료 변경은 실행을 멈춘다.
+- 실행 카드는 완료·중단 후 결과 요약과 검토를 보여 주고, 중단된 실행은 이어서 디자인, 실행 전체 되돌리기(그 뒤 다른 변경이 없을 때)를 제공한다.
+
+## 참고와 한계
+
+tldraw의 history mark/squash, tldraw agent의 action 단위 적용과 sanitize, SketchUp의 operation commit/abort, Figma MCP bridge의 쓰기별 체크포인트, Onshape의 불변 microversion, 배치 단위 검증 후 커밋하는 Agentic Designer를 참고했다. 이 원자성은 요청이 살아 있는 동안의 것이다. 서버 재시작 뒤 이어서 실행하려면 영속 작업 큐가 필요하며, AGENTS.md에 따라 그 요구가 생길 때 재검토한다. 되돌리기 기록은 세션 메모리(최근 40단계)이며 operation 로그는 저장하지 않는다.
+
+근거: [operation 검증](../../web/lib/plans/design.ts), [설계 도구](../../web/server/agent/tools/design-tools.ts), [실시간 커밋](../../web/components/studio/studio-chat.tsx), [도면 읽기 단계](../../web/server/plans/extract.ts), [단계 병합](../../web/lib/plans/trace.ts), [회귀 테스트](../../web/tests/plan-trace.test.ts).

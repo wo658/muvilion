@@ -20,5 +20,7 @@ export const SourceLibrarySchema = z.object({
   .refine(value => JSON.stringify(value).length <= 10_000_000, "Sources exceed 10 MB. Remove some images or documents.");
 export type SourceLibrary = z.infer<typeof SourceLibrarySchema>;
 export const emptySources = (): SourceLibrary => ({ version: 1, drawingSelected: true, items: [] });
+/** Selected brand URLs or reference images give Muse enough direction to furnish a new project on its own. */
+export const hasDesignReferences = (library: SourceLibrary) => library.items.some(item => item.selected && ((item.kind === "brand" && Boolean(item.url)) || item.images.length > 0));
 export const SourceRequestSchema = z.array(ReferenceSourceSchema).max(13).default([])
   .refine(items => JSON.stringify(items).length <= 10_000_000, "Selected sources are too large");

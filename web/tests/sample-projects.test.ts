@@ -43,6 +43,7 @@ describe("sample projects", () => {
     expect(getAsset(project.id,lobby.originalAssetId!).mimeType).toBe('image/jpeg');
     expect(exportProject(project.id).assets).toHaveLength(2);
     expect(project.state.sources.items).toEqual([]);
+    expect(project.state.autoDesignPending).toBeUndefined();
   });
   it("persists authored references and downloadable briefs independently for each copy", async () => {
     const sources = [
@@ -57,6 +58,7 @@ describe("sample projects", () => {
     const first = await createSampleProject("venue", samples);
     const second = await createSampleProject("venue", samples);
     const saved = getProject(first.id);
+    expect(saved.state.autoDesignPending).toBe(true);
     expect(saved.state.sources.items.map(({ id, originalAssetId, ...source }) => {
       expect(id).toBeTruthy();
       if (source.kind === "brief") expect(originalAssetId).toBeTruthy();
@@ -129,7 +131,7 @@ describe("sample projects", () => {
       expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
     }
   });
-  it("ships three complete venue projects containing all 15 drawings", () => {
-    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['kintex',6],['moscone',7],['lvcc',2]]);
+  it("ships the small authored pop-up and three venue projects containing all 16 drawings", () => {
+    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',6],['moscone',7],['lvcc',2]]);
   });
 });
