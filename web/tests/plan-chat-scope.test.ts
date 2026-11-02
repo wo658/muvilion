@@ -13,5 +13,5 @@ it("단일 제작 대화는 오래된 역할·가격 데이터를 모델에 전�
   const options = mock.stream.mock.calls[0][0] as { instructions: string; messages: unknown[] };
   expect(JSON.stringify(options.messages)).not.toContain("PRIVATE_PRICING");
   expect(JSON.stringify(options.messages)).not.toContain("987654321");
-  expect(options.instructions).toContain("Participation, booth sales, applications and approval workflows are not available");
+  expect(options.instructions).toContain("Actual booth sales, applications and approval workflows are not available");
 });

@@ -41,6 +41,7 @@ function pack(db: DatabaseSync, projectId: string, state: ProjectState): string 
     return { assetId: addAsset(db, projectId, name, match[1], Buffer.from(match[2], "base64"), "image") };
   };
   return JSON.stringify({ ...state,
+    planningArtifacts: state.planningArtifacts?.map(item => ({ ...item, basis: { document: { ...item.basis.document, preview: image(item.basis.document.preview, "planning-drawing.png") }, sources: { ...item.basis.sources, items: item.basis.sources.items.map(source => ({ ...source, images: source.images.map(data => image(data, source.name)) })) } }, photos: item.photos.map(photo => ({ ...photo, image: image(photo.image, "planning-photo.jpg") })) })),
     drawings: state.drawings?.map(item => ({ ...item, document: { ...item.document, preview: image(item.document.preview, "drawing-preview.png") } })),
     document: state.document ? { ...state.document, preview: image(state.document.preview, "drawing-preview.png") } : null,
     sources: { ...state.sources, items: state.sources.items.map(item => ({ ...item, images: item.images.map(data => image(data, item.name)) })) },
@@ -52,6 +53,11 @@ function unpack(db: DatabaseSync, projectId: string, json: string): ProjectState
     const file = asset(db, projectId, ref.assetId);
     return `data:${file.mime_type};base64,${Buffer.from(file.content as Uint8Array).toString("base64")}`;
   };
+  for (const item of state.planningArtifacts ?? []) {
+    item.basis.document.preview = image(item.basis.document.preview);
+    for (const source of item.basis.sources.items) source.images = source.images.map(image);
+    for (const photo of item.photos) photo.image = image(photo.image);
+  }
   for (const item of state.drawings ?? []) item.document.preview = image(item.document.preview);
   if (state.document) state.document.preview = image(state.document.preview);
   for (const item of state.sources.items) item.images = item.images.map(image);

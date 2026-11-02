@@ -154,3 +154,11 @@ The existing analysis shortcut remains available; the main Send action routes au
 Meta supports `toolChoice: "auto"`; routing accepts exactly one validated tool result.
 
 The managed Compose environment uses `APP_ORIGIN=http://web.redpact.test:3000` for its declared browser hostname. Outside loopback, project/settings storage accepts only this explicitly configured origin and still rejects cross-origin and cross-site browser requests. Leave `APP_ORIGIN` unset for ordinary localhost development; it is a trusted local deployment setting, not authentication for public hosting.
+
+## Planning document Artifact
+
+Open **Planning document** in the drawing workspace to create a persistent document with Muse. The read-only preview stays beside the existing conversation: select **Ask Muse about this** on a section or booth, then describe the change. There are no manual document fields. For example: “Set A1 participation fee to KRW 1,500,000 excluding tax, including counter and signage; leave A2 unchanged.” Document requests update text and images only; spatial edits retain their Apply workflow.
+
+Documents are stored per drawing in the existing SQLite project, including real scene photos and five prior text revisions. Project export/import includes them. Use the project save indicator to check autosave; closing the panel does not discard it. A changed drawing or reference library requires explicit **Refresh dimensions & references**, which clears old images and text history while retaining prose/fees for review. **Undo document revision** restores prior text within the same source snapshot.
+
+The participation guide lists explicit booth/assignable zones and standalone booth objects, their drawing dimensions, planned circulation, and estimated participation fees with currency, basis, inclusions and tax status. Unknown prices remain unpriced unless the user supplies a basis or requests an estimate. This does not enable registration, payments or applications. Automatic photos use the real 3D renderer; review framing and retry missing shots through Muse. **Open planning PDF** exports the document through the browser print dialog; the project document remains the editable source.
