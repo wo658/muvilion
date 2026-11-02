@@ -23,7 +23,8 @@ export async function compactImage(blob: Blob): Promise<string> {
     throw new Error("Image is too detailed. Please upload a smaller image.");
   } finally { bitmap.close(); }
 }
-export async function readReference(file: File, kind: "concept" | "brief"): Promise<ReferenceSource> {
+export async function readReference(file: File, kind: "concept" | "brief", signal?: AbortSignal): Promise<ReferenceSource> {
+  signal?.throwIfAborted();
   if (!file.size || file.size > 20 * 1024 * 1024) throw new Error("Choose a non-empty file up to 20 MB.");
   const result: ReferenceSource = { id: createSourceId(), kind, name: file.name, selected: true, text: "", notes: "", images: [] };
   if (kind === "concept") {
@@ -34,7 +35,7 @@ export async function readReference(file: File, kind: "concept" | "brief"): Prom
     if (result.text.length > 60_000) throw new Error("Text documents support up to 60,000 characters.");
   } else if (/\.pdf$/i.test(file.name)) {
     const body = new FormData(); body.set("file", file);
-    const response = await fetch("/api/sources/pdf", { method: "POST", body });
+    const response = await fetch("/api/sources/pdf", { method: "POST", body, signal });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "PDF could not be read.");
     result.text = data.text;
@@ -42,6 +43,7 @@ export async function readReference(file: File, kind: "concept" | "brief"): Prom
       result.images.push(await compactImage(await (await fetch(preview)).blob()));
     }
   } else throw new Error("Choose a PDF, TXT or Markdown planning document.");
+  signal?.throwIfAborted();
   return result;
 }
 

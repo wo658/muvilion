@@ -33,3 +33,30 @@ test('sample preparation stays cancellable and a late response cannot navigate',
   await expect(page.getByRole('alert').filter({ hasText: 'Sample analysis unavailable in this test.' })).toBeVisible();
   expect(requests).toBe(2);
 });
+
+test('PDF source reading can be cancelled without adding a late source', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('muvilion.settings.language.v1', 'en'));
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let requested = false;
+  await page.route('**/api/sources/pdf', async route => {
+    requested = true;
+    await held;
+    await route.fulfill({ json: { text: 'Late OCR', previews: [] } }).catch(() => {});
+  });
+  await page.goto('/');
+  const blank = page.getByRole('button', { name: 'Start with an empty project', exact: true });
+  await expect(blank.or(page.getByRole('button', { name: 'New project', exact: true })).first()).toBeVisible();
+  if (!await blank.isVisible()) await page.getByRole('button', { name: 'New project', exact: true }).click();
+  await blank.click();
+  await page.getByRole('button', { name: 'Add sources', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sources', exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Add planning document', { exact: true }).setInputFiles({ name: 'cancelled-brief.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
+  await expect.poll(() => requested).toBe(true);
+  await dialog.getByRole('button', { name: 'Cancel preparation', exact: true }).click();
+  await expect(dialog.getByText('Preparing source preview…', { exact: true })).toHaveCount(0);
+  release();
+  await expect(dialog.getByText('cancelled-brief.pdf', { exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Add source', exact: true })).toBeEnabled();
+});
