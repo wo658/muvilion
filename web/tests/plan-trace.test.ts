@@ -45,10 +45,21 @@ describe("Muse wall tracing", () => {
     trace.prepare.mockResolvedValue([{ ...plan, lines: [], method: "preview" }]);
     trace.run.mockResolvedValueOnce({ ...plan, method: "muse" });
     expect((await (await extract(upload(name))).json()).method).toBe("muse");
-    trace.run.mockRejectedValueOnce(new PlanServiceError("Model failed", 502));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    trace.run.mockRejectedValue(new PlanServiceError("Model failed", 502));
     const response = await extract(upload(name));
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: "Model failed" });
+  });
+  it("retries a failed Muse reading once before surfacing the error", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    trace.prepare.mockResolvedValue([{ ...plan, lines: [], method: "preview" }]);
+    trace.run.mockRejectedValueOnce(new Error("no tool call")).mockResolvedValueOnce({ ...plan, method: "muse" });
+    expect((await (await extract(upload())).json()).method).toBe("muse");
+    expect(trace.run).toHaveBeenCalledTimes(2);
+    trace.run.mockReset().mockRejectedValue(new PlanServiceError("Model failed", 502));
+    expect((await extract(upload())).status).toBe(502);
+    expect(trace.run).toHaveBeenCalledTimes(2);
   });
   it("keeps a source preview available without a model key and never fabricates geometry", async () => {
     trace.available = false;

@@ -15,4 +15,4 @@ PDF·이미지·DXF 처리는 아직 Python에 의존한다. 다른 작업에서
 이 단계가 완료되기 전에는 Next.js 단독 실행이 가능하다고 설명하지 않는다.
 배치 제안은 최적해나 검증된 피난·동선 시뮬레이션 결과를 의미하지 않는다.
 
-후속: [ADR-0009](0009-nextjs-document-preparation.md)에서 문서 준비를 이전하고 Python 서버 제거를 완료했다.
+후속: [ADR-0011](0011-nextjs-document-preparation.md)에서 문서 준비를 이전하고 Python 서버 제거를 완료했다.

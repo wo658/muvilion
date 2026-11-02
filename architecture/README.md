@@ -7,8 +7,8 @@
 | 경계 | 책임과 정본 |
 | --- | --- |
 | 브라우저 | 도면 편집·3D 표시·실제 장면 촬영·기획서 미리보기와 인쇄. 공간 변경은 제안 검토 후 Apply |
-| Next.js | 브라우저 API, 모델 호출·작업 조율, 프로젝트·원본 자산·설정 저장. 서버 기능은 `web/server/`에서 관리 |
-| 문서 준비 | Next.js의 요청 단위 Node worker가 PDF/이미지/DXF 미리보기 생성. 로컬 OCR·선 추출 없음 |
+| Next.js | 브라우저 API, Muse 모델 호출([ADR-0009](adr/0009-muse-model-workflows.md))·작업 조율, 프로젝트·원본 자산·설정 저장. 서버 기능은 `web/server/`에서 관리 |
+| 문서 준비 | Next.js의 요청 단위 Node worker가 PDF/이미지/DXF 미리보기 생성. 로컬 OCR·선 추출 없음([ADR-0011](adr/0011-nextjs-document-preparation.md)) |
 | SQLite | 프로젝트와 원본/파생 자산, 도면별 기획 문서, 앱 설정. 일반 프로젝트 내보내기에서 키는 제외 |
 | 도면 계약 | `web/lib/plans/schema.ts`가 편집·저장·모델 결과의 런타임 검증을 소유 |
 | PDF | 저장된 기획 문서를 읽기 위한 파생 출력. 편집 정본은 프로젝트의 기획 문서 |
