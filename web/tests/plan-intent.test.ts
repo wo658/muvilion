@@ -10,8 +10,8 @@ const decide = (intent: string, brief = "") => mocks.generate.mockResolvedValue(
 beforeEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); mocks.hasKey = true; });
 
 describe("intent routing boundary", () => {
-  it.each(["chat", "design", "interpret", "clarify", "photography"])("returns validated %s decisions without executing a workflow", async intent => {
-    decide(intent, ["design", "photography"].includes(intent) ? "Show the lounge by the entrance" : "");
+  it.each(["chat", "design", "interpret", "clarify", "photography", "planning"])("returns validated %s decisions without executing a workflow", async intent => {
+    decide(intent, ["design", "photography", "planning"].includes(intent) ? "Show the lounge by the entrance" : "");
     const response = await POST(request({ message: "Help with this space", document }));
     expect(response.status).toBe(200);
     expect((await response.json()).intent).toBe(intent);
@@ -80,4 +80,11 @@ describe("intent routing boundary", () => {
     mocks.generate.mockRejectedValue(new Error("unavailable"));
     expect((await POST(request({ message: "Help", document }))).status).toBe(502);
   });
+});
+
+it("routes document requests with selected section context and without a scale prerequisite", async () => {
+  decide("planning", "Revise the fee for booth-a1 in the participation guide");
+  const response = await POST(request({ message: "Change this price", document: { ...document, scaleConfirmed: false }, planning: { open: true, title: "Planning", target: "booth-a1" } }));
+  expect((await response.json()).intent).toBe("planning");
+  expect(JSON.stringify(mocks.generate.mock.calls[0][0].messages)).toContain("booth-a1");
 });

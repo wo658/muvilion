@@ -3,7 +3,8 @@ import { dimensionsMatch } from "@/lib/assets/dimensions";
 import { FixtureObject } from "./fixture-object";
 import { ScenePhotography, type PhotoRenderer } from "./scene-photography";
 import { PhotographyPanel } from "./photography-panel";
-import dynamic from "next/dynamic";
+import type { PlanningCapture } from "./use-planning-artifact";
+import { generatePhotoCandidates } from "@/lib/plans/photography";
 import type { SourceLibrary } from "@/lib/sources/schema";
 import type { PhotoRequest } from "@/lib/plans/photography-client";
 import type { PhotoShot } from "@/lib/plans/photography";
@@ -12,7 +13,7 @@ import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
 
 import { createPortal } from "react-dom";
-import { Component, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MuviRoaming } from "@/components/muvi/muvi-roaming";
 import { useMotionPaused } from "@/components/muvi/use-motion-paused";
 import { SceneLabel } from "./scene-label";
@@ -38,7 +39,7 @@ import { pointInFloor } from "@/lib/plans/footprint";
 import { DoubleSide, Shape } from "three";
 import { TOKENS } from "@/lib/ui/tokens";
 
-const DeliverablesPanel = dynamic(() => import("./deliverables-panel").then(module => module.DeliverablesPanel), { ssr: false });
+
 
 class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -47,18 +48,14 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 /** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
-export default function SceneView({ document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose, sources, exportDisabled = false }: { sources?: SourceLibrary; exportDisabled?: boolean; document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
+export default function SceneView({ document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose, sources, exportDisabled = false, onPlanningOpen, onPlanningCaptureReady }: { onPlanningOpen?: () => void; onPlanningCaptureReady?: (api: PlanningCapture | null) => void; sources?: SourceLibrary; exportDisabled?: boolean; document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
   const { t } = useI18n();
   const [photoRenderer, setPhotoRenderer] = useState<PhotoRenderer | null>(null);
-  const [deliverablesOpen, setDeliverablesOpen] = useState(false);
-  if (deliverablesOpen && photoRequest) setDeliverablesOpen(false);
+  const [capturingPlanning, setCapturingPlanning] = useState(false);
   const exportTrigger = useRef<HTMLButtonElement>(null);
-  const exporting = deliverablesOpen && !exportDisabled && !photoRequest;
+  const exporting = capturingPlanning;
   const photographing = Boolean(photoRequest) || exporting;
-  const closeDeliverables = () => {
-    setDeliverablesOpen(false);
-    requestAnimationFrame(() => exportTrigger.current?.focus());
-  };
+
   const systemPaused = useMotionPaused();
   const [showMuvi, setShowMuvi] = useState(true);
   const [muviPaused, setMuviPaused] = useState(false);
@@ -81,7 +78,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   const overviewCeiling=useRef("hidden");
   const changeView=(next:CameraView)=>{
     onPhotoClose?.();
-    setDeliverablesOpen(false);
+
     if(next==="interior" && view!=="interior") {overviewCeiling.current=ceilingMode;if(ceiling)setCeilingMode("solid");}
     if(next!=="interior" && view==="interior") setCeilingMode(overviewCeiling.current);
     setExploreStatus(EXPLORE_HINT);setView(next);setCameraRevision(n=>n+1);
@@ -91,8 +88,23 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
   const applyPhotoSettings = useCallback((shot: PhotoShot) => {
     setCutaway(shot.cutaway); setCeilingMode(shot.ceilingMode); setShowStructure(shot.showStructure); setShowOverhead(shot.showOverhead);
   }, []);
+  useEffect(() => {
+    if (!photoRenderer || !onPlanningCaptureReady) return;
+    onPlanningCaptureReady({ capture: async (targetId, signal) => {
+      const previous = photoRenderer.current();
+      const intent = { title: targetId, description: "Planning document", targetIds: targetId === "overview" ? [] : [targetId], view: targetId === "overview" ? "overview" as const : "interior" as const, framing: targetId === "overview" ? "venue" as const : "subjects" as const, azimuth: 45, elevation: 35, distanceScale: .7 };
+      const shot = generatePhotoCandidates(document, intent)[0] ?? generatePhotoCandidates(document, { ...intent, view: "overview" })[0];
+      if (!shot) throw new Error("Confirm the drawing scale before taking document photos.");
+      setCapturingPlanning(true); applyPhotoSettings(shot);
+      try {
+        const capture = await photoRenderer.capture(shot, signal);
+        return { ...capture, targetId, capturedAt: new Date().toISOString() };
+      } finally { applyPhotoSettings(previous); setCapturingPlanning(false); }
+    } });
+    return () => onPlanningCaptureReady(null);
+  }, [photoRenderer, document, onPlanningCaptureReady, applyPhotoSettings]);
   // Direct capture preserves Explore's full-height walls; AI shots own their settings.
-  const effectiveCutaway = exporting && view === "interior" ? false : cutaway;
+  const effectiveCutaway = cutaway;
   const renderedWallHeight = displayWallHeight(wallHeight, effectiveCutaway, !photographing && view === "interior");
   const showCeiling = ceilingMode !== "hidden";
   const enclosedView = !effectiveCutaway || (!photographing && view === "interior");
@@ -128,7 +140,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
         <p className="mt-2">{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p>
       </details></PopoverContent>
     </Popover>
-    {sources && <Button ref={exportTrigger} variant="outline" size="sm" disabled={exportDisabled || !photoRenderer} aria-expanded={exporting} onClick={() => { onPhotoClose?.(); setDeliverablesOpen(value => !value); }}>{t("Capture · PDF")}</Button>}
+    {sources && <Button ref={exportTrigger} data-planning-trigger variant="outline" size="sm" disabled={exportDisabled} onClick={() => { onPhotoClose?.(); onPlanningOpen?.(); }}>{t("Planning document")}</Button>}
   </div>;
   return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}{enclosureNotice && <span className="block text-xs" data-testid="enclosure-note">{enclosureNotice}</span>}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" gl={{ stencil: true }} shadows camera={cameraOptions} dpr={[1, 1.5]}>
 
@@ -177,7 +189,7 @@ export default function SceneView({ document, wallHeight, selected, onSelect, to
     {showMuvi && !photographing && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
     <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway: effectiveCutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
     <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected}/>
-  </Canvas>{photographing && enclosureNotice && <div data-testid="enclosure-note" className="pointer-events-none absolute bottom-2 left-2 rounded bg-surface/90 px-2 py-1 text-xs text-muted">{enclosureNotice}</div>}</div></div>{!exporting && photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}{exporting && sources && <DeliverablesPanel document={document} sources={sources} renderer={photoRenderer} onClose={closeDeliverables}/>}</div></SceneBoundary>;
+  </Canvas>{photographing && enclosureNotice && <div data-testid="enclosure-note" className="pointer-events-none absolute bottom-2 left-2 rounded bg-surface/90 px-2 py-1 text-xs text-muted">{enclosureNotice}</div>}</div></div>{!exporting && photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
 }
 
 function SceneUnavailable() {

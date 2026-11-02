@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PlanningArtifactSchema } from "@/lib/plans/planning-artifact";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { ReferenceSourceSchema, SourceLibrarySchema, emptySources } from "@/lib/sources/schema";
 
@@ -12,6 +13,7 @@ export type DrawingSource = z.infer<typeof DrawingSourceSchema>;
 
 export const ProjectState = z.object({
   projectVersion: z.literal(1),
+  planningArtifacts: z.array(PlanningArtifactSchema).max(12).optional(),
   document: PlanDocumentSchema.nullable(),
   sources: SourceLibrarySchema,
   /** Absent in legacy single-drawing projects. document remains the active workspace. */
@@ -22,6 +24,9 @@ export const ProjectState = z.object({
   originalDrawingPage: z.number().int().positive().optional(),
 }).superRefine((state, ctx) => {
   const drawings = state.drawings ?? [];
+  const artifacts = state.planningArtifacts ?? [];
+  if (new Set(artifacts.map(a => a.drawingId)).size !== artifacts.length)
+    ctx.addIssue({ code: "custom", message: "Duplicate planning documents", path: ["planningArtifacts"] });
   if (new Set(drawings.map(item => item.id)).size !== drawings.length)
     ctx.addIssue({ code: "custom", message: "Duplicate drawing source IDs", path: ["drawings"] });
   if (drawings.length || state.activeDrawingId) {

@@ -117,3 +117,9 @@ attribution behavior built into the tool.
   failures must not break the drawing viewer or intercept drawing selection.
 - Reuse the shared 3D model renderer and GLB; do not create competing character
   implementations. See `web/docs/muvi.md` for assets and rebuild commands.
+
+## Architecture decisions
+
+- Start with [architecture/README.md](architecture/README.md) and the [ADR index](architecture/adr/README.md) for current architecture and decision history.
+- Update ADRs with material changes to service boundaries, data ownership, persistence or contracts. Supersede old decisions explicitly rather than erasing history.
+- Use [GLOSSARY.md](GLOSSARY.md) for domain terms. Root `README.md` and `docs/` remain private and gitignored.

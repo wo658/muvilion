@@ -6,7 +6,7 @@ space is initial design. There is no separate post-processing agent.
 
 Muse prioritizes editable interiors and brand expression; existing-wall scanning is
 optional supporting evidence, not a prerequisite. Scale and usable boundaries still
-constrain the design. Selected references are facts; proposed brand directions and
+constrain the design. Attached references supply evidence; proposed brand directions and
 unverified heights must be identified as assumptions.
 
 ## Tools
@@ -14,6 +14,8 @@ unverified heights must be identified as assumptions.
 - `set_design_brief`: records a fixed model-authored direction and deliverables before
   drafting. Interior briefs must include physical installations, not just zoning.
   User quantities and requested furnishings must be preserved.
+
+- `edit_design`: edits the request-local draft before review. It does not write the saved project or bypass final review/Apply.
 
 - `review_design`: stages a complete candidate without changing the user's document,
   computes geometry warnings and requirement coverage separately, and renders plan
@@ -46,7 +48,7 @@ call budgets and artifacts. Call `reserveToolCall` before external work and pass
 `context.signal` into the adapter. Use `addArtifact` for visual evidence: it queues
 images for the next model step, avoiding chat-completions providers that stringify
 image tool results. Do not expose credentials in tool inputs/results. Do not mutate
-the original plan, import unselected references, or automatically apply changes.
+the original plan or automatically apply changes.
 
 No SAM 3D service is configured. A future asset/3D adapter must define its actual
 provider, returned asset contract, provenance and import path. Categories do not
