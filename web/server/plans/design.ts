@@ -9,6 +9,7 @@ import { createDesignTools, ReviewedDesignSubmission } from "@/server/agent/tool
 import type { DesignToolContext } from "@/server/agent/tools/design-context";
 import { requiresWholeFloor, requiresWholeFloorInterior, reviewFloorCoverage } from "@/lib/plans/floor-coverage";
 import { reviewUsability } from "@/lib/plans/usability";
+import { wallSurfaceIssues } from "@/lib/plans/wall-surfaces";
 import { designWarnings } from "@/lib/plans/design";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
 import { planChatContext } from "@/lib/plans/muse";
@@ -31,7 +32,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
   const runSignal = AbortSignal.any([signal, AbortSignal.timeout(600_000)]);
   const context: DesignToolContext = {
     base: document, draft: document, revision: 0, emitPreview, wholeFloorRequired, wholeFloorInteriorRequired,
-    phase: document.objects?.length || document.zones?.length ? "revision" : "initial",
+    phase: document.objects?.length || document.zones?.length || document.wallSurfaces?.length ? "revision" : "initial",
     sources: input.sources.filter(source => source.selected), signal: runSignal, env: { ...process.env, MODEL_API_KEY: storedMetaKey() ?? process.env.MODEL_API_KEY },
     artifacts: [], pendingImages: [], calls: new Map(),
   };
@@ -120,7 +121,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
     if (!context.review?.complete) throw new PlanServiceError("The interior design is missing requested elements. No changes were applied. Retry with the same brief.", 502);
     if ((context.brief?.scope !== "edit" || wholeFloorRequired) && !reviewFloorCoverage(context.draft, wholeFloorInteriorRequired ? "interior" : context.brief?.scope ?? "interior").complete)
       throw new PlanServiceError("The design does not allocate and furnish the entire reviewed floor. No changes were applied. Retry with the same whole-floor brief.", 502);
-    if (designWarnings(context.draft).length) throw new PlanServiceError("The design still has geometry conflicts. No changes were applied.", 502);
+    if (designWarnings(context.draft).length || wallSurfaceIssues(context.draft).length) throw new PlanServiceError("The design still has geometry conflicts. No changes were applied.", 502);
     if (reviewUsability(context.draft).issues.length) throw new PlanServiceError("The design still has seating or circulation usability issues. No changes were applied.", 502);
     return { document: context.draft, summary: proposal.summary, artifacts: context.artifacts, phase: context.phase, designReview: context.review, runId };
   } catch (error) {

@@ -8,7 +8,7 @@ export const DesignBriefSchema = z.object({
   requirements: z.array(z.object({
     id: z.string().min(1).max(80),
     label: z.string().min(1).max(300).describe("One requested deliverable, preserving quantities and brand intent."),
-    target: z.enum(["objects", "zones"]),
+    target: z.enum(["objects", "zones", "wallSurfaces"]),
     kinds: z.array(DesignObjectSchema.shape.kind).max(12).default([]).describe("Allowed object kinds; empty means any. Ignored for zones."),
     minimum: z.number().int().min(0).max(200),
   })).min(1).max(24),
@@ -29,7 +29,7 @@ export const DesignCoverageSchema = z.array(z.object({
 export const DesignReviewSchema = z.object({
   direction: z.string(),
   requirements: z.array(z.object({
-    id: z.string(), label: z.string(), target: z.enum(["objects", "zones"]),
+    id: z.string(), label: z.string(), target: z.enum(["objects", "zones", "wallSurfaces"]),
     minimum: z.number(), count: z.number(), satisfied: z.boolean(), decision: z.string(),
     // Optional for reviews saved before actionable coverage diagnostics were added.
     invalidIds: z.array(z.string()).optional(),
@@ -43,7 +43,7 @@ export function reviewDesignCoverage(brief: DesignBrief, document: PlanDocument,
   const requirements = brief.requirements.map(requirement => {
     const entries = coverage.filter(entry => entry.requirementId === requirement.id);
     const entry = entries.length === 1 ? entries[0] : undefined;
-    const valid = new Set((requirement.target === "zones" ? document.zones ?? [] :
+    const valid = new Set((requirement.target === "wallSurfaces" ? document.wallSurfaces ?? [] : requirement.target === "zones" ? document.zones ?? [] :
       (document.objects ?? []).filter(object => !requirement.kinds.length || requirement.kinds.includes(object.kind))).map(item => item.id));
     const ids = [...new Set(entry?.ids ?? [])];
     const count = ids.filter(id => valid.has(id)).length;

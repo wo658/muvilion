@@ -896,5 +896,6 @@
   "Could not update model data settings. Reopen Settings and try again.": "Could not update model data settings. Reopen Settings and try again.",
   "Sample preparation cancelled.": "Sample preparation cancelled.",
   "Muse is reading the sample drawings. This may take a few minutes.": "Muse is reading the sample drawings. This may take a few minutes.",
-  "Cancel preparation": "Cancel preparation"
+  "Cancel preparation": "Cancel preparation",
+  "{count} wall surface designs.": "{count} wall surface designs."
 }

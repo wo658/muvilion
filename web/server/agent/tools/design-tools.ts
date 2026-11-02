@@ -8,6 +8,7 @@ import { reviewUsability } from "@/lib/plans/usability";
 import { designWarnings, introducedWarnings } from "@/lib/plans/design";
 import { createToolRegistry, type ToolRegistration } from "./registry";
 import { addArtifact, reserveToolCall, type DesignToolContext } from "./design-context";
+import { wallSurfaceIssues } from "@/lib/plans/wall-surfaces";
 import { renderDesign } from "./render-design";
 import { generateConceptImage } from "./meta-image";
 import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
@@ -44,7 +45,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "edit_design", category: "design", phases,
     create: context => tool({
-      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using atomic groups (one booth's related components together) that leave no new overlaps, out-of-floor objects or blocked circulation; a group that adds any is rejected whole. Upsert complete objects/zones by ID; remove by ID. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
+      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using atomic groups (one booth's related components together) that leave no new overlaps, out-of-floor objects or blocked circulation; a group that adds any is rejected whole. Upsert complete objects/zones/wallSurfaces by ID; remove by ID. Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
       inputSchema: DesignPatchSchema,
       execute: async patch => {
         if (!context.brief) throw new Error("Set the design brief first.");
@@ -64,7 +65,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "review_design", category: "design", phases,
     create: context => tool({
-      description: "Review the accumulated draft by omitting objects/zones, or replace supplied collections completely. Check geometry, and render plan and isometric schematic views for visual review. A replacement that passes is committed like an edit group. Inspect the returned images before submit_design. Call again after changing a candidate.",
+      description: "Review the accumulated draft by omitting objects/zones/wallSurfaces, or replace supplied collections completely. Check geometry, and render plan and isometric schematic views for visual review. A replacement that passes is committed like an edit group. Inspect the returned images before submit_design. Call again after changing a candidate.",
       inputSchema: PlanDesignProposal.extend({ objects: PlanDesignProposal.shape.objects.optional(), coverage: DesignCoverageSchema }),
       execute: async proposal => {
         if (!context.brief) throw new Error("Call set_design_brief before reviewing a candidate.");
@@ -74,7 +75,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         if (floorCoverage && !floorCoverage.complete) review.complete = false;
         const introduced = proposal.objects || proposal.zones ? introducedWarnings(context.draft, draft) : [];
         if (introduced.length) return { revision: context.revision, rejected: true, introducedWarnings: introduced, next: "This replacement was rejected as a whole and not saved because it introduces geometry problems. Fix them, or edit with edit_design groups, then review again." };
-        const geometryWarnings = designWarnings(draft);
+        const geometryWarnings = [...designWarnings(draft), ...wallSurfaceIssues(draft)];
         const usability = reviewUsability(draft);
         if (!review.complete || floorCoverage && !floorCoverage.complete || geometryWarnings.length || usability.issues.length) {
           context.signal.throwIfAborted();

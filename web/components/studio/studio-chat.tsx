@@ -226,7 +226,7 @@ export function StudioChat({ autoDesign = null, onAutoDesignStart, onOperation, 
                 setDesignRun({ base, last: base, operations: 0, brief, status: "running" });
                 const body = await readDesignStream(response, event => {
                     assertCurrent();
-                    commit(previewDocument(committed, event), event.label, [...event.objects.map(item => item.id), ...event.zones.map(item => item.id)]);
+                    commit(previewDocument(committed, event), event.label, [...event.objects.map(item => item.id), ...event.zones.map(item => item.id), ...(event.wallSurfaces ?? []).map(item => item.hostId)]);
                 }, operation => {
                     assertCurrent();
                     setMuviActivity({ base: committed, sources, operation });
@@ -234,8 +234,8 @@ export function StudioChat({ autoDesign = null, onAutoDesignStart, onOperation, 
                 assertCurrent();
                 const result = PlanDocumentSchema.parse(body.document);
                 // The final reviewed revision can be earlier than the last streamed operation.
-                if (JSON.stringify([result.objects ?? [], result.zones ?? []]) !== JSON.stringify([committed.objects ?? [], committed.zones ?? []]))
-                    commit({ ...committed, objects: result.objects, zones: result.zones, warnings: result.warnings }, t("Reviewed version"));
+                if (JSON.stringify([result.objects ?? [], result.zones ?? [], result.wallSurfaces ?? []]) !== JSON.stringify([committed.objects ?? [], committed.zones ?? [], committed.wallSurfaces ?? []]))
+                    commit({ ...committed, objects: result.objects, zones: result.zones, wallSurfaces: result.wallSurfaces, warnings: result.warnings }, t("Reviewed version"));
                 const summary = typeof body.summary === "string" ? body.summary : t("Design complete.");
                 setDesignRun(run => run && { ...run, status: "complete", summary, artifacts: DesignArtifactsSchema.parse(body.artifacts ?? []), designReview: body.designReview ? DesignReviewSchema.parse(body.designReview) : undefined });
                 setMessages(previous => [...previous, { id: generateId(), role: "assistant", parts: [{ type: "text", text: summary }] }]);
@@ -396,7 +396,7 @@ export function StudioChat({ autoDesign = null, onAutoDesignStart, onOperation, 
                 <figcaption className="mt-1 text-[11px] text-muted">{artifact.kind === "concept" ? t("Generated concept · may differ from actual layout") : t("Layout schematic · materials and lighting omitted")} · {t("Review {revision}", { revision: artifact.revision })}</figcaption>
               </figure>)}
             </div></details>}
-            <p className="mt-2 text-[11px] text-muted">{t(designRun.status === "partial" ? "Stopped · {count} operations saved. Undo steps back one operation at a time." : "{count} operations saved. Undo steps back one operation at a time.", { count: designRun.operations })} {t("{zones} zones · {objects} installations.", { zones: designRun.last.zones?.length ?? 0, objects: designRun.last.objects?.length ?? 0 })}</p>
+            <p className="mt-2 text-[11px] text-muted">{t(designRun.status === "partial" ? "Stopped · {count} operations saved. Undo steps back one operation at a time." : "{count} operations saved. Undo steps back one operation at a time.", { count: designRun.operations })} {t("{zones} zones · {objects} installations.", { zones: designRun.last.zones?.length ?? 0, objects: designRun.last.objects?.length ?? 0 })} {Boolean(designRun.last.wallSurfaces?.length) && t("{count} wall surface designs.", { count: designRun.last.wallSurfaces?.length ?? 0 })}</p>
             <p className="mt-2 text-xs" aria-label={t("Proposed assets")}>{t("Assets used")}: {[...new Set((designRun.last.objects ?? []).flatMap(object => [getModelAsset(object.modelAssetId)?.name, getMaterialAsset(object.materialAssetId)?.name].filter((name): name is string => Boolean(name))))].join(", ") || t("Basic shapes")}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {designRun.status === "partial" && <Button type="button" size="sm" variant="default" className="ps-ink-button" disabled={busy || document !== designRun.last} onClick={() => void interpret("design", `${designRun.brief}\n\n${t("Continue the interrupted design. Keep every existing element and add only what is still missing.")}`.slice(0, 6000))}><CheckIcon aria-hidden="true" data-icon="inline-start" />{t("Continue design")}</Button>}

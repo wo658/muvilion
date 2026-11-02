@@ -32,6 +32,7 @@ import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { Switch } from "../ui/switch";
 import { SettingsIcon } from "lucide-react";
 import type { PlanDocument } from "@/lib/plans/schema";
+import { WallSurfaces } from "./wall-surfaces";
 import { deriveWalls } from "@/lib/plans/walls";
 import { deriveEnclosure } from "@/lib/plans/enclosure";
 import { pointInFloor } from "@/lib/plans/footprint";
@@ -171,6 +172,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
       </group> : exhibition ? <group onClick={e=>{if(view==="interior"&&e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><ExhibitionObject object={object}/></group> : (<mesh userData={{navigationObstacle:true}} castShadow receiveShadow position={[0, object.height / 2, 0]} onClick={e=>{if(view==="interior" && e.delta>5)return;e.stopPropagation();if(view!=="interior")onSelect(object.id);else setExploreStatus("Path blocked. Choose a clear floor point.");}}><boxGeometry args={[object.width, object.height, object.depth]} /><meshStandardMaterial color={!photographing && selected===object.id?TOKENS.accent:object.color} emissive={object.kind === "light" ? object.color : "#000000"} emissiveIntensity={object.kind === "light" ? 0.7 : 0} roughness={0.7} transparent={object.kind === "canopy"} opacity={object.kind === "canopy"?0.8:1}/></mesh>)}
 
     </group>)}
+    {document.scaleConfirmed && <WallSurfaces document={document} walls={walls} onSelect={view === "interior" || photographing ? undefined : onSelect}/>}
     {(document.entrances ?? []).map(entrance => <group key={entrance.id} position={[(entrance.x-.5)*width,0.08,(entrance.y-.5)*depth]} rotation-y={entrance.rotation*Math.PI/180}>
       <mesh rotation-x={-Math.PI/2}><ringGeometry args={[0.55,0.85,32]}/><meshBasicMaterial color={VENUE_COLORS.entrance} side={DoubleSide} depthWrite={false}/></mesh>
       <mesh rotation-x={-Math.PI/2} position={[0,0.02,-0.25]}><circleGeometry args={[0.45,3]}/><meshBasicMaterial color={VENUE_COLORS.entrance} side={DoubleSide}/></mesh>
