@@ -8,19 +8,19 @@
 | --- | --- |
 | 브라우저 | 도면 편집·3D 표시·실제 장면 촬영·기획서 미리보기와 인쇄. 공간 변경은 제안 검토 후 Apply |
 | Next.js | 브라우저 API, 모델 호출·작업 조율, 프로젝트·원본 자산·설정 저장. 서버 기능은 `web/server/`에서 관리 |
-| FastAPI | PDF/이미지/DXF 추출. 배치·기하 검사 API는 제거. 사용자·프로젝트 상태나 모델 호출을 소유하지 않음 |
+| 문서 준비 | Next.js의 요청 단위 Node worker가 PDF/이미지/DXF 미리보기 생성. 로컬 OCR·선 추출 없음 |
 | SQLite | 프로젝트와 원본/파생 자산, 도면별 기획 문서, 앱 설정. 일반 프로젝트 내보내기에서 키는 제외 |
-| Python 스키마 | 엔진 전송 계약의 정본. 웹의 편집 모델은 이를 확장하며 별도로 검증 |
+| 도면 계약 | `web/lib/plans/schema.ts`가 편집·저장·모델 결과의 런타임 검증을 소유 |
 | PDF | 저장된 기획 문서를 읽기 위한 파생 출력. 편집 정본은 프로젝트의 기획 문서 |
 
-브라우저 요청은 Next.js를 거친다. 현재 Studio의 엔진 연결은 도면 추출이며, 기존 `/layout`·`/validate`와 동선 계산은 제거했다. 문서 준비 이전까지 Python 서비스는 여전히 필요하다. 작업 중 제안·촬영과 저장된 프로젝트 상태도 구분한다.
+브라우저 요청은 Next.js를 거친다. Meta Model이 도면 이미지를 읽고 공간 설계를 제안한다. Python 서버·기존 `/layout`·`/validate`와 동선 계산은 제거했다. 문서 worker는 요청 종료 시 폐기하며 별도 서버나 영속 작업 큐가 아니다. 작업 중 제안·촬영과 저장된 프로젝트 상태도 구분한다.
 
 ## 문서를 찾는 순서
 
-- [AGENTS.md](../AGENTS.md), [웹 규칙](../web/AGENTS.md), [엔진 규칙](../engine/AGENTS.md): 작업 시 지켜야 할 경계와 검증 절차.
+- [AGENTS.md](../AGENTS.md), [웹 규칙](../web/AGENTS.md): 작업 시 지켜야 할 경계와 검증 절차.
 - [ADR 목록](adr/README.md): 결정 이유, 유지할 제약, 대체된 결정.
 - [용어집](../GLOSSARY.md): 도면·공간 설계·기획 문서·부스의 의미.
-- [웹 실행·기능 설명](../web/README.md), [엔진 실행·계약 설명](../engine/README.md): 사용법과 현재 API.
+- [웹 실행·기능 설명](../web/README.md): 사용법과 현재 API.
 - [UI 명세](../web/design.md): 인터페이스·언어·색상·출력 규칙.
 - [도면 자료 관리](../web/docs/project-sources.md), [치수 기준](../web/docs/dimensions.md), [Designer Muse 도구](../web/documentation/designer-muse-tools.md): 기능별 상세 계약.
 

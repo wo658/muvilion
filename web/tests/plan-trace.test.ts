@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyTrace, traceLines } from "@/lib/plans/trace";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 
-const trace = vi.hoisted(() => ({ available: true, run: vi.fn() }));
+const trace = vi.hoisted(() => ({ available: true, run: vi.fn(), prepare: vi.fn() }));
+vi.mock("@/server/plans/prepare", () => ({ preparePages: trace.prepare }));
+import { PlanServiceError } from "@/server/plans/errors";
 vi.mock("@/server/plans/trace", () => ({ museTracingAvailable: () => trace.available, traceWalls: trace.run }));
 import { POST as extract } from "@/app/api/plans/extract/route";
 
@@ -39,21 +41,28 @@ describe("Muse wall tracing", () => {
     expect(traced).toMatchObject({ widthMeters: 40, heightMeters: 30, scaleConfirmed: false });
     expect(traced.warnings).toContain("Door widths unclear");
   });
-  it("traces uploaded PDFs and falls back to extracted lines when Muse fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json(plan)));
-    trace.run.mockResolvedValueOnce({ ...plan, method: "muse", lines: [] });
-    expect((await (await extract(upload())).json()).method).toBe("muse");
-    trace.run.mockRejectedValueOnce(new Error("timeout"));
-    const fallback = await (await extract(upload())).json();
-    expect(fallback.lines).toEqual(plan.lines);
-    expect(fallback.warnings[0]).toContain("Muse could not trace");
+  it.each(["hall.pdf", "hall.png", "hall.dxf"])("reads %s with Muse and never falls back to locally extracted geometry", async name => {
+    trace.prepare.mockResolvedValue([{ ...plan, lines: [], method: "preview" }]);
+    trace.run.mockResolvedValueOnce({ ...plan, method: "muse" });
+    expect((await (await extract(upload(name))).json()).method).toBe("muse");
+    trace.run.mockRejectedValueOnce(new PlanServiceError("Model failed", 502));
+    const response = await extract(upload(name));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "Model failed" });
   });
-  it("leaves images and unconfigured Muse on the engine path", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ...plan, source: { ...plan.source, format: "image" }, method: "opencv" })));
-    expect((await (await extract(upload("hall.png"))).json()).method).toBe("opencv");
+  it("keeps a source preview available without a model key and never fabricates geometry", async () => {
     trace.available = false;
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json(plan)));
-    expect((await (await extract(upload())).json()).method).toBe("pdf-vector");
+    trace.prepare.mockResolvedValue([{ ...plan, lines: [], method: "preview" }]);
+    const result = await (await extract(upload())).json();
+    expect(result.method).toBe("preview");
+    expect(result.lines).toEqual([]);
+    expect(result.warnings.join(' ')).toContain('Source preview only');
     expect(trace.run).not.toHaveBeenCalled();
+  });
+  it("preserves rendering limitations and model-read text without confirming scale", () => {
+    const result = applyTrace({ ...plan, warnings: ["Unsupported CAD annotation"] }, { summary: "Read", walls: [], uncertainties: ["No walls"], texts: [{ text: "회의실", x: .2, y: .3 }] });
+    expect(result.warnings).toContain("Unsupported CAD annotation");
+    expect(result.texts[0]).toMatchObject({ text: "회의실", x: .2, y: .3 });
+    expect(result.scaleConfirmed).toBe(false);
   });
 });

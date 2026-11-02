@@ -72,7 +72,7 @@ describe("source-aware Muse routes", () => {
     const response = await chat(request({ sources: [{ ...source("bad", true), url: "file:///etc/passwd" }], messages: [{ role: "user", parts: [{ type: "text", text: "Read" }] }] }));
     expect(response.status).toBe(400); expect(calls.stream).not.toHaveBeenCalled();
   });
-  it("rejects non-PDF uploads without contacting the engine", async () => {
+  it("rejects non-PDF uploads before preparing any document", async () => {
     const form = new FormData(); form.set("file", new File(["text"], "brief.docx"));
     const response = await pdf(new Request("http://localhost/test", { method: "POST", body: form }));
     expect(response.status).toBe(400);

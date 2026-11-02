@@ -73,7 +73,7 @@ function sources(dir: string): string[] {
 describe("UI code uses color tokens only", () => {
   const files = ["app", "components", "lib"].flatMap(sources)
     .map(file => relative(root, join(root, file)))
-    .filter(file => file !== "lib/ui/tokens.ts" && !file.startsWith("lib/engine/openapi") && !ARTWORK.some(prefix => file.startsWith(prefix)));
+    .filter(file => file !== "lib/ui/tokens.ts" && !ARTWORK.some(prefix => file.startsWith(prefix)));
 
   it.each(files)("%s has no literal colors", file => {
     const allowed = ALLOWED[file] ?? [];

@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "dxf"],
+  // Request-scoped rasterizer is loaded by Node, outside the Next.js bundle.
+  outputFileTracingIncludes: { "/api/**": ["./server/plans/render-worker.mjs", "./node_modules/pdfjs-dist/**/*", "./node_modules/@napi-rs/**/*", "./node_modules/dxf/**/*"] },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

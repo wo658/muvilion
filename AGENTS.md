@@ -20,33 +20,29 @@ attribution behavior built into the tool.
 
 ## Repository layout
 
-- `engine/` — Python 3.12 FastAPI server (uv): document extraction only, pending
-  migration of document preparation. No layout solver, geometry validator or app state.
-- `web/` — Next.js app (pnpm): UI, model-assisted drawing workflows (Vercel AI SDK + Meta Model API),
-  and the application API.
-- `fixtures/` — shared sample venue.
-- `engine/app/plan_schemas.py` is the document transport contract. After changing it, run
-  `pnpm gen:engine-types` in `web/` and update `web/lib/plans/schema.ts` until
-  `pnpm typecheck` passes.
+- `web/` — Next.js app (pnpm): UI, Meta Model drawing/design workflows and the application API.
+- `web/server/plans/` — model orchestration and bounded PDF/image/DXF preview preparation.
+- `web/lib/plans/schema.ts` — application drawing contract and runtime validation.
+- `fixtures/` — legacy authored venue fixtures used by presentation assets, not runtime computation.
+- Python/FastAPI, layout solvers and engine OpenAPI generation have been removed.
 
 ## Workflow
 
 - Work in git worktrees under `.worktrees/<slug>` on branches `wt/<slug>`, then merge into
   `main` with `--no-ff`. Push only when asked.
-- Before merging: engine `uv run pytest` and `uv run ruff check .`; web `pnpm test`,
-  `pnpm typecheck`, `pnpm lint`.
+- Before merging: web `pnpm test`, `pnpm typecheck`, `pnpm lint` and `pnpm build`.
 - Root `README.md` and `docs/` are private planning notes and are gitignored; do not commit them.
 - Never commit secrets. Keys live in `web/.env.local` or the local SQLite data directory
   (`web/data/` by default), both gitignored. Never include keys in project exports.
 
 ## Server responsibilities
 
-- Keep the existing Next.js + FastAPI architecture. Browser requests go through the
-  Next.js API; Python is the internal computation service.
-- Next.js owns model calls, drawing workflow orchestration, responses, and serving examples.
-- Python currently owns document extraction (PDF/image/DXF). Layout optimization,
-  walkable-area calculation and legacy geometry validation have been removed.
-  Keep it free of model calls, UI state, and persistent application state.
+- Next.js owns browser APIs, model calls, drawing/design orchestration, document previews,
+  responses, project persistence and examples. There is no Python computation service.
+- Meta Model interprets drawing images and proposes spatial designs. Document preparation
+  only renders source images; do not reintroduce local OCR, vector-line inference or solvers.
+- Request-scoped Node workers may render bounded document previews and must terminate on
+  timeout/cancellation. They hold no application state and are not durable jobs.
 - Keep HTTP handlers thin: parse and validate requests, call a feature service, and map
   results/errors to HTTP responses. Put reusable work in feature modules.
 - Do not add a third server, durable job system, or database just to reorganize code.
@@ -54,16 +50,13 @@ attribution behavior built into the tool.
 
 ## Code organization and migration
 
-- `web/server/` contains server-only feature modules: `agent/`, `plans/`,
-  `engine/`, and `projects/`. Keep new server work in these modules. Update imports
-  and tests together, and do not keep competing implementations.
+- `web/server/` contains server-only feature modules: `agent/`, `plans/`, and `projects/`.
+  Keep new server work in these modules. Update imports and tests together.
 - Keep browser code and shared pure functions/types separate from server modules.
-  Follow `web/AGENTS.md` for the web boundary and `engine/AGENTS.md` for Python.
-- Centralize Python HTTP calls in the engine client, including document extraction.
-  Reuse its configuration, response validation, timeout, cancellation, and error handling.
-- Treat `engine/app/plan_schemas.py` as the document service contract.
-  Regenerate OpenAPI/types after API schema changes and
-  reconcile affected web validators. UI editing state may extend the transport model.
+  Follow `web/AGENTS.md` for the web boundary.
+- `web/lib/plans/schema.ts` owns the drawing contract. Preserve existing project/export
+  compatibility: legacy extraction provenance remains readable, but new imports use
+  source-preview or model-reading provenance. No engine contract generation is needed.
 
 ## Examples and fixtures
 
@@ -97,8 +90,8 @@ attribution behavior built into the tool.
   rejects literal colors outside the documented artwork exceptions (exhibition materials,
   the mascot). Do not weaken a threshold or widen an exception to make a change pass.
   Fix the token or the usage instead, and record any new exception in `web/design.md`.
-- The engine does not style the UI. Its raster previews of source drawings (for example DXF)
-  are evidence images and stay neutral grey; the web applies all UI colors.
+- Server-rendered source previews are evidence images. DXF previews remain neutral grey;
+  document paper/background colors are not interface styling.
 
 ## Muvi mascot
 
@@ -110,7 +103,7 @@ attribution behavior built into the tool.
   physical scale, occupancy/simulation or design validation. Agent operation events may
   select decorative work animations only; they never apply geometry or imply completed work.
 - Muvi must not become a `PlanDocument` object or enter project persistence, exports,
-  undo history or engine requests. Viewing dimensions may frame its demonstration
+  undo history or model/tool geometry inputs. Viewing dimensions may frame its demonstration
   path; its position and controls remain ephemeral browser state.
 - Preserve pause/hide controls, reduced-motion and hidden-page behavior. Mascot
   failures must not break the drawing viewer or intercept drawing selection.
