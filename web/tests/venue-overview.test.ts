@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayWallHeight, partitionLabel } from "@/lib/plans/overview";
+import { displayWallHeight, isWallCutaway, partitionLabel } from "@/lib/plans/overview";
 import { PlanDocumentSchema, type PlanDocument, type DesignObject } from "@/lib/plans/schema";
 import { applyDesignProposal, planChatContext } from "@/lib/plans/muse";
 import { cropEvidence } from "@/lib/plans/crop";
@@ -11,6 +11,13 @@ describe("venue overview", () => {
   expect(displayWallHeight(6, true, true)).toBe(6);
   expect(displayWallHeight(.7, true, false)).toBe(.7);
   expect(displayWallHeight(6, false, false)).toBe(6);
+ });
+ it("never cuts walls below a visible ceiling, including photo settings", () => {
+  expect(isWallCutaway(true, false, true)).toBe(false);
+  expect(isWallCutaway(true, true, false)).toBe(false);
+  expect(isWallCutaway(false, false, false)).toBe(false);
+  expect(isWallCutaway(true, false, false)).toBe(true);
+  expect(displayWallHeight(3, isWallCutaway(true, false, true), false)).toBe(3);
  });
  it("preserves entrance markings and manual provenance for unchanged proposals", () => {
   const result = applyDesignProposal(document, { summary: "Unchanged", objects: [{ ...object, provenance: "ai" }], assumptions: [] });

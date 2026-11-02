@@ -16,7 +16,7 @@ import { Component, useCallback, useEffect, useMemo, useRef, useState, type Reac
 import { MuviRoaming } from "@/components/muvi/muvi-roaming";
 import { useMotionPaused } from "@/components/muvi/use-motion-paused";
 import { SceneLabel } from "./scene-label";
-import { displayWallHeight, VENUE_COLORS } from "@/lib/plans/overview";
+import { displayWallHeight, isWallCutaway, VENUE_COLORS } from "@/lib/plans/overview";
 import { Canvas } from "@react-three/fiber";
 import { Mask, useMask } from "@react-three/drei/core/Mask";
 import { ExhibitionObject } from "./exhibition-object";
@@ -101,11 +101,12 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     } });
     return () => onPlanningCaptureReady(null);
   }, [photoRenderer, document, onPlanningCaptureReady, applyPhotoSettings]);
-  // Direct capture preserves Explore's full-height walls; AI shots own their settings.
-  const effectiveCutaway = cutaway;
-  const renderedWallHeight = displayWallHeight(wallHeight, effectiveCutaway, !photographing && view === "interior");
+  // Keep the cutaway preference for roofless overviews; a visible ceiling must
+  // always meet the room envelope, including photography and transparent roofs.
   const showCeiling = ceilingMode !== "hidden";
-  const enclosedView = !effectiveCutaway || (!photographing && view === "interior");
+  const effectiveCutaway = isWallCutaway(cutaway, !photographing && view === "interior", showCeiling);
+  const renderedWallHeight = displayWallHeight(wallHeight, effectiveCutaway, !photographing && view === "interior");
+  const enclosedView = !effectiveCutaway;
   const estimatedEnclosure = enclosedView && enclosure && (enclosure.assumedWalls || enclosure.assumedCeiling);
   const enclosureNotice = estimatedEnclosure ? t("Room enclosure partly estimated · {height} m", { height: enclosure.ceiling.height }) : null;
   const floorShape = useMemo(() => {
@@ -124,7 +125,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     </ToggleGroup>
     <Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("View settings")} title={t("View settings")}/>}><SettingsIcon/></PopoverTrigger>
       <PopoverContent align="end"><PopoverTitle>{t("View settings")}</PopoverTitle><FieldGroup>
-        <Field orientation="horizontal"><FieldLabel htmlFor="cutaway-display">{t("Cutaway")}</FieldLabel><Switch id="cutaway-display" checked={cutaway} disabled={view === "interior"} onCheckedChange={setCutaway}/></Field>
+        <Field orientation="horizontal"><FieldLabel htmlFor="cutaway-display">{t("Cutaway")}</FieldLabel><Switch id="cutaway-display" checked={effectiveCutaway} disabled={view === "interior" || showCeiling} onCheckedChange={setCutaway}/></Field>
         <Field><FieldLabel htmlFor="ceiling-display">{t("Ceiling")}</FieldLabel><NativeSelect id="ceiling-display" value={ceilingMode} disabled={!ceiling||!floorShape} onChange={e=>setCeilingMode(e.target.value)}><option value="hidden">{t("Hidden")}</option><option value="solid">{t("Solid")}</option><option value="transparent">{t("Transparent")}</option></NativeSelect></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="structure-display">{t("Beams / structure")}</FieldLabel><Switch id="structure-display" checked={showStructure} onCheckedChange={setShowStructure}/></Field>
         <Field orientation="horizontal"><FieldLabel htmlFor="overhead-display">{t("Lights / hanging elements")}</FieldLabel><Switch id="overhead-display" checked={showOverhead} onCheckedChange={setShowOverhead}/></Field>
@@ -159,7 +160,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
       const bx = line.b.x - width / 2, bz = line.b.y - depth / 2;
       const length = Math.hypot(bx - ax, bz - az);
       if (length < 0.001) return null;
-      return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, renderedWallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow={photographing ? !cutaway : view === "interior"} onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
+      return <mesh userData={{navigationObstacle:true}} key={line.id} position={[(ax + bx) / 2, renderedWallHeight / 2, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} castShadow={enclosedView} onClick={(e) => { if(view==="interior" && e.delta>5)return; e.stopPropagation(); if(view!=="interior")onSelect(line.evidenceIds[0]);else setExploreStatus("Path blocked. Choose a clear floor point."); }}>
         <boxGeometry args={[length, renderedWallHeight, line.thickness]} /><meshStandardMaterial color={!photographing && selected !== null && line.evidenceIds.includes(selected) ? TOKENS.accent : VENUE_COLORS.existing} roughness={0.8} />
       </mesh>;
     })}
@@ -184,7 +185,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
     </group>)}
     {!photographing && view==="interior" && world && floorShape && <RoadView key={cameraRevision} world={world} shape={floorShape} onStatus={setExploreStatus}/>}
     {showMuvi && !photographing && <MuviRoaming key={`${width}-${depth}`} width={width} depth={depth} operation={muviOperation} paused={muviPaused || systemPaused}/>}
-    <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway: effectiveCutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
+    <ScenePhotography onReady={setPhotoRenderer} settings={{cutaway, ceilingMode: ceilingMode as PhotoShot["ceilingMode"], showStructure, showOverhead}}/>
     <SceneCamera photography={photographing} document={document} view={view} revision={cameraRevision} selected={selected} focus={focus}/>
   </Canvas>{photographing && enclosureNotice && <div data-testid="enclosure-note" className="pointer-events-none absolute bottom-2 left-2 rounded bg-surface/90 px-2 py-1 text-xs text-muted">{enclosureNotice}</div>}</div></div>{!exporting && photoRequest && <PhotographyPanel key={photoRequest.id} request={photoRequest} document={document} renderer={photoRenderer} applySettings={applyPhotoSettings} onClose={() => { onPhotoClose?.(); setCameraRevision(n => n + 1); }}/>}</div></SceneBoundary>;
 }
