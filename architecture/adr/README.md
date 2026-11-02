@@ -14,6 +14,7 @@
 | [0006](0006-session-only-planning-output.md) | 세션 캡처 기반 일회성 기획서 출력 | superseded by ADR-0007 |
 | [0007](0007-persistent-planning-artifacts.md) | 도면별 영속 기획 문서와 파생 PDF 출력 | accepted |
 | [0008](0008-muse-pdf-wall-tracing.md) | 업로드 PDF 벽은 Muse가 이미지에서 추적 | accepted |
+| [0009](0009-muse-model-workflows.md) | 모든 모델 작업은 Muse로, 제안·검증·적용 고리로 묶음 | accepted |
 
 ## 읽고 갱신하기
 
