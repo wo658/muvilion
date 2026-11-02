@@ -5,7 +5,6 @@ import { ScenePhotography, type PhotoRenderer } from "./scene-photography";
 import { PhotographyPanel } from "./photography-panel";
 import type { PlanningCapture } from "./use-planning-artifact";
 import { generatePhotoCandidates } from "@/lib/plans/photography";
-import type { SourceLibrary } from "@/lib/sources/schema";
 import type { PhotoRequest } from "@/lib/plans/photography-client";
 import type { PhotoShot } from "@/lib/plans/photography";
 import type { MuviOperation } from "@/lib/muvi/operations";
@@ -48,11 +47,10 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 /** `toolbar` hosts the camera controls in the shared canvas header; without it they float over the scene. */
-export default function SceneView({ focus = null, document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose, sources, exportDisabled = false, onPlanningOpen, onPlanningCaptureReady }: { onPlanningOpen?: () => void; onPlanningCaptureReady?: (api: PlanningCapture | null) => void; focus?: { ids: string[]; key: number } | null; sources?: SourceLibrary; exportDisabled?: boolean; document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
+export default function SceneView({ focus = null, document, wallHeight, selected, onSelect, toolbar, muviOperation, photoRequest, onPhotoClose, onPlanningCaptureReady }: { onPlanningCaptureReady?: (api: PlanningCapture | null) => void; focus?: { ids: string[]; key: number } | null; document: PlanDocument; wallHeight: number; selected: string | null; onSelect: (id: string) => void; toolbar?: HTMLElement | null; muviOperation?: MuviOperation | null; photoRequest?: PhotoRequest | null; onPhotoClose?: () => void }) {
   const { t } = useI18n();
   const [photoRenderer, setPhotoRenderer] = useState<PhotoRenderer | null>(null);
   const [capturingPlanning, setCapturingPlanning] = useState(false);
-  const exportTrigger = useRef<HTMLButtonElement>(null);
   const exporting = capturingPlanning;
   const photographing = Boolean(photoRequest) || exporting;
 
@@ -140,7 +138,6 @@ export default function SceneView({ focus = null, document, wallHeight, selected
         <p className="mt-2">{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p>
       </details></PopoverContent>
     </Popover>
-    {sources && <Button ref={exportTrigger} data-planning-trigger variant="outline" size="sm" disabled={exportDisabled} onClick={() => { onPhotoClose?.(); onPlanningOpen?.(); }}>{t("Planning document")}</Button>}
   </div>;
   return <SceneBoundary>{toolbar ? createPortal(tools, toolbar) : tools}{!photographing && view==="interior" && <div className="ps-explore-hint" role="status">{t(exploreStatus)}{enclosureNotice && <span className="block text-xs" data-testid="enclosure-note">{enclosureNotice}</span>}</div>}<div className={photographing ? "ps-photo-workspace" : "contents"}><div className={photographing ? "ps-photo-stage" : "contents"}><div className={photographing ? "ps-photo-frame" : "contents"}><Canvas key={`${width}-${depth}`} frameloop="demand" gl={{ stencil: true }} shadows camera={cameraOptions} dpr={[1, 1.5]}>
 

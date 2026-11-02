@@ -15,6 +15,8 @@ import { createSourceId, readReference } from "@/lib/sources/files";
 import type { DrawingSource } from "@/lib/projects/schema";
 
 type Props = {
+  planningArtifacts: { drawingId: string; content: { title: string } }[];
+  onPlanningOpen: (drawingId: string) => void;
   drawings: DrawingSource[]; activeDrawingId?: string; onSwitchDrawing: (id: string) => void;
   library: SourceLibrary; ready: boolean; document: PlanDocument | null; busy: boolean;
   onChange: (update: (current: SourceLibrary) => SourceLibrary) => void;
@@ -22,7 +24,7 @@ type Props = {
   onUploadOriginal: (file: File) => Promise<string>;
 };
 
-export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
+export function SourcesPanel({ planningArtifacts, onPlanningOpen, drawings, activeDrawingId, onSwitchDrawing, library, ready, document, busy, onChange, onDrawing, onUploadOriginal }: Props) {
   const alive = useRef(true);
   const uploadRequest = useRef<AbortController | null>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; uploadRequest.current?.abort(); }; }, []);
@@ -48,6 +50,11 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
   const term = query.trim().toLocaleLowerCase(locale);
   const visibleDrawings = drawings.filter(source => source.document.source.name.toLocaleLowerCase(locale).includes(term));
   const visibleReferences = library.items.filter(source => `${source.name} ${source.url ?? ""}`.toLocaleLowerCase(locale).includes(term));
+  const planningDocuments = drawings.flatMap(source => {
+    const artifact = planningArtifacts.find(item => item.drawingId === source.id);
+    return artifact || source.id === activeDrawingId ? [{ drawingId: source.id, name: artifact?.content.title || t("Planning document"), drawingName: source.document.source.name, saved: Boolean(artifact) }] : [];
+  });
+  const visiblePlanning = planningDocuments.filter(item => `${item.name} ${item.drawingName} ${t("Planning document")}`.toLocaleLowerCase(locale).includes(term));
   const locked = !ready || busy;
   const referencesFull = library.items.length >= 12;
   const updateItem = (id: string, update: Partial<ReferenceSource>) => onChange(current => ({ ...current, items: current.items.map(item => item.id === id ? { ...item, ...update } : item) }));
@@ -119,7 +126,7 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
     </section>
     <section className="ps-source-group" aria-labelledby="source-references-heading">
       <header className="ps-source-group-heading">
-        <h3 id="source-references-heading">{t("References")} <span>{library.items.length}</span></h3>
+        <h3 id="source-references-heading">{t("References")} <span>{library.items.length + planningDocuments.filter(item => item.saved).length}</span></h3>
       </header>
       {addingBrand && <form id="source-brand-form" className="ps-source-form" onSubmit={event => {
         event.preventDefault();
@@ -141,6 +148,14 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
         <footer><Button type="button" variant="ghost" onClick={closeBrandForm}>{t("Cancel")}</Button><Button type="submit" variant="primary" disabled={locked || referencesFull}>{t("Add brand")}</Button></footer>
       </form>}
       <ul className="ps-source-list">
+        {visiblePlanning.map(item => <li key={item.drawingId}>
+          <div className="ps-source-row">
+            <button className="ps-source-preview-button" disabled={locked} onClick={() => onPlanningOpen(item.drawingId)}>
+              <span className="ps-source-thumbnail" aria-hidden="true"><FileTextIcon/></span>
+              <span className="ps-source-identity"><strong>{item.saved ? item.name : t("Create planning document")}</strong><small>{t("Planning document")} · {item.drawingName}</small></span>
+            </button>
+          </div>
+        </li>)}
         {visibleReferences.map(source => <li key={source.id}>
           <div className="ps-source-row">
             <button className="ps-source-preview-button" onClick={() => setPreview(source.id)}>
@@ -159,9 +174,9 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
           </div>}
         </li>)}
       </ul>
-      {!library.items.length && !term && <p className="ps-source-empty">{t("Add references to give Muse a direction.")}</p>}
+      {!library.items.length && !planningDocuments.length && !term && <p className="ps-source-empty">{t("Add references to give Muse a direction.")}</p>}
     </section>
-    {term && !visibleDrawings.length && !visibleReferences.length && <div className="ps-source-empty" role="status"><SearchIcon aria-hidden="true"/><strong>{t("No sources found")}</strong><Button variant="ghost" onClick={() => { setQuery(""); search.current?.focus(); }}>{t("Clear search")}</Button></div>}
+    {term && !visibleDrawings.length && !visibleReferences.length && !visiblePlanning.length && <div className="ps-source-empty" role="status"><SearchIcon aria-hidden="true"/><strong>{t("No sources found")}</strong><Button variant="ghost" onClick={() => { setQuery(""); search.current?.focus(); }}>{t("Clear search")}</Button></div>}
     <dialog ref={dialog} className="ps-source-dialog" onCancel={() => setPreview(null)} onClose={() => setPreview(null)} aria-labelledby="source-preview-title">
       <header><h2 id="source-preview-title">{drawingPreview?.source.name ?? item?.name}</h2><Button variant="ghost" onClick={() => setPreview(null)} aria-label={t("Close source preview")}><XIcon aria-hidden="true"/></Button></header>
       <div className="ps-source-preview-body">

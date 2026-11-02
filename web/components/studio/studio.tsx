@@ -4,7 +4,6 @@ import { MuviAvatar } from "@/components/muvi/muvi-avatar";
 
 import { NativeSelect } from "../ui/native-select";
 import { Input } from "../ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import dynamic from "next/dynamic";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -16,6 +15,7 @@ import { mergeReading } from "@/lib/plans/trace";
 import { readReadingStream } from "@/lib/plans/reading-stream";
 import { boothExample } from "@/lib/booths/example";
 import { Badge, Button } from "../ui";
+import { Button as HeaderButton } from "../ui/button";
 import { PlanCanvas } from "./plan-canvas";
 import { StudioChat } from "./studio-chat";
 import { activateDrawing, addDrawing, drawingSources, saveDrawing } from "@/lib/projects/drawings";
@@ -28,7 +28,7 @@ import type { Project } from "@/lib/projects/schema";
 import { PlanningArtifactPanel } from "./planning-artifact-panel";
 import { usePlanningArtifact } from "./use-planning-artifact";
 import { planningIsStale, refreshPlanningArtifact, revisePlanningArtifact, type PlanningArtifact } from "@/lib/plans/planning-artifact";
-import { FolderCogIcon, SettingsIcon } from "lucide-react";
+import { FolderOpenIcon, SlidersHorizontalIcon, SettingsIcon } from "lucide-react";
 
 
 import { usabilityWarnings } from "@/lib/plans/usability";
@@ -77,14 +77,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const activeOperation = muviActivity?.base === document && muviActivity?.sources === sources ? muviActivity.operation : null;
     const [details, setDetails] = useState(false);
     const [projectSettings, setProjectSettings] = useState<"sources" | null>(null);
-    const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-    const projectMenuTrigger = useRef<HTMLButtonElement>(null);
-    const openProjectDialog = (section: "sources") => {
-        // Native dialogs restore focus to this persistent trigger, not the closing popover.
-        projectMenuTrigger.current?.focus();
-        setProjectMenuOpen(false);
-        setProjectSettings(section);
-    };
+    const sourcesTrigger = useRef<HTMLButtonElement>(null);
     const [floorDraft, setFloorDraft] = useState<Point[] | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
     const [history, setHistory] = useState<PlanDocument[]>([]);
@@ -365,7 +358,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
 
     <ProjectDialog open={projectSettings !== null} title={t("Sources")} onClose={() => setProjectSettings(null)}>
       <div hidden={projectSettings !== "sources"}>
-        <SourcesPanel drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={id => { switchDrawing(id); setProjectSettings(null); }} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setProjectSettings(null); input.current?.click(); }}/>
+        <SourcesPanel planningArtifacts={planningArtifacts} onPlanningOpen={id => { switchDrawing(id); setProjectSettings(null); setPhotoRequest(null); planning.setOpen(true); setChatOpen(true); }} drawings={drawings} activeDrawingId={activeDrawingId} onSwitchDrawing={id => { switchDrawing(id); setProjectSettings(null); }} onUploadOriginal={controls.upload} library={sources} ready={sourcesReady} document={document} busy={busy} onChange={changeSources} onDrawing={() => { setProjectSettings(null); input.current?.click(); }}/>
         {sourceError && <p role="alert" className="p-4 text-sm text-bad">{localizeMessage(locale, sourceError)}</p>}
       </div>
 
@@ -409,15 +402,8 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
             <NativeSelect aria-label={t("Switch drawing")} className="min-w-0 max-w-64 flex-1" value={activeDrawingId ?? drawings[0]?.id ?? ""} disabled={busy} onChange={event => switchDrawing(event.target.value)}>
               {drawings.map(item => <option key={item.id} value={item.id}>{item.document.source.name}{item.document.source.pages > 1 ? ` · ${t("Page {page}", { page: item.document.source.page })}` : ""}</option>)}
             </NativeSelect>
-            <Popover open={projectMenuOpen} onOpenChange={setProjectMenuOpen}>
-              <PopoverTrigger ref={projectMenuTrigger} render={<Button variant="ghost" className="ps-icon-button" aria-label={t("Project settings")} title={t("Project settings")}/>}>
-                <FolderCogIcon/>
-              </PopoverTrigger>
-              <PopoverContent align="start" aria-label={t("Project settings")} finalFocus={projectSettings === null}>
-                <Button variant="ghost" className="justify-start" onClick={() => { setProjectMenuOpen(false); setDetails(true); }}>{t("Drawing settings")}</Button>
-                <Button variant="ghost" className="justify-start" onClick={() => openProjectDialog("sources")}>{t("Sources")}</Button>
-              </PopoverContent>
-            </Popover>
+            <HeaderButton ref={sourcesTrigger} variant="ghost" aria-haspopup="dialog" onClick={() => setProjectSettings("sources")}><FolderOpenIcon data-icon="inline-start"/><span>{t("Sources")}</span></HeaderButton>
+            <Button variant="ghost" className="ps-icon-button" aria-label={t("Drawing settings")} title={t("Drawing settings")} aria-pressed={setupOpen} onClick={() => { planning.setOpen(false); setDetails(true); }}><SlidersHorizontalIcon/></Button>
           </>}
           <div ref={setToolbarEnd} className="ps-toolbar-end"/>
         </div>
@@ -425,9 +411,9 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         {error && <div className="ps-alert" role="alert"><span>{localizeMessage(locale, error)}</span><Button onClick={() => setError(null)} aria-label={t("Dismiss error")}>×</Button></div>}
         {notice && <div className="ps-notice" role="status">{localizeMessage(locale, notice)}</div>}
         <div className="ps-canvas-area">
-          {document ? !planTools ? <><SceneView focus={operationFocus} onPlanningOpen={() => { planning.setOpen(true); setChatOpen(true); }} onPlanningCaptureReady={planning.onCaptureReady} sources={sources} photoRequest={photoRequest?.base === document && photoRequest?.sources === sources ? photoRequest.request : null} onPhotoClose={() => setPhotoRequest(null)} muviOperation={activeOperation} key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={selected} onSelect={setSelected}/>{details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={setSelected} sourceOnly={false} showOriginal={false} showSourceFallback drawing={(drawing || calibrating || cropping)} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
+          {document ? !planTools ? <><SceneView focus={operationFocus} onPlanningCaptureReady={planning.onCaptureReady} photoRequest={photoRequest?.base === document && photoRequest?.sources === sources ? photoRequest.request : null} onPhotoClose={() => setPhotoRequest(null)} muviOperation={activeOperation} key={activeDrawingId ?? "empty"} toolbar={toolbarEnd} document={visibleDocument!} wallHeight={visibleDocument?.wallHeight ?? wallHeight} selected={selected} onSelect={setSelected}/>{details && <div className="ps-scene-note">{calibrated ? t("Scale confirmed") : t("Illustrative scale · confirm dimensions")} {t("· ceiling")}{document.ceiling ? `${document.ceiling.height} m (${t(document.ceiling.status)})` : t("not set")} {t("· wall thickness inferred")}</div>}</> : <PlanCanvas key={`${chatKey}-${drawing}-${calibrating}-${cropping}`} document={visibleDocument!} onEntrancePoint={markingEntrance ? point => { const id = crypto.randomUUID(); change({ ...document, entrances: [...(document.entrances ?? []), { id, label: t("Entrance {count}", { count: (document.entrances?.length ?? 0) + 1 }), ...point, rotation: 0 }] }); setMarkingEntrance(false); setSelected(id); } : undefined} floorDraft={floorDraft} onBoundaryPoint={floorDraft ? (point) => setFloorDraft([...floorDraft, point].slice(0, 128)) : undefined} selected={selected} onSelect={setSelected} sourceOnly={false} showOriginal={false} showSourceFallback drawing={(drawing || calibrating || cropping)} rectangle={cropping} onDraw={cropping ? (a, b) => void cropSpace(a, b) : calibrating ? (a, b) => setMeasure([a, b]) : drawWall} measurement={measure}/> : null}
           {planning.open && document && <PlanningArtifactPanel artifact={planningArtifact} busy={planning.busy} progress={planning.progress} error={planning.error} stale={planningStale} target={planning.target}
-            onTarget={id => { planning.setTarget(id); setChatOpen(true); }} onClose={() => { planning.setOpen(false); planning.setTarget(null); requestAnimationFrame(() => window.document.querySelector<HTMLButtonElement>("[data-planning-trigger]")?.focus()); }}
+            onTarget={id => { planning.setTarget(id); setChatOpen(true); }} onClose={() => { planning.setOpen(false); planning.setTarget(null); requestAnimationFrame(() => sourcesTrigger.current?.focus()); }}
             onCreate={() => { setChatOpen(true); void revisePlanning(t("Create the complete planning document and participation guide, with photos of the space and each booth.")).catch(() => {}); }}
             onRefresh={() => { if (planningArtifact) { const next = refreshPlanningArtifact(planningArtifact, document, sources); changePlanning({ ...next, history: [] }); } }}
             onUndo={() => { const previous = planningArtifact?.history.at(-1); if (planningArtifact && previous) { const next = revisePlanningArtifact(planningArtifact, previous.content); changePlanning({ ...next, history: planningArtifact.history.slice(0, -1) }); } }} onCancel={planning.cancel}/>}

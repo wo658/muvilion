@@ -75,7 +75,7 @@ pnpm build
 
 ## Project sources
 
-Project settings open the Sources manager for concept images (PNG/JPG/WebP), brand URL bookmarks with notes, and planning documents (PDF/TXT/Markdown). The active drawing and every attached reference are included in Muse context; legacy selection flags no longer exclude attached references. Workspace geometry remains a spatial constraint. Drawing analysis reviews the active drawing. URL bodies are not fetched.
+The header’s Sources button opens the Sources manager directly for concept images (PNG/JPG/WebP), brand URL bookmarks with notes, and planning documents (PDF/TXT/Markdown). The active drawing and every attached reference are included in Muse context; legacy selection flags no longer exclude attached references. Saved planning documents also open from Sources; Drawing settings has its own header icon. Workspace geometry remains a spatial constraint. Drawing analysis reviews the active drawing. URL bodies are not fetched.
 
 Images are resized locally. Planning PDFs are rendered in Next.js and attached as page images for Muse to read, with every page included (up to 12 pages, 20 MB per upload). No local text extraction or OCR runs. DOCX/PPTX are not supported; export these to PDF first. The library permits 12 references and a 10 MB serialized content budget.
 
