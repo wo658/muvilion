@@ -83,7 +83,7 @@ export function SourcesPanel({ drawings, activeDrawingId, onSwitchDrawing, libra
       <Button disabled={uploading || locked || referencesFull} onClick={() => { setAddingSource(false); addTrigger.current?.focus(); concept.current?.click(); }}>{t("＋ Concept image")}</Button>
       <Button disabled={locked || referencesFull} onClick={() => { setAddingSource(false); setAddingBrand(true); }}>{t("＋ Brand URL")}</Button>
       <Button disabled={uploading || locked || referencesFull} onClick={() => { setAddingSource(false); addTrigger.current?.focus(); brief.current?.click(); }}>{t("＋ Brief")}</Button>
-      <p className="ps-source-description">{t("20 MB/file · PDF up to 12 pages")}</p>
+      <p className="ps-source-description">{t("20 MB/file · PDF up to 12 pages")} {t("For CAD drawings, export a PDF before uploading.")}</p>
     </div>}
     <input ref={concept} type="file" accept=".png,.jpg,.jpeg,.webp" hidden aria-label={t("Add concept image")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "concept"); }}/>
     <input ref={brief} type="file" accept=".pdf,.txt,.md" hidden aria-label={t("Add planning document")} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file, "brief"); }}/>

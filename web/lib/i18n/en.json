@@ -147,7 +147,7 @@
   "Could not update sources.": "Could not update sources.",
   "Browser storage is full. Export your plan to keep this work.": "Browser storage is full. Export your plan to keep this work.",
   "Please choose a file smaller than 20 MB.": "Please choose a file smaller than 20 MB.",
-  "Choose a PDF, PNG, JPG or DXF drawing.": "Choose a PDF, PNG, JPG or DXF drawing.",
+  "Choose a PDF, PNG or JPG drawing. Export CAD drawings to PDF first.": "Choose a PDF, PNG or JPG drawing. Export CAD drawings to PDF first.",
   "We could not read this drawing. Please try another file.": "We could not read this drawing. Please try another file.",
   "Could not read the drawing.": "Could not read the drawing.",
   "This is not a supported muvilion plan. Your current drawing has been kept.": "This is not a supported muvilion plan. Your current drawing has been kept.",
@@ -291,7 +291,7 @@
   "How would you like to start?": "How would you like to start?",
   "Bring a floor plan and design the space with Muse.": "Bring a floor plan and design the space with Muse.",
   "Start with my drawing": "Start with my drawing",
-  "PDF, PNG, JPG or DXF · up to 20 MB": "PDF, PNG, JPG or DXF · up to 20 MB",
+  "PDF, PNG, JPG · up to 20 MB": "PDF, PNG, JPG · up to 20 MB",
   "Start with a sample": "Start with a sample",
   "Loading samples…": "Loading samples…",
   "{count} public venue drawings": "{count} public venue drawings",
@@ -377,9 +377,9 @@
   "Confirm the drawing scale before drafting a layout.": "Confirm the drawing scale before drafting a layout.",
   "Muse could not draft a layout. Check the API configuration or retry; your drawing is unchanged.": "Muse could not draft a layout. Check the API configuration or retry; your drawing is unchanged.",
   "Choose a file smaller than 20 MB.": "Choose a file smaller than 20 MB.",
-  "Upload a PDF, image, or DXF file.": "Upload a PDF, image, or DXF file.",
+  "Upload a PDF, PNG or JPG file.": "Upload a PDF, PNG or JPG file.",
   "Choose a non-empty file.": "Choose a non-empty file.",
-  "Supported formats: PDF, PNG, JPG, DXF.": "Supported formats: PDF, PNG, JPG, DXF.",
+  "Supported formats: PDF, PNG, JPG. Export CAD drawings to PDF first.": "Supported formats: PDF, PNG, JPG. Export CAD drawings to PDF first.",
   "Choose a valid page.": "Choose a valid page.",
   "This file could not be read. Check its format and page.": "This file could not be read. Check its format and page.",
   "The extraction service returned an incompatible plan.": "The extraction service returned an incompatible plan.",
@@ -868,5 +868,6 @@
   "PDF preview failed. Check the file and retry.": "PDF preview failed. Check the file and retry.",
   "Drawing reading cancelled.": "Drawing reading cancelled.",
   "PDF preview cancelled.": "PDF preview cancelled.",
-  "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.": "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed."
+  "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.": "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.",
+  "For CAD drawings, export a PDF before uploading.": "For CAD drawings, export a PDF before uploading."
 }

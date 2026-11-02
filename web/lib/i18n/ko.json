@@ -147,7 +147,7 @@
   "Could not update sources.": "자료를 변경하지 못했어요.",
   "Browser storage is full. Export your plan to keep this work.": "브라우저 저장 공간이 부족해요. 도면을 내보내 저장하세요.",
   "Please choose a file smaller than 20 MB.": "20 MB보다 작은 파일을 선택하세요.",
-  "Choose a PDF, PNG, JPG or DXF drawing.": "PDF, PNG, JPG 또는 DXF 도면을 선택하세요.",
+  "Choose a PDF, PNG or JPG drawing. Export CAD drawings to PDF first.": "PDF, PNG 또는 JPG 도면을 선택하세요. CAD 도면은 먼저 PDF로 내보내 주세요.",
   "We could not read this drawing. Please try another file.": "도면을 읽지 못했어요. 다른 파일로 시도하세요.",
   "Could not read the drawing.": "도면을 읽지 못했어요.",
   "This is not a supported muvilion plan. Your current drawing has been kept.": "지원하는 muvilion 도면이 아니에요. 현재 도면은 유지됩니다.",
@@ -291,7 +291,7 @@
   "How would you like to start?": "어떻게 시작할까요?",
   "Bring a floor plan and design the space with Muse.": "도면을 가져오면 Muse와 함께 공간을 설계할 수 있어요.",
   "Start with my drawing": "내 도면으로 시작",
-  "PDF, PNG, JPG or DXF · up to 20 MB": "PDF, PNG, JPG, DXF · 20MB 이하",
+  "PDF, PNG, JPG · up to 20 MB": "PDF, PNG, JPG · 20MB 이하",
   "Start with a sample": "샘플 프로젝트로 시작",
   "Loading samples…": "샘플을 불러오는 중…",
   "{count} public venue drawings": "공개 전시장 도면 {count}개",
@@ -377,9 +377,9 @@
   "Confirm the drawing scale before drafting a layout.": "배치안을 만들기 전에 도면의 축척을 확정해 주세요.",
   "Muse could not draft a layout. Check the API configuration or retry; your drawing is unchanged.": "Muse가 배치안을 만들지 못했어요. API 설정을 확인하거나 다시 시도해 주세요. 도면은 변경되지 않았어요.",
   "Choose a file smaller than 20 MB.": "20MB보다 작은 파일을 선택해 주세요.",
-  "Upload a PDF, image, or DXF file.": "PDF, 이미지 또는 DXF 파일을 업로드해 주세요.",
+  "Upload a PDF, PNG or JPG file.": "PDF, PNG 또는 JPG 파일을 업로드해 주세요.",
   "Choose a non-empty file.": "비어 있지 않은 파일을 선택해 주세요.",
-  "Supported formats: PDF, PNG, JPG, DXF.": "지원 형식: PDF, PNG, JPG, DXF.",
+  "Supported formats: PDF, PNG, JPG. Export CAD drawings to PDF first.": "지원 형식: PDF, PNG, JPG. CAD 도면은 먼저 PDF로 내보내 주세요.",
   "Choose a valid page.": "올바른 페이지를 선택해 주세요.",
   "This file could not be read. Check its format and page.": "파일을 읽지 못했어요. 형식과 페이지를 확인해 주세요.",
   "The extraction service returned an incompatible plan.": "도면 추출 서비스가 호환되지 않는 결과를 반환했어요.",
@@ -868,5 +868,6 @@
   "PDF preview failed. Check the file and retry.": "PDF 미리보기에 실패했어요. 파일을 확인하고 다시 시도해 주세요.",
   "Drawing reading cancelled.": "도면 읽기를 취소했어요.",
   "PDF preview cancelled.": "PDF 미리보기를 취소했어요.",
-  "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.": "원본 미리보기만 표시해요. 벽과 문자를 읽으려면 설정에서 Meta API 키를 추가해 주세요. 축척은 아직 확인되지 않았어요."
+  "Source preview only. Add a Meta API key in Settings to read walls and text; scale is unconfirmed.": "원본 미리보기만 표시해요. 벽과 문자를 읽으려면 설정에서 Meta API 키를 추가해 주세요. 축척은 아직 확인되지 않았어요.",
+  "For CAD drawings, export a PDF before uploading.": "CAD 도면은 PDF로 내보낸 뒤 업로드해 주세요."
 }

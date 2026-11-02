@@ -34,7 +34,7 @@ Muse is the starting point: one conversation, a quiet composer, and tools reveal
 
 Uploads and samples render bounded source previews in Next.js, then Meta Model reads walls and visible text. No local OCR, line detector, solver or Python service runs. Without a model key, show the source preview with an explicit no-reading warning; never imply geometry was extracted. A configured model failure is an error, not a fallback to local geometry. PDF reference pages are attached as images for Muse to read in context. Scale remains unconfirmed.
 
-DXF previews support geometry only; retain their warning that text, dimensions, hatches and other unsupported entities are omitted and PDF export preserves full evidence. PDF coordinates follow the visible crop and rotation. Existing saved geometry/provenance is not reinterpreted on reload.
+New drawings accept PDF, PNG and JPG only. The file picker and API reject DXF, with CAD-to-PDF guidance in both languages. Existing DXF projects keep their saved previews, originals and edits; do not re-render them on load. PDF coordinates follow the visible crop and rotation. Existing saved geometry/provenance is not reinterpreted on reload.
 
 ## Physical dimensions
 

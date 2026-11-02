@@ -41,7 +41,7 @@ describe("Muse wall tracing", () => {
     expect(traced).toMatchObject({ widthMeters: 40, heightMeters: 30, scaleConfirmed: false });
     expect(traced.warnings).toContain("Door widths unclear");
   });
-  it.each(["hall.pdf", "hall.png", "hall.dxf"])("reads %s with Muse and never falls back to locally extracted geometry", async name => {
+  it.each(["hall.pdf", "hall.png", "hall.jpg"])("reads %s with Muse and never falls back to locally extracted geometry", async name => {
     trace.prepare.mockResolvedValue([{ ...plan, lines: [], method: "preview" }]);
     trace.run.mockResolvedValueOnce({ ...plan, method: "muse" });
     expect((await (await extract(upload(name))).json()).method).toBe("muse");
@@ -60,6 +60,14 @@ describe("Muse wall tracing", () => {
     trace.run.mockReset().mockRejectedValue(new PlanServiceError("Model failed", 502));
     expect((await extract(upload())).status).toBe(502);
     expect(trace.run).toHaveBeenCalledTimes(2);
+  });
+  it("rejects DXF through the upload API before rendering or calling Muse", async () => {
+    trace.prepare.mockClear();
+    const response = await extract(upload("legacy.DXF"));
+    expect(response.status).toBe(415);
+    expect((await response.json()).error).toContain("Export CAD drawings to PDF");
+    expect(trace.prepare).not.toHaveBeenCalled();
+    expect(trace.run).not.toHaveBeenCalled();
   });
   it("keeps a source preview available without a model key and never fabricates geometry", async () => {
     trace.available = false;
