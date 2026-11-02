@@ -12,7 +12,7 @@ recorded: 2026-11-02
 - 미터 단위 물리 치수와 정규화된 도면 좌표를 구분한다. 모델 자산을 임의 축소하여 치수 불일치를 숨기지 않는다.
 - 천장·구조·상부 요소를 숨기는 것은 표시 설정이다. 저장 설계·모델 문맥·기하 검사에서 삭제하는 동작이 아니다.
 - `schemas.py`, `plan_schemas.py` 변경 후 OpenAPI/웹 타입을 재생성하고 웹 검증기를 맞춘다. 웹 편집 모델의 확장은 엔진이 그 필드를 지원한다는 뜻이 아니다.
-- 현재 Studio는 엔진 추출을 사용하고(업로드 PDF는 Muse 벽 추적, [ADR-0008](0008-muse-pdf-wall-tracing.md)) 설계 제안의 공간 검사는 웹 공유 로직에서 수행한다. 보존된 `/layout`, `/validate`는 기존 평면 계약이다.
+- 현재 Studio는 엔진 추출을 사용하고(PDF·이미지는 Muse 벽·축척 추적, [ADR-0008](0008-muse-pdf-wall-tracing.md)) 설계 제안의 공간 검사는 웹 공유 로직에서 수행한다. 보존된 `/layout`, `/validate`는 기존 평면 계약이다.
 - 시공·구조 안전·피난 적합성이나 실측 정확도가 필요한 제품으로 확장할 때 검증 범위와 데이터 계약을 별도로 재설계해야 한다.
 
 근거: [Python 도면 스키마](../../engine/app/plan_schemas.py), [Python 평면 계약](../../engine/app/schemas.py), [웹 도면 스키마](../../web/lib/plans/schema.ts), [치수 기준](../../web/docs/dimensions.md), [엔진 API 설명](../../engine/README.md).

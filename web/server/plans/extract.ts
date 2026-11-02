@@ -6,17 +6,17 @@ import { museTracingAvailable, traceWalls } from "./trace";
 const TRACE_BUDGET_MS = 170_000;
 const RETRY_MIN_MS = 60_000;
 
-/** Engine extraction, then Muse tracing for PDFs; engine lines remain the fallback. */
-export async function extractDrawing(file: File, page: number, signal: AbortSignal): Promise<PlanDocument> {
+/** Engine extraction, then Muse tracing and scale for PDFs and images; engine lines remain the fallback. */
+export async function extractDrawing(file: File, page: number, signal: AbortSignal, options: { rasterPdf?: boolean } = {}): Promise<PlanDocument> {
   const engine = createHttpEngine();
   let plan: PlanDocument;
-  try { plan = await engine.extract(file, page, { signal }); }
+  try { plan = await engine.extract(file, page, { signal, rasterPdf: options.rasterPdf }); }
   catch (error) {
     // Dense vector PDFs exceed the engine's line budget; the rendered page is enough for Muse.
     if (!(error instanceof EngineError && error.status === 413 && /\.pdf$/i.test(file.name))) throw error;
     plan = await engine.extract(file, page, { signal, rasterPdf: true });
   }
-  if (plan.source.format !== "pdf" || !museTracingAvailable()) return plan;
+  if (plan.source.format === "dxf" || !museTracingAvailable()) return plan;
   const started = Date.now();
   for (let attempt = 1; ; attempt++) {
     try { return await traceWalls(plan, AbortSignal.any([signal, AbortSignal.timeout(TRACE_BUDGET_MS - (Date.now() - started))])); }
