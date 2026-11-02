@@ -864,5 +864,6 @@
   "{count} photos failed. Document changes were retained; ask Muse to retry.": "{count} photos failed. Document changes were retained; ask Muse to retry.",
   "Added {count} scene captures to the document.": "Added {count} scene captures to the document.",
   "Apply or discard the spatial draft before revising the planning document.": "Apply or discard the spatial draft before revising the planning document.",
-  "Document request stopped. Any completed revisions and photos are kept.": "Document request stopped. Any completed revisions and photos are kept."
+  "Document request stopped. Any completed revisions and photos are kept.": "Document request stopped. Any completed revisions and photos are kept.",
+  "Document sections": "Document sections"
 }

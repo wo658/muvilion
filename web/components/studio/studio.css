@@ -237,3 +237,11 @@
 .ps-planning-section { display: flex; flex-direction: column; gap: 12px; padding: 20px 0; scroll-margin-top: 24px; }
 .ps-planning-section[data-selected] { outline: 2px solid var(--accent); outline-offset: 8px; border-radius: 8px; }
 @media (max-width: 799px) { .ps-planning-paper { margin: 12px; padding: 20px; } }
+
+.ps-planning-nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--hairline); }
+.ps-planning-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 4px 0; padding: 16px 0; border-block: 1px solid var(--hairline); }
+.ps-planning-facts dt { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.ps-planning-facts dd { color: var(--ink); font-size: 20px; font-weight: 600; line-height: 1.4; }
+.ps-planning-section > figure img { max-height: 300px; object-fit: contain; background: var(--sunken); }
+.ps-planning-paper > figure img { max-height: 360px; object-fit: contain; background: var(--sunken); }
+@media (max-width: 479px) { .ps-planning-facts { gap: 12px; } .ps-planning-facts dd { font-size: 16px; } }
