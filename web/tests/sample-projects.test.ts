@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const extract = vi.hoisted(() => vi.fn());
 vi.mock("@/server/engine/client", () => ({ createHttpEngine: () => ({ extract }) }));
+vi.mock("@/server/plans/trace", () => ({ museTracingAvailable: () => false, traceWalls: vi.fn() }));
 import { getAsset, getProject, listProjects, exportProject } from "@/server/projects/store";
 import { createSampleProject, listSamples, samplesDirectory } from "@/server/projects/samples";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
