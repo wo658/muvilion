@@ -12,7 +12,7 @@ import { PlanServiceError } from "./errors";
 export const PlanningRequestSchema = z.object({ document: PlanDocumentSchema, content: PlanningContentSchema, sources: SourceRequestSchema,
   brief: z.string().trim().min(1).max(6000), locale: z.enum(["en", "ko"]), target: z.string().max(100).nullable().default(null) });
 export async function editPlanningDocument(input: z.infer<typeof PlanningRequestSchema>, signal: AbortSignal) {
-  const model = getModel();
+  const model = await getModel();
   if (!model.hasKey) throw new PlanServiceError("Muse is not configured. Add a Meta API key in Settings or set MODEL_API_KEY in web/.env.local.", 503);
   const validIds = new Set(planningBooths(input.document).map(b => b.id));
   if (input.content.booths.length !== validIds.size || input.content.booths.some(b => !validIds.has(b.id)))

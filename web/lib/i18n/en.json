@@ -865,5 +865,13 @@
   "Added {count} scene captures to the document.": "Added {count} scene captures to the document.",
   "Apply or discard the spatial draft before revising the planning document.": "Apply or discard the spatial draft before revising the planning document.",
   "Document request stopped. Any completed revisions and photos are kept.": "Document request stopped. Any completed revisions and photos are kept.",
-  "Document sections": "Document sections"
+  "Document sections": "Document sections",
+  "Model data use": "Model data use",
+  "Use Contributor pricing": "Use Contributor pricing",
+  "Allow Meta to use the prompts, drawings, reference files and responses sent to Muse Spark to train and improve its models in exchange for discounted API pricing. Uncheck to use Standard without training use.": "Allow Meta to use the prompts, drawings, reference files and responses sent to Muse Spark to train and improve its models in exchange for discounted API pricing. Uncheck to use Standard without training use.",
+  "This choice applies to this browser's next requests, including its open tabs. It does not change other visitors' choices or undo data already sent. Muse Image is separate.": "This choice applies to this browser's next requests, including its open tabs. It does not change other visitors' choices or undo data already sent. Muse Image is separate.",
+  "Contributor enabled for this browser.": "Contributor enabled for this browser.",
+  "Standard enabled for this browser.": "Standard enabled for this browser.",
+  "Contributor selection is unavailable for the configured provider or model.": "Contributor selection is unavailable for the configured provider or model.",
+  "Could not update model data settings. Reopen Settings and try again.": "Could not update model data settings. Reopen Settings and try again."
 }
