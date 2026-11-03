@@ -34,6 +34,24 @@ describe('Designer Muse SDK loop',()=>{
     expect(JSON.stringify(recovery.prompt)).toContain('The reviewed layout is ready.');
     expect(recovery.tools?.map(t=>t.name)).toEqual(['submit_design']);expect(recovery.toolChoice?.type).toBe('auto');
   });
+  it('wraps up before the deadline instead of timing out with unsaved work',async()=>{
+    let now=1_000_000,step=0;const clock=vi.spyOn(Date,'now').mockImplementation(()=>now);
+    const model=new MockLanguageModelV4({doGenerate:async()=>{
+      // The first step takes almost eight minutes, so the second starts inside the wrap-up window.
+      now+=470_000;
+      return [call('set_design_brief',brief),call('review_design',proposal),call('submit_design',{revision:1,summary:proposal.summary})][step++];
+    }});handle.model=model;
+    try {
+      const result=await designPlan(input(),new AbortController().signal);
+      expect(result.summary).toBe(proposal.summary);
+      const [first,second,third]=model.doGenerateCalls;
+      expect(JSON.stringify(first.prompt)).toContain('time remaining≈600s of 600s');
+      expect(second.tools?.map(t=>t.name)).toEqual(['edit_design','review_design','submit_design']);
+      expect(JSON.stringify(second.prompt)).toContain('stop adding new elements');
+      expect(third.tools?.map(t=>t.name)).toEqual(['submit_design']);
+      expect(JSON.stringify(third.prompt)).toContain('call submit_design now with the current reviewed revision');
+    } finally { clock.mockRestore(); }
+  });
   it('does not keep retrying when the single submission recovery returns prose again',async()=>{
     const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),prose(),prose()]});handle.model=model;
     await expect(designPlan(input(),new AbortController().signal)).rejects.toMatchObject({status:502});
