@@ -82,6 +82,44 @@ export function designWarnings(document: PlanDocument, locale: Locale = "en"): s
   return messages;
 }
 
+const range = (lo: number, hi: number) => `${lo.toFixed(3)}–${hi.toFixed(3)}`;
+const span = (b: Bounds) => `x ${range(b.x, b.x + b.width)}, y ${range(b.y, b.y + b.height)}`;
+/**
+ * Concrete corrections for the given objects' placement conflicts, in the model's own
+ * normalized x/y centre coordinates. A bare "extends outside" message makes the model
+ * guess new coordinates, and each guess costs a whole model step.
+ */
+export function placementHints(document: PlanDocument, ids: Iterable<string>): string[] {
+  if (!document.scaleConfirmed) return [];
+  const objects = document.objects ?? [], zones = document.zones ?? [];
+  const wanted = new Set(ids), hints: string[] = [];
+  for (const object of objects) {
+    if (!wanted.has(object.id)) continue;
+    const a = objectBounds(object, document), bottom = object.elevation ?? 0, top = bottom + object.height;
+    const zone = zones.find(item => item.id === object.zoneId);
+    if (zone) {
+      const z = objectBounds(zone, document);
+      if (!contains(z, a)) {
+        const [x0, x1, y0, y1] = [z.x + a.width / 2, z.x + z.width - a.width / 2, z.y + a.height / 2, z.y + z.height - a.height / 2];
+        hints.push(x0 > x1 + EPS || y0 > y1 + EPS
+          ? `${object.label} (${object.id}) is larger than ${zone.label} (${zone.id}); shrink the object or enlarge the zone.`
+          : `${object.label} (${object.id}): keep its centre within x ${range(x0, x1)}, y ${range(y0, y1)} to stay inside ${zone.label} (${zone.id}); now x ${object.x.toFixed(3)}, y ${object.y.toFixed(3)}.`);
+      }
+    }
+    if (bottom < 1.8) for (const route of zones.filter(item => item.purpose === "circulation")) {
+      const r = objectBounds(route, document);
+      if (overlaps(a, r)) hints.push(`${object.label} (${object.id}) footprint ${span(a)} enters circulation ${route.label} (${route.id}) at ${span(r)}; move it clear or narrow/move that route.`);
+    }
+    for (const other of objects) {
+      if (other.id === object.id) continue;
+      const b = objectBounds(other, document), otherBottom = other.elevation ?? 0;
+      if (overlaps(a, b) && bottom < otherBottom + other.height - EPS && top > otherBottom + EPS)
+        hints.push(`${object.label} (${object.id}) footprint ${span(a)} overlaps ${other.label} (${other.id}) at ${span(b)}.`);
+    }
+  }
+  return hints;
+}
+
 /** Geometry issues present after an edit but not before it. Each live design operation must not add any. */
 export function introducedWarnings(before: PlanDocument, after: PlanDocument): string[] {
   const remaining = new Map<string, number>();

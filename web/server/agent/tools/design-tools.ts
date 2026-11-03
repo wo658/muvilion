@@ -5,7 +5,8 @@ import { z } from "zod";
 import { applyDesignProposal, PlanDesignProposal } from "@/lib/plans/muse";
 import { reviewFloorCoverage } from "@/lib/plans/floor-coverage";
 import { reviewUsability } from "@/lib/plans/usability";
-import { designWarnings, introducedWarnings } from "@/lib/plans/design";
+import { designWarnings, introducedWarnings, placementHints } from "@/lib/plans/design";
+import type { PlanDocument } from "@/lib/plans/schema";
 import { createToolRegistry, type ToolRegistration } from "./registry";
 import { addArtifact, reserveToolCall, type DesignToolContext } from "./design-context";
 import { wallSurfaceIssues } from "@/lib/plans/wall-surfaces";
@@ -23,6 +24,11 @@ function publish(context: DesignToolContext, label: string) {
   context.publishedDraft = context.draft;
 }
 const phases = ["initial", "revision"] as const;
+/** Fix coordinates for the objects named in the given warnings, capped to keep the tool result small. */
+function hintsFor(draft: PlanDocument, warnings: string[]) {
+  const ids = (draft.objects ?? []).filter(object => warnings.some(warning => warning.startsWith(`${object.label} `))).map(object => object.id);
+  return placementHints(draft, ids).slice(0, 16);
+}
 
 /** Shared tools for initial design and revisions. */
 export const designToolRegistrations: readonly ToolRegistration<DesignToolContext>[] = [
@@ -52,7 +58,10 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         const draft = applyDesignPatch({ ...context.draft, warnings: context.base.warnings }, patch);
         // Each group is committed to the project as one operation, so it must not leave new geometry problems.
         const introduced = introducedWarnings(context.draft, draft);
-        if (introduced.length) throw new Error(`Group rejected as a whole; the saved design is unchanged. Fix these issues it would introduce and send the complete group again: ${introduced.slice(0, 12).join(" ")}`);
+        if (introduced.length) {
+          const hints = hintsFor(draft, introduced);
+          throw new Error(`Group rejected as a whole; the saved design is unchanged. Fix these issues it would introduce and send the complete group again: ${introduced.slice(0, 12).join(" ")}${hints.length ? ` Placement fixes (normalized centre x/y; widths in metres): ${hints.join(" ")}` : ""}`);
+        }
         reserveToolCall(context, "edit_design", 16);
         context.signal.throwIfAborted();
         context.draft = draft; context.revision++; context.review = undefined;
@@ -74,7 +83,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         const floorCoverage = context.brief.scope === "edit" && !context.wholeFloorRequired ? undefined : reviewFloorCoverage(draft, context.wholeFloorInteriorRequired ? "interior" : context.brief.scope);
         if (floorCoverage && !floorCoverage.complete) review.complete = false;
         const introduced = proposal.objects || proposal.zones ? introducedWarnings(context.draft, draft) : [];
-        if (introduced.length) return { revision: context.revision, rejected: true, introducedWarnings: introduced, next: "This replacement was rejected as a whole and not saved because it introduces geometry problems. Fix them, or edit with edit_design groups, then review again." };
+        if (introduced.length) return { revision: context.revision, rejected: true, introducedWarnings: introduced, placementHints: hintsFor(draft, introduced), next: "This replacement was rejected as a whole and not saved because it introduces geometry problems. Fix them, or edit with edit_design groups, then review again." };
         const geometryWarnings = [...designWarnings(draft), ...wallSurfaceIssues(draft)];
         const usability = reviewUsability(draft);
         if (!review.complete || floorCoverage && !floorCoverage.complete || geometryWarnings.length || usability.issues.length) {
@@ -83,7 +92,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
           context.revision++;
           context.review = review;
           publish(context, proposal.summary);
-          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
+          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
         }
         reserveToolCall(context, "review_design", 3);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
