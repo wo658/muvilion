@@ -131,7 +131,7 @@ describe("sample projects", () => {
       expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
     }
   });
-  it("ships the small authored pop-up and three venue projects containing all 16 drawings", () => {
-    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',6],['moscone',7],['lvcc',2]]);
+  it("ships the authored pop-up and two curated venue projects with four drawings", () => {
+    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',1],['moscone',2]]);
   });
 });
