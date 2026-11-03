@@ -14,7 +14,7 @@ import { renderDesign } from "./render-design";
 import { generateConceptImage } from "./meta-image";
 import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
 
-import { DesignPatchSchema, applyDesignPatch, designPreview } from "@/lib/plans/design-stream";
+import { DesignPatchSchema, designPreview, partitionDesignPatch } from "@/lib/plans/design-stream";
 
 export const ReviewedDesignSubmission = z.object({ revision: z.number().int().positive(), summary: z.string().min(1).max(2000) }).strict();
 
@@ -51,22 +51,24 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "edit_design", category: "design", phases,
     create: context => tool({
-      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using atomic groups (one booth's related components together) that leave no new overlaps, out-of-floor objects or blocked circulation; a group that adds any is rejected whole. Upsert complete objects/zones/wallSurfaces by ID; remove by ID. Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
+      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using groups (one booth's related components together). Items that would add overlaps, out-of-floor objects or blocked circulation are held back with placement fixes while the rest of the group is saved; resend only the held items. Upsert complete objects/zones/wallSurfaces by ID; remove by ID. Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
       inputSchema: DesignPatchSchema,
       execute: async patch => {
         if (!context.brief) throw new Error("Set the design brief first.");
-        const draft = applyDesignPatch({ ...context.draft, warnings: context.base.warnings }, patch);
-        // Each group is committed to the project as one operation, so it must not leave new geometry problems.
-        const introduced = introducedWarnings(context.draft, draft);
-        if (introduced.length) {
-          const hints = hintsFor(draft, introduced);
-          throw new Error(`Group rejected as a whole; the saved design is unchanged. Fix these issues it would introduce and send the complete group again: ${introduced.slice(0, 12).join(" ")}${hints.length ? ` Placement fixes (normalized centre x/y; widths in metres): ${hints.join(" ")}` : ""}`);
-        }
+        // The saved part of each group is one operation, so it must not leave new geometry problems.
+        const { draft, held, saved, full } = partitionDesignPatch({ ...context.draft, warnings: context.base.warnings }, patch);
+        const issues = full ? introducedWarnings(draft, full) : [];
+        const hints = full ? placementHints(full, held.filter(item => item.kind === "object").map(item => item.id)).slice(0, 16) : [];
+        const fixes = `${issues.slice(0, 12).join(" ")}${hints.length ? ` Placement fixes (normalized centre x/y; widths in metres): ${hints.join(" ")}` : ""}`;
+        if (!saved)
+          throw new Error(`Group rejected; no item could be saved without new geometry issues and the saved design is unchanged. Fix these and send the group again: ${fixes}`);
         reserveToolCall(context, "edit_design", 16);
         context.signal.throwIfAborted();
         context.draft = draft; context.revision++; context.review = undefined;
         publish(context, patch.label);
-        return { revision: context.revision, objects: draft.objects?.length, zones: draft.zones?.length, next: "Continue grouped edits, then review_design with geometry omitted." };
+        const result = { revision: context.revision, objects: draft.objects?.length, zones: draft.zones?.length };
+        if (!held.length) return { ...result, next: "Continue grouped edits, then review_design with geometry omitted." };
+        return { ...result, held, heldIssues: issues.slice(0, 12), placementHints: hints, next: `Saved everything except the held items. Resend only those held items with these fixes; do not resend saved items. ${fixes}` };
       },
     }),
   },

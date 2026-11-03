@@ -2,6 +2,7 @@ import { MuviOperationKindSchema, MuviOperationSchema, type MuviOperation } from
 import { z } from "zod";
 import { DesignObjectSchema, ZoneSchema, WallSurfaceSchema, PlanDocumentSchema, type PlanDocument } from "./schema";
 import { applyDesignProposal } from "./muse";
+import { designWarnings } from "./design";
 
 export const DesignPatchSchema = z.object({
   operation: MuviOperationKindSchema.optional().describe("Choose Muvi work gesture: inspect for planning/removal, measure for dimensions, arrange for placement/building, paint for finishes. Decorative only."),
@@ -22,6 +23,51 @@ function merge<T extends { id: string }>(before: T[], updates: T[], removed: str
 export function applyDesignPatch(base: PlanDocument, patch: z.infer<typeof DesignPatchSchema>) {
   const p = DesignPatchSchema.parse(patch);
   return applyDesignProposal(base, { summary: p.label, assumptions: [], objects: merge(base.objects ?? [], p.objects, p.removeObjects), zones: merge(base.zones ?? [], p.zones, p.removeZones), wallSurfaces: merge(base.wallSurfaces ?? [], p.wallSurfaces ?? [], p.removeWallSurfaces ?? []) });
+}
+export type DesignPatch = z.infer<typeof DesignPatchSchema>;
+export type HeldPatchItem = { kind: "object" | "zone" | "wallSurface" | "removals"; id: string; label: string };
+/**
+ * Split a group into the largest part that adds no geometry warnings and the items held back.
+ * Rejecting a whole group for one bad item made the model resend everything, at one model step
+ * per attempt. Removals form one unit; items that depend on a held item (an object in a held
+ * zone, a surface on a held partition) are held too because applying them fails.
+ */
+export function partitionDesignPatch(base: PlanDocument, patch: DesignPatch) {
+  const full = applyDesignPatch(base, patch);
+  const before = new Map<string, number>();
+  for (const warning of designWarnings(base)) before.set(warning, (before.get(warning) ?? 0) + 1);
+  const clean = (document: PlanDocument) => {
+    const remaining = new Map(before);
+    return designWarnings(document).every(warning => {
+      const count = remaining.get(warning) ?? 0;
+      remaining.set(warning, count - 1);
+      return count > 0;
+    });
+  };
+  if (clean(full)) return { draft: full, patch, held: [] as HeldPatchItem[], saved: Infinity, full: undefined };
+  const p = DesignPatchSchema.parse(patch);
+  type Unit = HeldPatchItem & { add: (part: DesignPatch) => DesignPatch };
+  const units: Unit[] = [];
+  if (p.removeObjects.length || p.removeZones.length || p.removeWallSurfaces?.length)
+    units.push({ kind: "removals", id: "removals", label: "Removals", add: part => ({ ...part, removeObjects: p.removeObjects, removeZones: p.removeZones, removeWallSurfaces: p.removeWallSurfaces }) });
+  for (const zone of p.zones) units.push({ kind: "zone", id: zone.id, label: zone.label, add: part => ({ ...part, zones: [...part.zones, zone] }) });
+  for (const object of p.objects) units.push({ kind: "object", id: object.id, label: object.label, add: part => ({ ...part, objects: [...part.objects, object] }) });
+  for (const surface of p.wallSurfaces ?? []) units.push({ kind: "wallSurface", id: surface.id, label: surface.label, add: part => ({ ...part, wallSurfaces: [...(part.wallSurfaces ?? []), surface] }) });
+  let accepted: DesignPatch = { operation: p.operation, label: p.label, objects: [], zones: [], removeObjects: [], removeZones: [], wallSurfaces: [], removeWallSurfaces: [] };
+  let draft = base, pending = units;
+  // Later passes pick up items whose dependency was accepted after them.
+  for (let pass = 0; pass < 3 && pending.length; pass++) {
+    const left: Unit[] = [];
+    for (const unit of pending) {
+      const candidate = unit.add(accepted);
+      let next: PlanDocument | undefined;
+      try { next = applyDesignPatch(base, candidate); } catch { next = undefined; }
+      if (next && clean(next)) { accepted = candidate; draft = next; } else left.push(unit);
+    }
+    if (left.length === pending.length) break;
+    pending = left;
+  }
+  return { draft, patch: accepted, held: pending.map(({ kind, id, label }) => ({ kind, id, label })), saved: units.length - pending.length, full };
 }
 export const DesignPreviewSchema = z.object({
   wallSurfaces: z.array(WallSurfaceSchema).max(200).optional(), removeWallSurfaces: z.array(z.string()).max(200).optional(),

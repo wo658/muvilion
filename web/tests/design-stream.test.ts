@@ -51,15 +51,30 @@ describe('live design drafts',()=>{
     expect(c.review).toBeUndefined();
     expect(events.map(e=>e.revision)).toEqual([1,2,3]);
     expect(previewDocument(base,events[2]).objects?.[0].height).toBe(1.2);
-    // Each group is committed live, so a group that adds a geometry problem is rejected whole and nothing is emitted.
+    // A group whose only item adds a geometry problem saves nothing and emits nothing.
     const before=c.draft;
-    await expect(tools.edit_design.execute!({...patch,objects:[{...object,x:.7}]},options)).rejects.toThrow('rejected as a whole');
+    await expect(tools.edit_design.execute!({...patch,objects:[{...object,x:.7}]},options)).rejects.toThrow('Group rejected');
     expect(c.draft).toBe(before);
     expect(events).toHaveLength(3);
     abort.abort();
     await expect(tools.edit_design.execute!(patch,options)).rejects.toThrow();
     expect(events).toHaveLength(3);
     expect(c.base).toBe(base);
+  });
+  it('saves the clean items of a group and holds back only the conflicting ones',async()=>{
+    const events: DesignPreview[]=[];
+    const c:DesignToolContext={base,draft:base,revision:0,phase:'initial',sources:[],signal:new AbortController().signal,env:{},artifacts:[],pendingImages:[],calls:new Map(),emitPreview:e=>events.push(e),brief:{scope:'interior',direction:'Stage',requirements:[{id:'stage',label:'Stage',target:'objects',kinds:['stage'],minimum:1}]}};
+    const tools=createDesignTools(c), options={toolCallId:'test',messages:[],context:{}};
+    const lectern={...object,id:'lectern',label:'Lectern',width:.6,depth:.5,x:.5,y:.47};
+    const outside={...object,id:'outside',label:'Outside',width:.6,depth:.5,x:.9,y:.9};
+    const result=await tools.edit_design.execute!({...patch,objects:[object,lectern,outside]},options) as {held:{id:string}[];next:string};
+    // The stage is saved; the lectern overlaps it and the other item leaves the floor.
+    expect(c.draft.objects?.map(o=>o.id)).toEqual(['stage']);
+    expect(result.held.map(h=>h.id)).toEqual(['lectern','outside']);
+    expect(result.next).toContain('overlaps Lectern');expect(result.next).toContain('Lectern (lectern) footprint');
+    expect(events).toHaveLength(1);
+    await tools.edit_design.execute!({...patch,label:'Lectern',objects:[{...lectern,height:.5,elevation:1}]},options);
+    expect(c.draft.objects?.map(o=>o.id)).toEqual(['stage','lectern']);
   });
   it('transmits only changed elements and reconstructs grouped removal',()=>{
     const first=applyDesignPatch(base,patch);
