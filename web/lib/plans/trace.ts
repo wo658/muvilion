@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { PlanDocument, PlanLine } from "./schema";
 import { isSimpleFootprint } from "./footprint";
-import type { PlanMeasure } from "./measure";
+import type { PlanFloor } from "./floor";
 
 const Point = z.object({ x: z.number(), y: z.number() });
 /** Where the drawing states a real size. Muse locates it; code turns it into metres. */
@@ -12,6 +12,8 @@ export const ScaleEvidence = z.object({
   unit: z.enum(["m", "ft", "m2", "ft2"]),
   a: Point.optional(), b: Point.optional(),
   polygon: z.array(Point).max(64).optional(),
+  /** Set only by code after a zoomed tick fit succeeds; the server clears any model-supplied value. */
+  refined: z.boolean().optional(),
 });
 export type ScaleEvidence = z.infer<typeof ScaleEvidence>;
 /** Muse traces walls from the page image. Coordinates are approximate and scale stays unconfirmed. */
@@ -96,7 +98,7 @@ export function applyRefinement(item: ScaleEvidence, window: ReturnType<typeof r
   const at = (value: number) => ({ x: mx + sx * (value - mv), y: my + sy * (value - mv) });
   const a = at(0), b = at(item.value);
   if (Math.hypot(b.x - a.x, b.y - a.y) < Math.hypot(window.width, window.height) * 0.1) return item;
-  return { ...item, a, b };
+  return { ...item, a, b, refined: true };
 }
 
 const FOOT = 0.3048;
@@ -134,7 +136,7 @@ export function scaleFromEvidence(document: PlanDocument, evidence: ScaleEvidenc
   const widthMeters = Math.round(width * mpp * 10) / 10, heightMeters = Math.round(height * mpp * 10) / 10;
   if (!(widthMeters >= 1 && heightMeters >= 1 && widthMeters <= 10000 && heightMeters <= 10000)) return null;
   const spread = Math.max(...best.map(entry => entry.mpp)) / Math.min(...best.map(entry => entry.mpp)) - 1;
-  return { widthMeters, heightMeters, source: best[0].item.source, label: best[0].item.label, spread };
+  return { widthMeters, heightMeters, source: best[0].item.source, label: best[0].item.label, spread, references: best.length, refined: best.some(entry => entry.item.refined === true) };
 }
 
 /** Use image-grounded model walls/text, preserving rendering warnings and unconfirmed scale. */
@@ -142,7 +144,6 @@ export function applyTrace(document: PlanDocument, input: unknown): PlanDocument
   const trace = PlanTrace.parse(input);
   const lines = traceLines(trace);
   const scale = document.widthMeters || document.heightMeters ? null : scaleFromEvidence(document, trace.scaleEvidence);
-  // Muse confirms scale only from a printed length (scale bar or dimension) whose readings agree; areas and module assumptions stay estimates.
   const confirmed = scale && scaleIsMeasured(scale);
   return {
     ...document,
@@ -161,27 +162,30 @@ export function applyTrace(document: PlanDocument, input: unknown): PlanDocument
   };
 }
 
-/** A stated length read consistently is precise enough to confirm; areas, module sizes and disagreeing references are not. */
+/**
+ * Muse confirms scale only from a printed length (scale bar or dimension) that is cross-checked: a zoomed tick fit,
+ * or at least two independent references agreeing within 5%. A single unchecked reading, areas and module sizes stay estimates.
+ */
 export function scaleIsMeasured(scale: NonNullable<ReturnType<typeof scaleFromEvidence>>) {
-  return (scale.source === "scale-bar" || scale.source === "dimension") && scale.spread <= 0.05;
+  return (scale.source === "scale-bar" || scale.source === "dimension") && scale.spread <= 0.05 && (scale.refined || scale.references >= 2);
 }
 
 /** Keep a Muse floor outline only when it is a valid simple polygon inside the frame. */
-export function traceFloor(points: PlanMeasure["floorBoundary"]) {
+export function traceFloor(points: PlanFloor["floorBoundary"]) {
   if (!points) return null;
   const outline = points.map(point => ({ x: clamp(point.x), y: clamp(point.y) }));
   return isSimpleFootprint(outline) ? outline : null;
 }
 
 /** Muse's traced floor outline; never replaces a reviewed one. */
-export function applyMeasure(document: PlanDocument, measure: PlanMeasure | null): PlanDocument {
-  const floor = document.floorBoundary ? null : traceFloor(measure?.floorBoundary);
+export function applyFloor(document: PlanDocument, reading: PlanFloor | null): PlanDocument {
+  const floor = document.floorBoundary ? null : traceFloor(reading?.floorBoundary);
   if (!floor) return document;
   return { ...document, floorBoundary: floor, warnings: [...new Set([...document.warnings, "Muse traced the interior floor outline. Adjust it in Drawing settings if it includes non-event areas."])].slice(0, 40) };
 }
 
 /** Reading steps arrive as committed operations; merge each into the drawing as it is now so user scale/floor edits made meanwhile survive. */
-export function mergeReading(current: PlanDocument, step: "walls" | "measured", reading: PlanDocument): PlanDocument {
+export function mergeReading(current: PlanDocument, step: "walls" | "floor", reading: PlanDocument): PlanDocument {
   const warnings = [...new Set([...current.warnings, ...reading.warnings])].slice(0, 100);
   const scale = !current.scaleConfirmed && !current.widthMeters && reading.widthMeters
     ? { widthMeters: reading.widthMeters, heightMeters: reading.heightMeters, scaleConfirmed: reading.scaleConfirmed, scaleSource: reading.scaleSource, scaleEvidence: reading.scaleEvidence } : {};

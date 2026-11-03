@@ -2,11 +2,11 @@ import { z } from "zod";
 import { PlanDocumentSchema, type PlanDocument } from "./schema";
 
 const ReadingEvent = z.discriminatedUnion("type", [
-  z.object({ type: z.enum(["preview", "walls", "measured"]), document: PlanDocumentSchema }),
+  z.object({ type: z.enum(["preview", "walls", "floor"]), document: PlanDocumentSchema }),
   z.object({ type: z.literal("complete") }),
   z.object({ type: z.literal("error"), error: z.string() }),
 ]);
-export type ReadingStepType = "preview" | "walls" | "measured";
+export type ReadingStepType = "preview" | "walls" | "floor";
 
 /** Drawing reading stream: hand each completed step to the caller to commit; a later step failure keeps earlier ones. */
 export async function readReadingStream(response: Response, onStep: (type: ReadingStepType, document: PlanDocument) => void) {
