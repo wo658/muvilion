@@ -1,7 +1,7 @@
 import "server-only";
 import type { PlanDocument } from "@/lib/plans/schema";
-import { applyMeasure } from "@/lib/plans/trace";
-import { measureDrawing } from "./measure";
+import { applyFloor } from "@/lib/plans/trace";
+import { traceFloorOutline } from "./floor";
 import { preparePages } from "./prepare";
 import { museTracingAvailable, traceWalls } from "./trace";
 
@@ -9,7 +9,7 @@ const TRACE_BUDGET_MS = 140_000;
 const RETRY_MIN_MS = 60_000;
 
 /** Each step is a complete document the client commits as its own operation: source preview, walls with Muse scale, then the floor outline. */
-export type ReadingStep = { type: "preview" | "walls" | "measured"; document: PlanDocument };
+export type ReadingStep = { type: "preview" | "walls" | "floor"; document: PlanDocument };
 
 async function traceWithRetry(document: PlanDocument, file: File, page: number, signal: AbortSignal) {
   const started = Date.now();
@@ -37,11 +37,11 @@ export async function extractDrawing(file: File, page = 1, options: { signal?: A
     return preview;
   }
   options.onStep?.({ type: "preview", document: prepared });
-  const measuring = measureDrawing(prepared, signal).catch(() => null);
+  const outlining = traceFloorOutline(prepared, signal).catch(() => null);
   const walls = await traceWithRetry(prepared, file, page, signal);
   options.onStep?.({ type: "walls", document: walls });
-  const measured = applyMeasure(walls, await measuring);
+  const floored = applyFloor(walls, await outlining);
   signal.throwIfAborted();
-  if (measured !== walls) options.onStep?.({ type: "measured", document: measured });
-  return measured;
+  if (floored !== walls) options.onStep?.({ type: "floor", document: floored });
+  return floored;
 }

@@ -37,7 +37,7 @@ export async function traceWalls(document: PlanDocument, signal: AbortSignal) {
   if (!call) throw new PlanServiceError("Muse did not return traced walls. Please retry.", 502);
   const trace = PlanTrace.safeParse(decodeToolInput(call.input));
   if (!trace.success) throw new PlanServiceError("Muse returned an invalid drawing reading. Please retry.", 502);
-  const scaleEvidence = await Promise.all(trace.data.scaleEvidence.map(item => refineReference(model.model, document, item, signal)));
+  const scaleEvidence = await Promise.all(trace.data.scaleEvidence.map(item => refineReference(model.model, document, { ...item, refined: false }, signal)));
   return applyTrace(document, { ...trace.data, scaleEvidence });
 }
 

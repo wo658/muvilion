@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyRefinement, applyTrace, needsRefinement, refinementWindow, scaleFromEvidence, traceLines, type ScaleEvidence } from "@/lib/plans/trace";
 import { PlanDocumentSchema, type PlanDocument } from "@/lib/plans/schema";
 
-const trace = vi.hoisted(() => ({ available: true, run: vi.fn(), prepare: vi.fn(), measure: vi.fn(async () => null) }));
+const trace = vi.hoisted(() => ({ available: true, run: vi.fn(), prepare: vi.fn(), floor: vi.fn(async () => null) }));
 vi.mock("@/server/plans/prepare", () => ({ preparePages: trace.prepare }));
 import { PlanServiceError } from "@/server/plans/errors";
 vi.mock("@/server/plans/trace", () => ({ museTracingAvailable: () => trace.available, traceWalls: trace.run }));
-vi.mock("@/server/plans/measure", () => ({ measureDrawing: trace.measure }));
+vi.mock("@/server/plans/floor", () => ({ traceFloorOutline: trace.floor }));
 import { readReadingStream } from "@/lib/plans/reading-stream";
 import { POST as extract } from "@/app/api/plans/extract/route";
 
@@ -35,14 +35,14 @@ describe("Muse wall tracing", () => {
     expect(lines[1].b.y).toBe(1);
     expect(lines.every(line => line.kind === "wall" && line.origin === "ai")).toBe(true);
   });
-  it("replaces extracted lines and lets Muse confirm scale from a printed dimension", () => {
+  it("replaces extracted lines and keeps a computed scale unconfirmed", () => {
     const traced = applyTrace(plan, { summary: "Hall", uncertainties: ["Door widths unclear"],
       scaleEvidence: [{ source: "dimension", label: "171m", value: 171, unit: "m", a: { x: 0.1, y: 0.9 }, b: { x: 0.955, y: 0.9 } }],
       walls: [{ a: { x: 0.1, y: 0.1 }, b: { x: 0.9, y: 0.1 } }] });
     expect(PlanDocumentSchema.parse(traced).method).toBe("muse");
     expect(traced.lines.map(line => line.id)).toEqual(["muse-1"]);
-    expect(traced).toMatchObject({ widthMeters: 200, heightMeters: 200, scaleConfirmed: true, scaleSource: "muse" });
-    expect(traced.warnings[1]).toContain("Muse set the scale from a dimension line (171m)");
+    expect(traced).toMatchObject({ widthMeters: 200, heightMeters: 200, scaleConfirmed: false });
+    expect(traced.warnings[1]).toContain("a dimension line (171m)");
     expect(traced.warnings).toContain("Door widths unclear");
     const unscaled = applyTrace(plan, { summary: "Hall", uncertainties: [], walls: [{ a: { x: 0.1, y: 0.1 }, b: { x: 0.9, y: 0.1 } }] });
     expect(unscaled.widthMeters).toBeNull();
@@ -125,11 +125,11 @@ describe("Muse wall tracing", () => {
     trace.prepare.mockResolvedValue([preview]);
     trace.run.mockResolvedValueOnce({ ...preview, method: "muse", lines: plan.lines, widthMeters: 50, heightMeters: 50, scaleConfirmed: true, scaleSource: "muse" });
     const outline = [{ x: .1, y: .1 }, { x: .9, y: .1 }, { x: .9, y: .9 }, { x: .1, y: .9 }];
-    trace.measure.mockResolvedValueOnce({ floorBoundary: outline, notes: [] } as never);
+    trace.floor.mockResolvedValueOnce({ floorBoundary: outline, notes: [] } as never);
     const steps: string[] = [];
     let last: PlanDocument | undefined;
     await readReadingStream(await extract(upload("hall.pdf", { Accept: "application/x-ndjson" })), (type, document) => { steps.push(type); last = document; });
-    expect(steps).toEqual(["preview", "walls", "measured"]);
+    expect(steps).toEqual(["preview", "walls", "floor"]);
     expect(last).toMatchObject({ method: "muse", widthMeters: 50, scaleConfirmed: true, scaleSource: "muse", floorBoundary: outline });
   });
   it("keeps the committed preview when wall reading fails later in the stream", async () => {
