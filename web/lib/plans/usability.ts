@@ -18,7 +18,7 @@ export function reviewUsability(document: PlanDocument) {
   const add = (code: string, message: string, objectId?: string) => issues.push({code, message, objectId});
   for (const object of objects) {
     if (!isSeat(object) && (object.kind === "lounge" || object.appearance === "seat" || object.appearance === "sofa" || object.modelAssetId === "modern_arm_chair_01" || object.modelAssetId === "modular_street_seating"))
-      add("unsupported_seating", `${object.label}: seating use geometry is not defined for this asset. Use an event-chair or lounge-sofa fixture for reviewed seating.`, object.id);
+      add("unsupported_seating", `${object.label}: seating use geometry is not defined for this asset. Replace it with fixtureType "event-chair" (0.5 × 0.55 m, for tables, counters and stages) or "lounge-sofa" (for a coffee table), without modelAssetId, and set useTargetId to what it serves.`, object.id);
   }
   if (!seats.length) return { issues, checkedSeats: 0, connectedSeats: 0, assumptions: USE_CLEARANCE };
   const width = document.widthMeters, depth = document.heightMeters;

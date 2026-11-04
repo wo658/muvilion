@@ -1,5 +1,6 @@
 import "server-only";
 import { assetTools } from "@/server/plans/asset-tools";
+import { DESIGN_BUDGET } from "@/lib/plans/design-budget";
 import { tool } from "ai";
 import { z } from "zod";
 import { applyDesignProposal, PlanDesignProposal } from "@/lib/plans/muse";
@@ -14,7 +15,8 @@ import { renderDesign } from "./render-design";
 import { generateConceptImage } from "./meta-image";
 import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
 
-import { DesignPatchSchema, designPreview, partitionDesignPatch } from "@/lib/plans/design-stream";
+import { DesignPatchSchema, designPreview, introducedPatchIssues, partitionDesignPatch, setObjectIds } from "@/lib/plans/design-stream";
+import { expandFurnitureSet } from "@/lib/plans/furniture-sets";
 
 export const ReviewedDesignSubmission = z.object({ revision: z.number().int().positive(), summary: z.string().min(1).max(2000) }).strict();
 
@@ -28,6 +30,17 @@ const phases = ["initial", "revision"] as const;
 function hintsFor(draft: PlanDocument, warnings: string[]) {
   const ids = (draft.objects ?? []).filter(object => warnings.some(warning => warning.startsWith(`${object.label} `))).map(object => object.id);
   return placementHints(draft, ids).slice(0, 16);
+}
+
+/** Installations per activity zone, so the model can see which zones still read as empty floor. */
+function zoneDensity(draft: PlanDocument) {
+  const zones = (draft.zones ?? []).filter(zone => zone.purpose !== "circulation" && zone.purpose !== "operations" && !zone.id.includes("-aisle-"));
+  const rows = zones.map(zone => {
+    const count = (draft.objects ?? []).filter(object => object.zoneId === zone.id).length, area = zone.width * zone.depth;
+    return { zone: zone.id, label: zone.label, area: Math.round(area), installations: count, perHundredSquareMetres: Math.round(count / area * 1000) / 10 };
+  });
+  return { zones: rows, thin: rows.filter(row => row.perHundredSquareMetres < 12).map(row => row.zone),
+    guide: "Zones under about 12 installations per 100 m² read as empty floor in the views; add sets and brand details there." };
 }
 
 /** Shared tools for initial design and revisions. */
@@ -51,22 +64,31 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "edit_design", category: "design", phases,
     create: context => tool({
-      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using groups (one booth's related components together). Items that would add overlaps, out-of-floor objects or blocked circulation are held back with placement fixes while the rest of the group is saved; resend only the held items. Upsert complete objects/zones/wallSurfaces by ID; remove by ID. Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
+      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using groups (one booth's related components together). Items that would add overlaps, out-of-floor objects, blocked circulation or seats without a reviewed seating fixture are held back with placement fixes while the rest of the group is saved; resend only the held items. Place seating groups, counters, photo spots and display rows as sets: the server expands each into correctly spaced fixtures with its own 1.2 m access aisle, saves or holds it whole and returns its footprint. Upsert complete objects/zones/wallSurfaces by ID; remove by ID (removeSets for a whole set). Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
       inputSchema: DesignPatchSchema,
       execute: async patch => {
         if (!context.brief) throw new Error("Set the design brief first.");
         // The saved part of each group is one operation, so it must not leave new geometry problems.
         const { draft, held, saved, full } = partitionDesignPatch({ ...context.draft, warnings: context.base.warnings }, patch);
-        const issues = full ? introducedWarnings(draft, full) : [];
-        const hints = full ? placementHints(full, held.filter(item => item.kind === "object").map(item => item.id)).slice(0, 16) : [];
+        const issues = full ? introducedPatchIssues(draft, full) : [];
+        const heldObjects = held.flatMap(item => item.kind === "object" ? [item.id] : item.kind === "set" && full ? setObjectIds(full, item.id) : []);
+        const hints = full ? placementHints(full, heldObjects).slice(0, 16) : [];
         const fixes = `${issues.slice(0, 12).join(" ")}${hints.length ? ` Placement fixes (normalized centre x/y; widths in metres): ${hints.join(" ")}` : ""}`;
         if (!saved)
           throw new Error(`Group rejected; no item could be saved without new geometry issues and the saved design is unchanged. Fix these and send the group again: ${fixes}`);
-        reserveToolCall(context, "edit_design", 16);
+        reserveToolCall(context, "edit_design", DESIGN_BUDGET.edits);
         context.signal.throwIfAborted();
         context.draft = draft; context.revision++; context.review = undefined;
         publish(context, patch.label);
-        const result = { revision: context.revision, objects: draft.objects?.length, zones: draft.zones?.length };
+        // Footprints include seat pull-back space: keep them clear of circulation and next to an aisle.
+        const savedSets = (patch.sets ?? []).filter(set => !held.some(item => item.kind === "set" && item.id === set.id));
+        const setFootprints = savedSets.map(set => { const f = expandFurnitureSet(draft, set).footprint; return `${set.label} (${set.id}): x ${f.x0.toFixed(3)}–${f.x1.toFixed(3)}, y ${f.y0.toFixed(3)}–${f.y1.toFixed(3)} (${f.width.toFixed(1)} × ${f.depth.toFixed(1)} m)`; });
+        // Seat access is otherwise only reported at review, too late to re-plan aisles around every set.
+        const unreachable = new Set(reviewUsability(draft).issues.filter(issue => issue.code === "seat_access").map(issue => issue.objectId));
+        const r = (lo: number, hi: number) => `${lo.toFixed(3)}–${hi.toFixed(3)}`;
+        const setAccess = savedSets.filter(set => setObjectIds(draft, set.id).some(id => unreachable.has(id))).map(set =>
+          `${set.label} (${set.id}) seats do not reach the route network: its own aisle ${expandFurnitureSet(draft, set).zones.map(z => `${z.id} (x ${r(z.x - z.width / 2 / (draft.widthMeters ?? 1), z.x + z.width / 2 / (draft.widthMeters ?? 1))}, y ${r(z.y - z.depth / 2 / (draft.heightMeters ?? 1), z.y + z.depth / 2 / (draft.heightMeters ?? 1))})`).join(" and ")} must overlap a main circulation zone by ≥1.2 m and stay clear of other items. Move the set, or extend a main route to meet that aisle.`);
+        const result = { revision: context.revision, objects: draft.objects?.length, zones: draft.zones?.length, ...(setFootprints.length ? { setFootprints } : {}), ...(setAccess.length ? { setAccess } : {}) };
         if (!held.length) return { ...result, next: "Continue grouped edits, then review_design with geometry omitted." };
         return { ...result, held, heldIssues: issues.slice(0, 12), placementHints: hints, next: `Saved everything except the held items. Resend only those held items with these fixes; do not resend saved items. ${fixes}` };
       },
@@ -94,9 +116,18 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
           context.revision++;
           context.review = review;
           publish(context, proposal.summary);
-          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
+          // Live runs rarely passed every check, so Muse never saw its floor and left it sparse.
+          // Show the views on the first failed preflights too; this does not use the review budget.
+          const looks = context.calls.get("preflight_views") ?? 0;
+          if (looks < 2) {
+            context.calls.set("preflight_views", looks + 1);
+            const views = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
+            context.signal.throwIfAborted();
+            views.forEach((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Interior massing (preflight)" : "Plan composition (preflight)", image }));
+          }
+          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, density: zoneDensity(draft), reviewsRemaining: DESIGN_BUDGET.reviews - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
         }
-        reserveToolCall(context, "review_design", 3);
+        reserveToolCall(context, "review_design", DESIGN_BUDGET.reviews);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
         context.signal.throwIfAborted();
         context.draft = draft;

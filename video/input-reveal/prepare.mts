@@ -9,7 +9,7 @@ const require = createRequire(
 );
 const sharp = require("sharp");
 const root = new URL("../../", import.meta.url);
-const bytes = await readFile(new URL("data/samples/moscone/west-L3.pdf", root));
+const bytes = await readFile(new URL("video/input-reveal/source/west-L3.pdf", root));
 const form = new FormData();
 form.append(
   "file",

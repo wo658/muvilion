@@ -908,5 +908,8 @@
   "Sample preparation cancelled.": "Sample preparation cancelled.",
   "Muse is reading the sample drawings. This may take a few minutes.": "Muse is reading the sample drawings. This may take a few minutes.",
   "Cancel preparation": "Cancel preparation",
-  "{count} wall surface designs.": "{count} wall surface designs."
+  "{count} wall surface designs.": "{count} wall surface designs.",
+  "Finished design and report included · recorded Muse run, {date}": "Finished design and report included · recorded Muse run, {date}",
+  "Design from scratch with Muse": "Design from scratch with Muse",
+  "This sample opens a recorded Muse run. Edit it freely or ask Muse for changes.": "This sample opens a recorded Muse run. Edit it freely or ask Muse for changes."
 }

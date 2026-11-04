@@ -45,7 +45,12 @@ export function reviewDesignCoverage(brief: DesignBrief, document: PlanDocument,
     const entry = entries.length === 1 ? entries[0] : undefined;
     const valid = new Set((requirement.target === "wallSurfaces" ? document.wallSurfaces ?? [] : requirement.target === "zones" ? document.zones ?? [] :
       (document.objects ?? []).filter(object => !requirement.kinds.length || requirement.kinds.includes(object.kind))).map(item => item.id));
-    const ids = [...new Set(entry?.ids ?? [])];
+    // A furniture set ID stands for its expanded objects (`<set id>-<part>`) of the allowed kinds.
+    const ids = [...new Set((entry?.ids ?? []).flatMap(id => {
+      if (valid.has(id) || requirement.target !== "objects") return [id];
+      const parts = [...valid].filter(item => item.startsWith(`${id}-`));
+      return parts.length ? parts : [id];
+    }))];
     const count = ids.filter(id => valid.has(id)).length;
     return { id: requirement.id, label: requirement.label, target: requirement.target, minimum: requirement.minimum,
       count, satisfied: Boolean(entry) && count === ids.length && count >= requirement.minimum,

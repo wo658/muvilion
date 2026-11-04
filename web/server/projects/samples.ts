@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { z } from "zod";
-import { emptyProject, SampleProject, type DrawingSource } from "@/lib/projects/schema";
+import { emptyProject, RecordedSampleBundle, SampleProject, type DrawingSource } from "@/lib/projects/schema";
 import { extractDrawing } from "@/server/plans/extract";
 import { PlanServiceError } from "@/server/plans/errors";
 import { SourceImage, SourceLibrarySchema } from "@/lib/sources/schema";
@@ -21,13 +21,29 @@ export function listSamples(directory = samplesDirectory()): SampleProject[] {
   let manifest: z.infer<typeof Manifest>;
   try { manifest = Manifest.parse(JSON.parse(readFileSync(resolve(directory, "samples.json"), "utf8"))); }
   catch { return []; }
-  return manifest.projects.filter(project => project.drawings.every(drawing => existsSync(resolve(directory, drawing.file))) && (project.sources ?? []).every(source => (source.imageFiles ?? []).every(file => existsSync(resolve(directory, file)))));
+  return manifest.projects.filter(project => project.drawings.every(drawing => existsSync(resolve(directory, drawing.file))) && (project.sources ?? []).every(source => (source.imageFiles ?? []).every(file => existsSync(resolve(directory, file)))))
+    // A missing recording leaves the live sample available rather than hiding the project.
+    .map(project => project.recorded && !existsSync(resolve(directory, project.recorded.file)) ? { ...project, recorded: undefined } : project);
+}
+
+/** Install a recorded run as a new, editable project; no model call is made. */
+function createRecordedProject(sample: SampleProject, directory: string) {
+  const recording = sample.recorded!;
+  let bundle: z.infer<typeof RecordedSampleBundle>;
+  try { bundle = RecordedSampleBundle.parse(JSON.parse(readFileSync(resolve(directory, recording.file), "utf8"))); }
+  catch { throw new ProjectError(`Invalid recorded sample: ${sample.name}.`, 422); }
+  const assets = bundle.assets.map(asset => "file" in asset
+    ? { id: asset.id, name: asset.name, mimeType: asset.mimeType, data: readFileSync(resolve(directory, asset.file)).toString("base64") }
+    : asset);
+  const state = { ...bundle.state, autoDesignPending: undefined, recordedDemo: { sampleId: sample.id, recordedAt: recording.recordedAt }, openReportOnLoad: Boolean(bundle.state.planningArtifacts?.length) || undefined };
+  return createProject({ name: sample.name, state, assets });
 }
 
 /** Extract every drawing before the atomic SQLite create, preserving each original and PDF page. */
-export async function createSampleProject(id: string, directory = samplesDirectory(), signal?: AbortSignal) {
+export async function createSampleProject(id: string, directory = samplesDirectory(), signal?: AbortSignal, live = false) {
   const sample = listSamples(directory).find(item => item.id === id);
   if (!sample) throw new ProjectError("Sample project not found.", 404);
+  if (sample.recorded && !live) return createRecordedProject(sample, directory);
   const failed = new AbortController();
   const runSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(1_200_000), failed.signal]);
   const briefAssets: { id: string; name: string; mimeType: string; data: string }[] = [];

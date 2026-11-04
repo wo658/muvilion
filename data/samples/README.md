@@ -1,19 +1,19 @@
 # 샘플 도면
 
-muvilion 스튜디오에 바로 올릴 수 있는 데모 도면을 모았다. 직접 그린 작은 가상 공간 도면(PNG) 1장과 공개 전시장 도면(PDF, JPG, 2026-10-28 각 시설 공식 페이지에서 받음) 3장이다.
+muvilion 스튜디오에 바로 올릴 수 있는 데모 도면을 모았다. 직접 그린 작은 가상 공간 도면(PNG) 1장과 공개 전시장 도면(JPG, 2026-10-28 KINTEX 공식 페이지에서 받음) 1장이다.
 
-> **저작권**: 시설 도면은 각 시설(KINTEX, Moscone Center/ASM Global)의 저작물이며, 출처를 밝혀 개발·테스트용으로 포함했다.
+> **저작권**: 시설 도면은 KINTEX의 저작물이며, 출처를 밝혀 개발·테스트용으로 포함했다.
 > 레포를 공개 배포하기 전에 원본 재배포가 괜찮은지 다시 확인하고, 필요하면 원본을 빼고 출처 링크와 내려받기 스크립트만 남긴다.
 
 ## 한눈에 비교
 
-| | 성수 팝업 | KINTEX | Moscone |
-|---|---|---|---|
-| 형식 | PNG (직접 작성) | JPG (래스터) | PDF (벡터) |
-| 도면 | 1층 1장 | 1홀 1장 | West L3, West L1 2장 |
-| 축척 | ✅ 축척 막대·치수 | ✅ 치수(m) 표기 | ✅ 축척 막대 (0–15m) |
-| 현재 판독 | Muse 이미지 해석 | Muse 이미지 해석 | Muse 이미지 해석 |
-| 추천 용도 | **대표 데모**, 저작권 문제 없음 | 국내 데모, 큰 홀 안 일부 영역 | **실제 전시장 메인 데모**, 회의실 단위 |
+| | 성수 팝업 | KINTEX |
+|---|---|---|
+| 형식 | PNG (직접 작성) | JPG (래스터) |
+| 도면 | 1층 1장 | 1홀 1장 |
+| 축척 | ✅ 축척 막대·치수 | ✅ 치수(m) 표기 |
+| 현재 판독 | Muse 이미지 해석 | Muse 이미지 해석 |
+| 추천 용도 | **대표 데모**, 저작권 문제 없음 | 국내 데모, 1B 안 40 × 30 m 영역 |
 
 ## 정리 기록 (2026-11-03)
 
@@ -22,9 +22,10 @@ muvilion 스튜디오에 바로 올릴 수 있는 데모 도면을 모았다. �
 - 제외: LVCC 프로젝트 전체(브로셔는 축척이 없고 crop이 필요하며, AHR 배치도는 타사 행사 브랜딩이 큰 도면), 함께 쓰던 `immersive-demo-pedestal.webp` 콘셉트 이미지.
 - 제외: KINTEX 2–5홀(1홀과 거의 같은 구조)과 1–5홀 전체 배치도(설계 대상이 아닌 안내도).
 - 제외: Moscone West L2, North/South 전시층·로비, South 상층 메자닌·L3(구조가 복잡하거나 축척 근거를 찾지 못함).
-- 지운 원본은 git 기록과 아래 출처 링크로 다시 받을 수 있다. 다시 넣으려면 `samples.json`에 항목을 추가한다.
+- 2026-11-04: 완성된 디자인과 보고서를 녹화본으로 담으면서 가장 잘 꾸며진 두 프로젝트(성수 팝업, KINTEX)만 남겼다. Moscone 프로젝트 전체(West L1·L3)와 `conversation-counter.webp` 콘셉트 이미지를 뺐다. West L3 원본은 `video/input-reveal/`의 영상 자료가 계속 쓰므로 `video/input-reveal/source/`로 옮겼다.
+- 지운 원본은 git 기록과 출처 링크([Moscone West L1](https://moscone.com/floorplans/moscone-west-level-1-floor-plans), [West L3](https://moscone.com/floorplans/moscone-west-level-3-floor-plan))로 다시 받을 수 있다. 다시 넣으려면 `samples.json`에 항목을 추가한다.
 
-CAD도 있다: Moscone은 층별 DWG(2026년), KINTEX는 CAD zip(2005–2007년). muvilion은 **DWG를 바로 받지 못해서** 이 폴더에는 넣지 않았다. 필요하면 아래 출처 페이지에서 받아 ASCII DXF로 바꾼 뒤 올린다 ([ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter) 또는 LibreDWG `dwg2dxf`).
+CAD도 있다: KINTEX는 CAD zip(2005–2007년)을 제공한다. muvilion은 **DWG를 바로 받지 못해서** 이 폴더에는 넣지 않았다. 필요하면 아래 출처 페이지에서 받아 ASCII DXF로 바꾼 뒤 올린다 ([ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter) 또는 LibreDWG `dwg2dxf`).
 
 ---
 
@@ -53,21 +54,9 @@ CAD도 있다: Moscone은 층별 DWG(2026년), KINTEX는 CAD zip(2005–2007년)
 - 👎 원본 해상도가 1198×915로 작아 Muse가 작은 글자나 복잡한 구조를 모두 읽지 못할 수 있다. 원본과 함께 확인한다.
 - 참고: [CAD zip](https://www.kintex.com/download/1exhibition/KINTEX_cad.zip)은 2005–2007년 DWG라 현재 건물과 다를 수 있다.
 
-## moscone/ — Moscone Center (샌프란시스코)
-
-| 파일 | 층 · 용도 | 출처 페이지 (PDF·DWG) |
-|---|---|---|
-| `west-L1.pdf` | West L1 · 전시홀 96,660 ft², 부스 최대 500 | [링크](https://moscone.com/floorplans/moscone-west-level-1-floor-plans) |
-| `west-L3.pdf` | West L3 · 기둥 없는 볼룸 56,000 ft² | [링크](https://moscone.com/floorplans/moscone-west-level-3-floor-plan) |
-
-- 👍 도면에 **축척 막대와 바닥 하중(psf)**이 있다. 출처 페이지에서 같은 층의 **DWG(2026년)**도 받을 수 있다.
-- 👍 West L3는 회의실(예: 3011호) 하나를 잘라 쓰기 좋아 3D가 가장 잘 읽힌다. `video/`의 영상 자료도 이 도면을 쓴다. West L1은 규모를 키운 전시홀 대안이다.
-- 👍 [소방 도면 요건](https://moscone.com/fire-marshal-floor-plan-requirements-exhibits) 공개 (부스 열 사이 통로 최소 10').
-- ⚠️ 도면마다 축척이 다르다 ("reproduced at various scales"). 두 도면 모두 90° 돌아가 있다.
-
 ## 프로젝트 단위로 열기
 
-`samples.json`이 유일한 샘플 목록이다. 시작 화면에서 성수 팝업(1개), KINTEX(1개), Moscone Center(2개) 프로젝트를 선택하면 포함된 원본을 복사하고 지정된 페이지를 이미지로 준비한 뒤 Meta Model(Muse)이 벽·텍스트·축척 근거를 실시간으로 읽는다. 실측 크기 근거는 성수 팝업과 Moscone의 축척 막대, KINTEX 치수선이다. 각 도면은 독립 작업 화면으로 저장되며 헤더에서 전환한다. 이는 사전 디자인 결과나 시뮬레이션 재생이 아니다. 원본이 하나라도 없으면 해당 묶음은 제공하지 않으며, 추출 실패 시 일부만 담긴 프로젝트를 생성하지 않는다. 기존 사용자 프로젝트는 변경하지 않는다.
+`samples.json`이 유일한 샘플 목록이다. 시작 화면에서 성수 팝업(1개), KINTEX(1개) 프로젝트를 선택하면 포함된 원본을 복사하고 지정된 페이지를 이미지로 준비한 뒤 Meta Model(Muse)이 벽·텍스트·축척 근거를 실시간으로 읽는다. 실측 크기 근거는 성수 팝업의 축척 막대와 KINTEX 치수선이다. 각 도면은 독립 작업 화면으로 저장되며 헤더에서 전환한다. 원본이 하나라도 없으면 해당 묶음은 제공하지 않으며, 추출 실패 시 일부만 담긴 프로젝트를 생성하지 않는다. 기존 사용자 프로젝트는 변경하지 않는다.
 
 모든 도면은 Next.js에서 원본 페이지를 이미지로 준비하고, API 키가 있으면 Meta Model이 벽과 문자를 읽는다. Python·OpenCV·벡터 선 추출은 사용하지 않는다. 키가 없으면 원본 미리보기만 제공하며 실제 치수는 사용자가 확인한다. `rasterPdf` 분기는 제거했다.
 
@@ -79,13 +68,12 @@ CAD도 있다: Moscone은 층별 DWG(2026년), KINTEX는 CAD zip(2005–2007년)
 |---|---|---|
 | 성수 팝업 | 써 보고·찍고·보내는 AI 글래스 팝업: 착용 피팅·촬영 산책·리스닝 라운지·핸즈프리 메시지 시연 | [Ray-Ban Meta](https://www.meta.com/ai-glasses/ray-ban-meta/), [Messenger](https://www.messenger.com/) |
 | KINTEX | 크리에이터 커넥션 데이: 촬영·편집·대화·토크 | [Instagram](https://www.meta.com/instagram/), [Threads](https://www.threads.com/) |
-| Moscone | 커뮤니티 & 비즈니스 허브: 워크숍·메시징 시연·상담 | [Facebook](https://www.meta.com/facebook-app/), [WhatsApp](https://www.whatsapp.com/) |
 
 기획은 2026-10-31에 공식 서비스 소개를 참고하여 독자 작성했다(성수 팝업은 2026-11-03). 성수 팝업은 공간도 가상이며, 브랜드 자료가 있으므로 새 프로젝트를 만들면 Muse가 첫 인테리어를 자동으로 만든다(ADR-0012). Meta의 공식 행사·의뢰·제휴나 공식 브랜드 가이드가 아니다. 외부 로고·사진·페이지 원문을 새로 번들하지 않는다. Threads의 텍스트·공개 대화 성격은 [공식 소개](https://about.fb.com/news/2023/07/introducing-threads-new-app-text-sharing/)를, 현재 도메인은 [threads.com 이전 발표](https://about.fb.com/news/2025/04/new-features-threads-web-experience/)를 참고했다.
 
 `samples.json`의 `sources`가 기획서와 브랜드 자료의 정본이다. 기획서는 공간 프로그램, 설계 연습용 가구·시설 수량, 체험 흐름, 도면별 활용 및 설계 요청 예시를 담는다. 새 프로젝트를 만들 때 본문을 UTF-8 `.txt` 원본으로 SQLite에 함께 저장하므로 프로젝트 내보내기에도 포함된다. 브랜드 URL은 북마크이며 생성 시 웹페이지를 수집하지 않는다. 함께 제공된 설명과 기획만 모델의 참고 자료가 된다.
 
-도면 읽기는 키가 있을 때 Meta Model을 실제 호출하며, 키가 없으면 원본 미리보기만 표시한다. 공간 배치 결과, 기록된 재생, 모의 시뮬레이션 또는 라이브 VR·AI 체험 결과는 미리 채우지 않는다. 기획의 수량·운영 방향은 가정이며 축척·사용 영역·시설 연결·안전 조건은 실제 설계 전에 확인한다. 기존 SQLite 프로젝트는 덮어쓰지 않는다. 최신 자료는 시작 화면에서 새 샘플 프로젝트를 생성하면 적용된다.
+도면 읽기는 키가 있을 때 Meta Model을 실제 호출하며, 키가 없으면 원본 미리보기만 표시한다. 모의 시뮬레이션이나 라이브 VR·AI 체험 결과는 미리 채우지 않는다. 디자인 결과는 아래 녹화본으로만 제공한다. 기획의 수량·운영 방향은 가정이며 축척·사용 영역·시설 연결·안전 조건은 실제 설계 전에 확인한다. 기존 SQLite 프로젝트는 덮어쓰지 않는다. 최신 자료는 시작 화면에서 새 샘플 프로젝트를 생성하면 적용된다.
 
 ## 기획 이미지와 구체적인 서비스 참고 (2026-11-02)
 
@@ -95,12 +83,22 @@ CAD도 있다: Moscone은 층별 DWG(2026년), KINTEX는 CAD zip(2005–2007년)
 |---|---|---|
 | 성수 팝업 | `concepts/glasses-fitting-bar.webp` — 거울 3장·우드 트레이·스툴이 있는 피팅 카운터 (직접 그림, 아래 참고) | [Ray-Ban Meta 한국 출시](https://about.fb.com/news/2026/05/ray-ban-meta-and-oakley-meta-officially-launch-in-korea/) |
 | KINTEX | `concepts/creator-display-pod.webp` — 아치형 촬영·전시 포드 | [Edits 소개](https://about.fb.com/news/2025/04/introducing-edits-streamlined-video-creation-app/) |
-| Moscone | `concepts/conversation-counter.webp` — 상담·대화 시연 카운터 | [WhatsApp 비즈니스 대화 운영](https://about.fb.com/news/2025/04/ways-to-manage-your-businesses-chats-on-whatsapp/) |
 
-이미지는 2026-11-02 이 프로젝트를 위해 imagegen으로 생성한 신규 콘셉트다(KINTEX, Moscone). 입력 참조 이미지 없이 작성한 프롬프트를 사용했으며 외부 제품·브랜드 사진, 로고, 공식 가이드 도형은 사용하지 않았다. 타사 원본의 재배포 조건에 의존하는 자산이 아니다. 생성물의 법적 독점권을 주장하지 않는다. 단색 배경에서 하나의 전시 가구가 전부 보이는 3/4 시점, 재료가 읽히는 조명, 글자·로고·사람 없는 구성을 공통으로 지정했다. 개별 디자인 지시는 각각 (1) 보라 아치 배경판+코럴 받침+일체형 선반, (2) 목재 상판+녹색 리브 전면+청색 측면 카운터다. 원본 생성 PNG를 1024px 이내 WebP 품질 86으로 정규화했다.
+이미지는 2026-11-02 이 프로젝트를 위해 imagegen으로 생성한 신규 콘셉트다(KINTEX). 입력 참조 이미지 없이 작성한 프롬프트를 사용했으며 외부 제품·브랜드 사진, 로고, 공식 가이드 도형은 사용하지 않았다. 타사 원본의 재배포 조건에 의존하는 자산이 아니다. 생성물의 법적 독점권을 주장하지 않는다. 단색 배경에서 하나의 전시 가구가 전부 보이는 3/4 시점, 재료가 읽히는 조명, 글자·로고·사람 없는 구성을 공통으로 지정했다. 개별 디자인 지시는 보라 아치 배경판+코럴 받침+일체형 선반이다. 원본 생성 PNG를 1024px 이내 WebP 품질 86으로 정규화했다.
 
 성수 팝업의 콘셉트 이미지는 이미지 생성 모델이 아니라 [`web/scripts/build-sample-popup.mjs`](../../web/scripts/build-sample-popup.mjs)의 SVG 아이소메트릭 도형(그라데이션 면, 흐린 접지 그림자)으로 2026-11-03에 직접 그려 1024×768 WebP 품질 86으로 저장했다. 같은 공통 지시(가구 하나, 3/4 시점, 단색 배경, 글자·로고·사람 없음)를 따랐다.
 
 이는 실제 설치 사례나 3D 복원 결과가 아닌 **디자인 입력 자료**다. 본문의 폭은 기획 가정이며 이미지에서 측정한 값이 아니다. Muse는 지원되는 공간 요소로 형태·색상·재료를 해석할 수 있지만 이미지의 세부 곡면이나 제작 구조를 그대로 구현했다고 주장하면 안 된다. 공식 기사 링크는 문맥 파악용 북마크로만 저장하고, 기사 이미지·로고·원문을 재배포하지 않는다.
 
 매니페스트의 `imageFiles`는 샘플 디렉터리 하위의 PNG/JPEG/WebP 파일을 참조한다. 누락된 이미지를 가진 샘플은 목록에서 제외하며, 잘못된 이미지 헤더 또는 이미지당 449,000바이트를 넘는 자료는 프로젝트 생성 전에 거절한다. 생성 후 파일 경로는 프로젝트 상태에 들어가지 않고 기존 `source.images` 데이터로 보존된다.
+
+## 녹화된 Muse 결과 (2026-11-04)
+
+두 샘플 모두 완성된 디자인과 기획 문서를 담은 녹화본(`<id>/recorded.json`, `samples.json`의 `recorded`)을 포함한다. 샘플을 고르면 모델 호출 없이 이 결과를 새 프로젝트로 설치하고 기획 문서를 함께 연다. 프로젝트는 일반 프로젝트와 똑같이 수정할 수 있다. 시작 화면과 프로젝트 안내에 녹화된 Muse 결과임을 표시하며, 새로 계산한 결과로 소개하지 않는다. "Muse로 처음부터 디자인"을 고르면 도면 읽기와 자동 디자인을 실제로 실행한다.
+
+| 샘플 | 디자인 | 기획 문서 |
+|---|---|---|
+| 성수 팝업 | 구역 21개, 설치물 98개, 벽면 그래픽 4개 | 구역 카드 6개, 실제 3D 화면 사진 7장 |
+| KINTEX | 1B 안 40 × 30 m 영역, 구역 20개, 설치물 144개 | 구역 카드 8개, 실제 3D 화면 사진 9장 |
+
+녹화 방법: `NEXT_PUBLIC_MUSE_RECORDING_BUDGET=1`로 띄운 개발 서버(실행당 25분)에서 샘플을 만들고, Muse가 자동 디자인한 뒤 채팅으로 완성도 보완과 기획 문서 작성을 요청했다. KINTEX는 기획서대로 바닥 경계를 1B 안 40 × 30 m로 지정하고, 1홀 폭 171 m 기준으로 축척(도면 233.6 × 178.4 m)을 확정했다. 사람이 객체를 직접 옮기지 않았다. Muse의 자체 사용성 검토(좌석 접근·통로 연결)는 일부 항목이 남은 상태로 저장되었으며 프로젝트의 "확인할 사항"에 표시된다. 녹화본은 프로젝트 내보내기 형식이며, 도면 원본은 같은 폴더의 샘플 파일을 경로로 참조한다. 새로 녹화하려면 내보낸 JSON으로 `node web/scripts/record-sample.mjs <export.json> <sample-id> [note]`를 실행한다.

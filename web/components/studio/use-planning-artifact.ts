@@ -9,11 +9,11 @@ import { translate, type Locale } from "@/lib/i18n/messages";
 export type PlanningCapture = { capture: (targetId: string, signal: AbortSignal) => Promise<z.infer<typeof PlanningPhotoSchema>> };
 
 /** Document changes and captures share the project's existing serialized autosave. */
-export function usePlanningArtifact({ document, sources, drawingId, artifact, onChange, locale }: {
+export function usePlanningArtifact({ document, sources, drawingId, artifact, onChange, locale, initialOpen = false }: {
   document: PlanDocument | null; sources: SourceLibrary; drawingId: string; artifact: PlanningArtifact | null;
-  onChange: (next: PlanningArtifact) => void; locale: Locale;
+  onChange: (next: PlanningArtifact) => void; locale: Locale; initialOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [target, setTarget] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);

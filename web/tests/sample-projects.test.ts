@@ -7,6 +7,7 @@ vi.mock("@/server/plans/extract", () => ({ extractDrawing: extract }));
 import { getAsset, getProject, listProjects, exportProject } from "@/server/projects/store";
 import { createSampleProject, listSamples, samplesDirectory } from "@/server/projects/samples";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
+import { planningIsStale } from "@/lib/plans/planning-artifact";
 
 let directory: string, samples: string;
 beforeEach(() => {
@@ -24,6 +25,29 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); rmSync(directory, { recursive: true, force: true }); });
 
 describe("sample projects", () => {
+  it("installs a recorded run as an editable project without reading drawings, unless asked to run live", async () => {
+    const live=await createSampleProject("venue",samples);
+    const exported=exportProject(live.id);
+    const hall=live.state.drawings![0].originalAssetId!;
+    const state={...exported.state,planningArtifacts:[],autoDesignPending:true};
+    const assets=exported.assets.map(asset=>asset.id===hall?{id:asset.id,name:asset.name,mimeType:asset.mimeType,file:"venue/hall.pdf"}:asset);
+    writeFileSync(join(samples,"venue","recorded.json"),JSON.stringify({projectVersion:2,name:"Venue",state,assets}));
+    const manifest={projects:[{id:"venue",name:"Venue",drawings:[{name:"Hall",file:"venue/hall.pdf",page:3},{name:"Lobby",file:"venue/lobby.jpg"}],recorded:{file:"venue/recorded.json",recordedAt:"2026-11-04",note:"Recorded run."}}]};
+    writeFileSync(join(samples,"samples.json"),JSON.stringify(manifest));
+    extract.mockClear();
+    const recorded=await createSampleProject("venue",samples);
+    expect(extract).not.toHaveBeenCalled();
+    expect(recorded.id).not.toBe(live.id);
+    expect(recorded.state).toMatchObject({recordedDemo:{sampleId:"venue",recordedAt:"2026-11-04"}});
+    expect(recorded.state.autoDesignPending).toBeUndefined();
+    // No planning document in this recording, so nothing to open.
+    expect(recorded.state.openReportOnLoad).toBeUndefined();
+    expect(Buffer.from(getAsset(recorded.id,recorded.state.drawings![0].originalAssetId!).data).toString()).toBe("%PDF-1.7 test");
+    await createSampleProject("venue",samples,undefined,true);
+    expect(extract).toHaveBeenCalledTimes(2);
+    rmSync(join(samples,"venue","recorded.json"));
+    expect(listSamples(samples)[0].recorded).toBeUndefined();
+  });
   it("lists complete groups only and handles unavailable catalogues", () => {
     expect(listSamples(samples).map(p=>[p.id,p.drawings.length])).toEqual([["venue",2]]);
     expect(listSamples(join(directory,"nowhere"))).toEqual([]);
@@ -131,7 +155,20 @@ describe("sample projects", () => {
       expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
     }
   });
-  it("ships the authored pop-up and two curated venue projects with four drawings", () => {
-    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',1],['moscone',2]]);
+  it("installs each shipped recording with a current report and no drawing reads", async () => {
+    for (const sample of listSamples(samplesDirectory())) {
+      expect(sample.recorded).toBeDefined();
+      const project = await createSampleProject(sample.id, samplesDirectory());
+      const report = project.state.planningArtifacts![0];
+      expect(project.state.openReportOnLoad).toBe(true);
+      expect(project.state.document?.objects?.length).toBeGreaterThan(50);
+      expect(report.photos.length).toBeGreaterThan(5);
+      // Installing remaps asset IDs; the report's snapshot must follow, or it reads as stale.
+      expect(planningIsStale(report, getProject(project.id).state.document!, getProject(project.id).state.sources)).toBe(false);
+    }
+    expect(extract).not.toHaveBeenCalled();
+  });
+  it("ships the authored pop-up and the KINTEX venue project, one drawing each", () => {
+    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',1]]);
   });
 });

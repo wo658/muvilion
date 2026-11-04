@@ -114,6 +114,9 @@ export function createProject(input: unknown) {
     if (state.originalDrawingId) state.originalDrawingId = ids.get(state.originalDrawingId) ?? state.originalDrawingId;
     for (const item of state.drawings ?? []) if (item.originalAssetId) item.originalAssetId = ids.get(item.originalAssetId) ?? item.originalAssetId;
     for (const item of state.sources.items) if (item.originalAssetId) item.originalAssetId = ids.get(item.originalAssetId) ?? item.originalAssetId;
+    // Planning documents keep a snapshot of the sources; remap it too, or an imported document reads as stale.
+    for (const artifact of state.planningArtifacts ?? []) for (const item of artifact.basis.sources.items)
+      if (item.originalAssetId) item.originalAssetId = ids.get(item.originalAssetId) ?? item.originalAssetId;
     db.prepare("UPDATE projects SET state_json = ? WHERE id = ?").run(pack(db, id, state), id);
     return load(db, id);
   }));

@@ -70,6 +70,7 @@ button.pw-tile:disabled{opacity:.5;cursor:default}
 .pw-samples{display:flex;flex-direction:column;max-height:280px;overflow-y:auto;margin:0;padding:4px;list-style:none;border:1px solid var(--hairline);border-radius:10px;background:var(--surface);text-align:left}
 .pw-samples button{width:100%;padding:9px 12px;border-radius:6px;text-align:left;font-size:13px;cursor:pointer}
 .pw-samples button:hover:not(:disabled){background:var(--sunken)}
+.pw-samples .pw-sample-live{width:auto;margin:0 0 4px 12px;padding:3px 8px;font-size:12px;color:var(--ink-soft);border:1px solid var(--hairline)}
 .pw-start-links{display:flex;justify-content:center;gap:8px}
 @media(max-width:640px){.pw-start-options{grid-template-columns:1fr}}
 .pw-projects{padding-top:14px}
