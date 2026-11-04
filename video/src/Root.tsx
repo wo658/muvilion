@@ -1,3 +1,4 @@
+import { LaunchFilm } from "./LaunchFilm";
 import { ContinuousReveal } from "./ContinuousReveal";
 import { DesignerFilm } from "./DesignerFilm";
 import { InputReveal } from "./InputReveal";
@@ -6,6 +7,7 @@ import { MyComposition } from "./Composition";
 import { Showroom } from "./Showroom";
 export const RemotionRoot = () => (
   <>
+    <Composition id="Muvilion-Launch-Film" component={LaunchFilm} durationInFrames={5400} fps={30} width={1920} height={1080} />
     <Composition
       id="Muvilion-Continuous-15"
       component={ContinuousReveal}

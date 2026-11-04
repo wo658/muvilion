@@ -443,7 +443,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
       </aside>
 
     </div>
-    {document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")}{issues.length}{t("items")}</summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
+    {document && <div className="ps-simple-summary">{issues.length > 0 && calibrated ? <details className="ps-design-issues"><summary>{t("Items to review")} <span className="ps-issue-count">{issues.length}</span></summary>{issues.map((issue, i) => <p key={i}>{issue}</p>)}</details> : null}</div>}
 
 
   </main>;

@@ -150,7 +150,7 @@ describe("sample projects", () => {
       const project = await createSampleProject(sample.id, samplesDirectory());
       const concept = project.state.sources.items.find(source => source.kind === "concept");
       expect(concept?.images[0]).toMatch(/^data:image\/webp;base64,/);
-      expect(concept?.notes).toContain("생성");
+      expect(concept?.notes).toMatch(/drawn with repository script|generated from an original prompt/);
       expect(project.state.sources.items.filter(source => source.url)).toHaveLength(3);
       expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
     }
