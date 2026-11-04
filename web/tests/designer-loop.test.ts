@@ -74,8 +74,16 @@ describe('Designer Muse SDK loop',()=>{
       if(step===2)return call('review_design',proposal);
       controller.abort();return prose();
     }});handle.model=model;
-    await expect(designPlan(input(),controller.signal)).rejects.toMatchObject({status:499});
+    await expect(designPlan(input(),controller.signal)).rejects.toMatchObject({status:499,message:'Design cancelled. Saved steps remain; continue the design or undo this run.'});
     expect(model.doGenerateCalls).toHaveLength(3);
+  });
+  it('says the drawing is unchanged only when no step was committed',async()=>{
+    const controller=new AbortController();let step=0;
+    const model=new MockLanguageModelV4({doGenerate:async()=>{
+      if(step++===0)return call('set_design_brief',brief);
+      controller.abort();return prose();
+    }});handle.model=model;
+    await expect(designPlan(input(),controller.signal)).rejects.toMatchObject({status:499,message:'Design cancelled. Your drawing is unchanged.'});
   });
   it('does not retry a filtered response even after a valid review',async()=>{
     const model=new MockLanguageModelV4({doGenerate:[call('set_design_brief',brief),call('review_design',proposal),prose('content-filter')]});handle.model=model;

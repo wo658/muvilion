@@ -46,6 +46,9 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
   const runId = crypto.randomUUID();
   const started = Date.now();
   const usedTools: string[] = [];
+  // Edit groups commit as they arrive (ADR-0013): only a run that committed nothing may say the drawing is unchanged.
+  const failure = (problem: string, unchanged: string, status: number) =>
+    new PlanServiceError(`${problem} ${context.revision ? "Saved steps remain; continue the design or undo this run." : unchanged}`, status);
   try {
     const instructions = (emitPreview ? "Build the design visibly with edit_design in coherent groups before review_design. Do not wait to compose an entire design in a single review call. Review the accumulated draft with objects/zones omitted. Preserve the entire requested scope.\n" : "") + DESIGN_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\n" + ASSET_INSTRUCTIONS + (input.locale ? `\nWrite user-facing replies, summaries and new labels in ${input.locale === "ko" ? "Korean" : "English"}. Preserve existing user content and identifiers.` : "");
     let lastPreparedMessages: ModelMessage[] = [];
@@ -123,23 +126,23 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
     if (!call) throw new PlanServiceError("Muse could not finish a reviewed design within the tool budget. Please retry.", 502);
     const proposal = ReviewedDesignSubmission.parse(call.input);
     if (wholeFloorInteriorRequired && context.brief?.scope !== "interior")
-      throw new PlanServiceError("The request requires a furnished interior throughout the whole floor. Zoning alone is incomplete. No changes were applied.", 502);
-    if (context.review && !context.review.complete) throw new PlanServiceError("The interior design is missing requested elements. No changes were applied. Retry with the same brief.", 502);
+      throw failure("The request requires a furnished interior throughout the whole floor. Zoning alone is incomplete.", "No changes were applied.", 502);
+    if (context.review && !context.review.complete) throw failure("The interior design is missing requested elements.", "No changes were applied. Retry with the same brief.", 502);
     if (!seenRevision || seenRevision !== context.revision || proposal.revision !== context.revision)
       throw new PlanServiceError("Muse submitted a design that has not been visually reviewed. Please retry.", 502);
-    if (!context.review?.complete) throw new PlanServiceError("The interior design is missing requested elements. No changes were applied. Retry with the same brief.", 502);
+    if (!context.review?.complete) throw failure("The interior design is missing requested elements.", "No changes were applied. Retry with the same brief.", 502);
     if ((context.brief?.scope !== "edit" || wholeFloorRequired) && !reviewFloorCoverage(context.draft, wholeFloorInteriorRequired ? "interior" : context.brief?.scope ?? "interior").complete)
-      throw new PlanServiceError("The design does not allocate and furnish the entire reviewed floor. No changes were applied. Retry with the same whole-floor brief.", 502);
-    if (designWarnings(context.draft).length || wallSurfaceIssues(context.draft).length) throw new PlanServiceError("The design still has geometry conflicts. No changes were applied.", 502);
-    if (reviewUsability(context.draft).issues.length) throw new PlanServiceError("The design still has seating or circulation usability issues. No changes were applied.", 502);
+      throw failure("The design does not allocate and furnish the entire reviewed floor.", "No changes were applied. Retry with the same whole-floor brief.", 502);
+    if (designWarnings(context.draft).length || wallSurfaceIssues(context.draft).length) throw failure("The design still has geometry conflicts.", "No changes were applied.", 502);
+    if (reviewUsability(context.draft).issues.length) throw failure("The design still has seating or circulation usability issues.", "No changes were applied.", 502);
     return { document: context.draft, summary: proposal.summary, artifacts: context.artifacts, phase: context.phase, designReview: context.review, runId };
   } catch (error) {
     const reason = signal.aborted ? "cancelled" : runSignal.aborted ? "timeout" : error instanceof PlanServiceError ? "review_failed" : "provider_or_tool_failed";
     // Never log prompts, references, keys or raw provider errors (which may contain request headers).
     console.warn("Muse design run failed", JSON.stringify({ runId, reason, elapsedMs: Date.now() - started, completedSteps, tools: usedTools, revision: context.revision, seenRevision, reviewsUsed: context.calls.get("review_design") ?? 0, missing: context.review?.requirements.filter(r => !r.satisfied).map(r => ({ target: r.target, minimum: r.minimum, count: r.count })) }));
     if (error instanceof PlanServiceError) throw error;
-    if (reason === "cancelled") throw new PlanServiceError("Design cancelled. Your drawing is unchanged.", 499);
-    if (reason === "timeout") throw new PlanServiceError("Interior design timed out before review completed. Your drawing is unchanged. Retry with the same brief.", 504);
-    throw new PlanServiceError("The interior design model or tool failed. Your drawing is unchanged. Retry with the same brief.", 502);
+    if (reason === "cancelled") throw failure("Design cancelled.", "Your drawing is unchanged.", 499);
+    if (reason === "timeout") throw failure("Interior design timed out before review completed.", "Your drawing is unchanged. Retry with the same brief.", 504);
+    throw failure("The interior design model or tool failed.", "Your drawing is unchanged. Retry with the same brief.", 502);
   }
 }
