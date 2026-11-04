@@ -31,7 +31,8 @@ attribution behavior built into the tool.
 - Work in git worktrees under `.worktrees/<slug>` on branches `wt/<slug>`, then merge into
   `main` with `--no-ff`. Push only when asked.
 - Before merging: web `pnpm test`, `pnpm typecheck`, `pnpm lint` and `pnpm build`.
-- Root `README.md` and `docs/` are private planning notes and are gitignored; do not commit them.
+- Root `README.md` is the public project overview; keep it in step with how the app works.
+  `docs/` holds private planning notes and is gitignored; do not commit it.
 - Never commit secrets. Keys live in `web/.env.local` or the local SQLite data directory
   (`web/data/` by default), both gitignored. Never include keys in project exports.
 
@@ -70,8 +71,8 @@ attribution behavior built into the tool.
   external example directory explicitly and handle unavailable examples clearly.
 - Before bundling third-party example assets, record their source and redistribution terms.
   Keep optional external assets out of the default example path until this is resolved.
-- Put public setup and example documentation in tracked locations; the root README and
-  `docs/` remain private under the workflow above.
+- Put public setup and example documentation in tracked locations (the root README or
+  `web/`); `docs/` remains private under the workflow above.
 
 ## Design and color tokens
 
@@ -115,4 +116,4 @@ attribution behavior built into the tool.
 
 - Start with [architecture/README.md](architecture/README.md) and the [ADR index](architecture/adr/README.md) for current architecture and decision history.
 - Update ADRs with material changes to service boundaries, data ownership, persistence or contracts. Supersede old decisions explicitly rather than erasing history.
-- Use [GLOSSARY.md](GLOSSARY.md) for domain terms. Root `README.md` and `docs/` remain private and gitignored.
+- Use [GLOSSARY.md](GLOSSARY.md) for domain terms. `docs/` remains private and gitignored.
