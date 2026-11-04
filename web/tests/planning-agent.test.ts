@@ -18,8 +18,14 @@ it("applies a targeted document fee revision without mutating source geometry", 
   expect(result.captureIds).toEqual(["booth-a1"]);
   expect(mock.generate.mock.calls[0][0].abortSignal).toBe(req.signal);
 });
-it.each([{ calls: [] }, { calls: [{ toolName: "update_planning_document", input: { summary: "fake", sections: [], booths: [], captureIds: ["invented-booth"] } }] }])("rejects missing or invalid model updates", async ({ calls: toolCalls }) => {
+it.each([{ calls: [] }, { calls: [{ toolName: "update_planning_document", input: { sections: [], booths: [] } }] }])("rejects missing or invalid model updates", async ({ calls: toolCalls }) => {
   mock.generate.mockResolvedValue({ toolCalls }); expect((await POST(request(input()))).status).toBe(502);
+});
+it("drops copy and photos for areas the drawing does not have instead of losing the update", async () => {
+  mock.generate.mockResolvedValue({ toolCalls: [{ toolName: "update_planning_document", input: { summary: "Updated", sections: [{ id: "overview", text: "A furnished floor." }], booths: [], captureIds: ["overview", "invented-booth"] } }] });
+  const response = await POST(request(input())); const body = await response.json();
+  expect(response.status).toBe(200); expect(body.captureIds).toEqual(["overview"]);
+  expect(body.content.sections.find((s: { id: string }) => s.id === "overview").text).toBe("A furnished floor.");
 });
 it("rejects stale booth inventories before invoking the model", async () => {
   const body = input(); body.content.booths.pop(); expect((await POST(request(body))).status).toBe(409); expect(mock.generate).not.toHaveBeenCalled();

@@ -32,8 +32,16 @@ export const PlanningArtifactSchema = z.object({
 export type PlanningArtifact = z.infer<typeof PlanningArtifactSchema>;
 
 /** Only explicit booth / assignable zones and standalone booth objects are participation inventory. */
+/**
+ * The document's per-area cards: booth or assignable zones and standalone booth installations. A
+ * design without booths (a pop-up or experience floor) gets one card per activity zone instead, so
+ * its document still describes and photographs each area; circulation, operations and furniture-set
+ * access aisles are not areas.
+ */
 export function planningBooths(plan: PlanDocument) {
-  const zones = (plan.zones ?? []).filter(z => z.purpose === "booth" || z.assignable);
+  const booths = (plan.zones ?? []).filter(z => z.purpose === "booth" || z.assignable);
+  const hasBooths = booths.length > 0 || (plan.objects ?? []).some(o => o.kind === "booth");
+  const zones = hasBooths ? booths : (plan.zones ?? []).filter(z => z.purpose !== "circulation" && z.purpose !== "operations" && !z.id.includes("-aisle-"));
   const zoneIds = new Set(zones.map(z => z.id));
   return [...zones, ...(plan.objects ?? []).filter(o => o.kind === "booth" && !zoneIds.has(o.zoneId ?? "") && !zoneIds.has(o.id))]
     .map(b => ({ id: b.id, label: b.label, width: b.width, depth: b.depth, height: "height" in b ? b.height : null, x: b.x, y: b.y, rotation: b.rotation }));
