@@ -16,6 +16,9 @@ import { ThreeCanvas } from "@remotion/three";
 import { useThree } from "@react-three/fiber";
 import {
   BoxGeometry,
+  CatmullRomCurve3,
+  Vector3,
+  DoubleSide,
   CylinderGeometry,
   EdgesGeometry,
   ExtrudeGeometry,
@@ -49,7 +52,10 @@ const D = design.depth;
 const wx = (x: number) => (x - 0.5) * W;
 const wz = (y: number) => (y - 0.5) * D;
 const SLAB = 0.22;
-const WALL_H = 2.6;
+// The saved demo has no ceiling record; the brief assumes 4.2 m in the main hall.
+const saved = design as { ceiling?: { height: number } | null; wallHeight?: number | null };
+const CEIL = saved.ceiling?.height ?? saved.wallHeight ?? 4.2;
+const WALL_H = CEIL;
 
 // Saved object colors are mapped onto film tokens (a white study model).
 function tone(o: Obj): string {
@@ -151,6 +157,32 @@ function Ball({
   return <Solid geometry={g} color={color} position={at} edges={false} />;
 }
 
+// Self-lit parts (lamp shades, screens, ceiling panels) stay bright indoors.
+function Glow({
+  geometry,
+  w,
+  h,
+  at,
+  color = T.surface,
+}: {
+  geometry: "cone" | "plane";
+  w: number;
+  h: number;
+  at: [number, number, number];
+  color?: string;
+}) {
+  return (
+    <mesh position={at}>
+      {geometry === "cone" ? (
+        <cylinderGeometry args={[w * 0.12, w * 0.5, h, 28, 1, true]} />
+      ) : (
+        <planeGeometry args={[w, h]} />
+      )}
+      <meshBasicMaterial color={color} side={DoubleSide} toneMapped={false} />
+    </mesh>
+  );
+}
+
 // Simple, recognizable stand-ins for the saved fixtures (catalog dimensions).
 function Piece({ o }: { o: Obj }) {
   const c = tone(o);
@@ -201,13 +233,102 @@ function Piece({ o }: { o: Obj }) {
         <Box w={0.09} h={0.17} d={0.02} at={[0, h, 0]} color={T.modelEdge} edges={false} />
       </>
     );
+  } else if (o.kind === "light" && o.e > 0) {
+    // Ceiling pendants and track spots hang from the ceiling on a cord.
+    const pendant = o.asset === "modern_ceiling_lamp_01";
+    body = (
+      <>
+        <Cyl r={0.008} h={CEIL - o.e} at={[0, (CEIL - o.e) / 2 + h, 0]} color={T.modelEdge} />
+        {pendant ? (
+          <Glow geometry="cone" w={w} h={h * 0.45} at={[0, h * 0.78, 0]} />
+        ) : (
+          <Cyl r={0.05} h={h} at={[0, h / 2, 0]} color={T.modelEdge} />
+        )}
+      </>
+    );
+  } else if (o.kind === "hanging-sign" || /sign/i.test(o.kind)) {
+    body = (
+      <>
+        {o.e > 0 && <Cyl r={0.006} h={CEIL - o.e - h} at={[-w * 0.4, h + (CEIL - o.e - h) / 2, 0]} color={T.modelEdge} />}
+        {o.e > 0 && <Cyl r={0.006} h={CEIL - o.e - h} at={[w * 0.4, h + (CEIL - o.e - h) / 2, 0]} color={T.modelEdge} />}
+        <Box w={w} h={h} d={Math.max(d, 0.04)} at={[0, h / 2, 0]} color={T.surface} />
+        <Box w={w * 0.86} h={h * 0.16} d={Math.max(d, 0.04) + 0.01} at={[0, h * 0.5, 0]} color={T.accent} edges={false} />
+      </>
+    );
+  } else if (o.kind === "screen" || /\b(screen|monitor|led wall|video wall)\b/i.test(o.label)) {
+    body = (
+      <>
+        <Box w={w} h={h} d={d} at={[0, h / 2, 0]} color={T.modelEdge} edges={false} />
+        <Glow geometry="plane" w={w * 0.92} h={h * 0.86} at={[0, h / 2, d / 2 + 0.006]} color={T.museGlow} />
+      </>
+    );
+  } else if (/glasses/i.test(o.label) && /sculpture/i.test(o.label)) {
+    // Oversized glasses: two rims and a bridge, standing on its plinth.
+    const rr = Math.min(w * 0.22, h * 0.45);
+    body = (
+      <>
+        {[-1, 1].map((sd) => (
+          <mesh key={sd} position={[sd * w * 0.26, h / 2, 0]} castShadow>
+            <torusGeometry args={[rr, 0.05, 16, 48]} />
+            <meshStandardMaterial color={T.modelEdge} roughness={0.5} />
+          </mesh>
+        ))}
+        <Box w={w * 0.1} h={0.06} d={0.06} at={[0, h / 2 + rr * 0.3, 0]} color={T.modelEdge} edges={false} />
+      </>
+    );
+  } else if (o.asset === "truss_horizontal" || /truss/i.test(o.label)) {
+    body = (
+      <>
+        {o.e > 0 &&
+          [-1, 1].map((sd) => (
+            <Cyl key={sd} r={0.006} h={CEIL - o.e - h} at={[sd * w * 0.42, h + (CEIL - o.e - h) / 2, 0]} color={T.modelEdge} />
+          ))}
+        {[
+          [h * 0.95, d * 0.4],
+          [h * 0.95, -d * 0.4],
+          [h * 0.05, d * 0.4],
+          [h * 0.05, -d * 0.4],
+        ].map(([y, z], i) => (
+          <Box key={i} w={w} h={0.035} d={0.035} at={[0, y, z]} color={T.modelEdge} edges={false} />
+        ))}
+        {Array.from({ length: 9 }, (_, i) => (
+          <Box key={`v${i}`} w={0.02} h={h} d={0.02} at={[-w / 2 + (i * w) / 8, h / 2, d * 0.4]} color={T.modelEdge} edges={false} />
+        ))}
+      </>
+    );
+  } else if (o.kind === "sculpture" || /\b(sculpture|artwork|art piece)\b/i.test(o.label)) {
+    body = (
+      <>
+        <Cyl r={w * 0.32} r2={w * 0.4} h={h * 0.4} at={[0, h * 0.2, 0]} color={T.objectOther} />
+        <Ball r={Math.min(w, h) * 0.32} at={[0, h * 0.4 + Math.min(w, h) * 0.3, 0]} color={T.museGlow} />
+      </>
+    );
+  } else if (o.asset === "display_vitrine" || /vitrine/.test(o.id)) {
+    body = (
+      <>
+        <Box w={w} h={h * 0.62} d={d} at={[0, h * 0.31, 0]} color={T.objectOther} />
+        <mesh position={[0, h * 0.81, 0]}>
+          <boxGeometry args={[w * 0.94, h * 0.38, d * 0.94]} />
+          <meshStandardMaterial color={T.accentSoft} transparent opacity={0.45} roughness={0.1} />
+        </mesh>
+      </>
+    );
+  } else if (o.asset === "floor_plan_board" || /board/.test(o.id)) {
+    body = (
+      <>
+        <Box w={0.06} h={h} d={0.06} at={[-w * 0.4, h / 2, 0]} color={T.modelEdge} edges={false} />
+        <Box w={0.06} h={h} d={0.06} at={[w * 0.4, h / 2, 0]} color={T.modelEdge} edges={false} />
+        <Box w={w} h={h * 0.5} d={0.04} at={[0, h * 0.68, 0]} color={T.surface} />
+        <Box w={w * 0.8} h={h * 0.06} d={0.05} at={[0, h * 0.82, 0]} color={T.accent} edges={false} />
+      </>
+    );
   } else if (o.asset === "display_plinth" || /plinth/.test(o.id)) {
     body = <Cyl r={w * 0.42} h={h} at={[0, h / 2, 0]} color={T.objectOther} />;
   } else {
     body = <Box w={w} h={h} d={d} at={[0, h / 2, 0]} color={c} edges={c !== T.modelEdge} />;
   }
   return (
-    <group position={[wx(o.x), SLAB, wz(o.y)]} rotation={[0, rad(-o.rot), 0]}>
+    <group position={[wx(o.x), SLAB + o.e, wz(o.y)]} rotation={[0, rad(-o.rot), 0]}>
       {body}
     </group>
   );
@@ -256,7 +377,7 @@ function Floor() {
             />
           </mesh>
         ))}
-      {design.walls.map(([ax, ay, bx, by], i) => {
+      {design.walls.map(({ a: [ax, ay], b: [bx, by] }, i) => {
         const x1 = wx(ax),
           z1 = wz(ay),
           x2 = wx(bx),
@@ -276,54 +397,209 @@ function Floor() {
   );
 }
 
-// One continuous arc: high and twisted → down and around → close on the
-// fitting bars. A single eased progress drives every parameter, so the move
-// never stops mid-shot.
+// Camera: a high, twisted establishing arc that descends through the ceiling
+// plane and glides at eye level along the main circulation, then turns up the
+// central connector toward the fitting bars. One Catmull-Rom path (and one
+// look-at path) sampled by a single eased progress, so it never stops.
+const PATH = new CatmullRomCurve3(
+  [
+    [-18.8, 62, 11.4],
+    [-11.5, 41, 22],
+    [3.3, 21, 21],
+    [4.6, 8.6, 8.4],
+    [3.6, 3.0, 3.8],
+    [1.6, 1.85, 2.9],
+    [-1.4, 1.8, 2.8],
+    [-3.0, 1.8, 2.7],
+    [-4.0, 1.9, 2.3],
+    [-4.4, 2.05, 1.5],
+  ].map(([x, y, z]) => new Vector3(x, y, z)),
+  false,
+  "centripetal",
+);
+const AIM = new CatmullRomCurve3(
+  [
+    [1.5, 0, 1.5],
+    [1, 0, 0],
+    [1, 0, -1],
+    [1, 0.4, -2.5],
+    [0, 1.3, -3],
+    [-6, 1.5, 0.2],
+    [-8.5, 1.5, -2.2],
+    [-7.2, 1.3, -6],
+    [-5.9, 1.1, -7.4],
+    [-5.8, 0.9, -8],
+  ].map(([x, y, z]) => new Vector3(x, y, z)),
+  false,
+  "centripetal",
+);
+function shot(f: number) {
+  const u = interpolate(f, [0, MODEL_END], [0, 1], {
+    ...clamp,
+    easing: Easing.bezier(0.3, 0.05, 0.62, 0.8),
+  });
+  const pos = PATH.getPoint(u);
+  const aim = AIM.getPoint(u);
+  // Twist at the top, a small bank through the corner, level at the end.
+  const roll = -7 * (1 - m(f, 0, 70, 0, 1, inOut)) + 1.6 * Math.sin(Math.PI * m(f, 150, 215, 0, 1, inOut));
+  const fov = lerp(30, 54, m(f, 60, 120, 0, 1, inOut));
+  return { pos, aim, roll, fov };
+}
+
 function ModelCamera() {
   const f = useCurrentFrame();
   const { camera } = useThree();
   useLayoutEffect(() => {
-    const p = interpolate(f, [0, MODEL_END], [0, 1], {
-      ...clamp,
-      easing: Easing.bezier(0.35, 0, 0.6, 0.9),
-    });
-    const s = inOut(p);
-    // A gentle push into the cut so the move never dies before 7.5 s.
-    const k = interpolate(f, [170, MODEL_END], [0, 1], { ...clamp, easing: Easing.in(Easing.cubic) });
-    const yaw = rad(lerp(-64, 14, p) + 8 * k);
-    const pitch = rad(lerp(70, 28, p) - 3 * k);
-    const dist = Math.exp(lerp(Math.log(66), Math.log(24), p)) * (1 - 0.2 * k);
-    const roll = rad(lerp(-7, 0.6, s));
-    const tx = lerp(1.5, wx(0.34), s);
-    const tz = lerp(1.5, wz(0.36), s);
-    const ty = lerp(0, 0.9, s);
-    camera.position.set(
-      tx + dist * Math.cos(pitch) * Math.sin(yaw),
-      ty + dist * Math.sin(pitch),
-      tz + dist * Math.cos(pitch) * Math.cos(yaw),
-    );
+    const { pos, aim, roll, fov } = shot(f);
+    camera.position.copy(pos);
     camera.up.set(0, 1, 0);
-    camera.lookAt(tx, ty, tz);
-    camera.rotateZ(roll);
+    camera.lookAt(aim);
+    camera.rotateZ(rad(roll));
+    (camera as PerspectiveCamera).fov = fov;
     (camera as PerspectiveCamera).updateProjectionMatrix();
   }, [camera, f]);
   return null;
 }
 
-function ModelScene() {
-  const pieces = design.objects.filter(
-    (o) => !o.e && o.kind !== "hanging-sign",
+const inFloor = (x: number, y: number) => {
+  let inside = false;
+  const b = design.floorBoundary;
+  for (let i = 0, j = b.length - 1; i < b.length; j = i++) {
+    const [xi, yi] = b[i];
+    const [xj, yj] = b[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+};
+
+// Ceiling faces down only, so it is invisible from above (a cutaway) and
+// closes the room once the camera is inside.
+function Ceiling() {
+  const geo = useMemo(() => {
+    const s = new Shape();
+    design.floorBoundary.forEach(([x, y], i) =>
+      i === 0 ? s.moveTo(wx(x), -wz(y)) : s.lineTo(wx(x), -wz(y)),
+    );
+    s.closePath();
+    const g = new ShapeGeometry(s);
+    g.rotateX(Math.PI / 2);
+    return g;
+  }, []);
+  const panels = useMemo(() => {
+    const out: [number, number][] = [];
+    for (let x = -W / 2 + 2; x < W / 2; x += 3.2)
+      for (let z = -D / 2 + 2; z < D / 2; z += 3.2)
+        if (inFloor(x / W + 0.5, z / D + 0.5)) out.push([x, z]);
+    return out;
+  }, []);
+  useLayoutEffect(() => () => geo.dispose(), [geo]);
+  return (
+    <>
+      <mesh geometry={geo} position={[0, SLAB + CEIL, 0]}>
+        <meshStandardMaterial color={T.modelShade} roughness={0.9} />
+      </mesh>
+      {panels.map(([x, z]) => (
+        <mesh key={`${x}-${z}`} position={[x, SLAB + CEIL - 0.01, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[1.4, 0.34]} />
+          <meshBasicMaterial color={T.surface} toneMapped={false} />
+        </mesh>
+      ))}
+    </>
   );
+}
+
+// Saved wall-surface designs as finish panels on their host wall or partition.
+function Surfaces() {
+  return (
+    <>
+      {design.wallSurfaces.map((sf) => {
+        let x: number, y: number, len: number, bottom: number, thick: number, ang: number;
+        if (sf.hostType === "wall") {
+          const l = design.walls.find((w) => w.id === sf.hostId);
+          if (!l) return null;
+          const dx = (l.b[0] - l.a[0]) * W;
+          const dy = (l.b[1] - l.a[1]) * D;
+          len = Math.hypot(dx, dy);
+          ang = Math.atan2(dy, dx);
+          x = ((l.a[0] + l.b[0]) * W) / 2;
+          y = ((l.a[1] + l.b[1]) * D) / 2;
+          bottom = 0;
+          thick = 0.2;
+        } else {
+          const o = design.objects.find((ob) => ob.id === sf.hostId);
+          if (!o) return null;
+          x = o.x * W;
+          y = o.y * D;
+          len = o.w;
+          bottom = o.e;
+          thick = o.d;
+          ang = rad(o.rot);
+        }
+        const sign = sf.side === "front" ? 1 : -1;
+        const along = ((sf.start + sf.end) / 2 - 0.5) * len;
+        const off = sign * (thick / 2 + 0.012);
+        const px = x + Math.cos(ang) * along - Math.sin(ang) * off;
+        const py = y + Math.sin(ang) * along + Math.cos(ang) * off;
+        const width = (sf.end - sf.start) * len;
+        const height = sf.height;
+        // Saved finish colors mapped to film tokens: black → brand accent,
+        // near-black video wall → glowing screen, wood → warm, plaster → light.
+        const c = sf.color.toUpperCase();
+        const screen = c === "#0E0E14";
+        const dark = c === "#111111" || c === "#2A2A2E";
+        const base = screen ? T.museGlow : dark ? T.accent : c === "#8A5A3B" ? T.objectSofa : T.objectOther;
+        const ink = screen || dark ? T.surface : T.accent;
+        return (
+          <group
+            key={sf.id}
+            position={[px - W / 2, SLAB + bottom + sf.elevation + height / 2, py - D / 2]}
+            rotation={[0, -(ang + (sign < 0 ? Math.PI : 0)), 0]}
+          >
+            <mesh receiveShadow={!screen}>
+              <planeGeometry args={[width, height]} />
+              {screen ? (
+                <meshBasicMaterial color={base} toneMapped={false} />
+              ) : (
+                <meshStandardMaterial color={base} roughness={0.7} />
+              )}
+            </mesh>
+            {sf.graphic === "stripe" && (
+              <mesh position={[0, -height * 0.28, 0.003]}>
+                <planeGeometry args={[width, height * 0.12]} />
+                <meshBasicMaterial color={ink} />
+              </mesh>
+            )}
+            {sf.graphic !== "stripe" &&
+              [
+                [0, -height * 0.44, width * 0.9, height * 0.03],
+                [0, height * 0.44, width * 0.9, height * 0.03],
+                [-width * 0.44, 0, width * 0.03, height * 0.9],
+                [width * 0.44, 0, width * 0.03, height * 0.9],
+              ].map(([gx, gy, gw, gh], i) => (
+                <mesh key={i} position={[gx, gy, 0.003]}>
+                  <planeGeometry args={[gw, gh]} />
+                  <meshBasicMaterial color={ink} />
+                </mesh>
+              ))}
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
+function ModelScene() {
   return (
     <>
       <ModelCamera />
       <color attach="background" args={[T.bg]} />
       <fog attach="fog" args={[T.bg, 70, 150]} />
-      <hemisphereLight args={[T.surface, T.floorIndoor, 0.85]} />
+      <hemisphereLight args={[T.surface, T.floorIndoor, 1.0]} />
       <directionalLight position={[22, 14, -18]} intensity={0.55} />
+      <directionalLight position={[0, -10, 4]} intensity={0.7} />
       <directionalLight
         position={[-20, 30, 15]}
-        intensity={3.3}
+        intensity={3.1}
         castShadow
         shadow-mapSize={[4096, 4096]}
         shadow-camera-left={-27}
@@ -340,7 +616,9 @@ function ModelScene() {
         <shadowMaterial opacity={0.1} />
       </mesh>
       <Floor />
-      {pieces.map((o) => (
+      <Ceiling />
+      <Surfaces />
+      {design.objects.map((o) => (
         <Piece key={o.id} o={o} />
       ))}
     </>
@@ -407,13 +685,14 @@ function Line({
 
 function ModelBeat() {
   const f = useCurrentFrame();
+  const inside = m(f, 92, 120, 0, 1, inOut);
   return (
     <AbsoluteFill style={{ background: T.bg }}>
       <ThreeCanvas
         width={1920}
         height={1080}
         shadows
-        camera={{ fov: 30, near: 0.5, far: 400, position: [0, 60, 30] }}
+        camera={{ fov: 30, near: 0.1, far: 400, position: [0, 60, 30] }}
         gl={{ antialias: true }}
       >
         <ModelScene />
@@ -426,13 +705,24 @@ function ModelBeat() {
           top: 0,
           height: 360,
           background: `linear-gradient(${T.bg} 0%, ${T.bg} 34%, transparent 100%)`,
-          opacity: 0.92,
+          opacity: 0.92 * (1 - inside),
         }}
       />
-      <Line f={f} from={12} to={132}>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 380,
+          background: `linear-gradient(transparent 0%, ${T.bg} 62%, ${T.bg} 100%)`,
+          opacity: 0.9 * inside,
+        }}
+      />
+      <Line f={f} from={8} to={84}>
         Make room for an idea.
       </Line>
-      <Line f={f} from={140} to={MODEL_END + 20} size={64} top={110}>
+      <Line f={f} from={128} to={MODEL_END + 20} size={64} top={858}>
         From fitting bars to a photo walk.
       </Line>
       <Footnote>

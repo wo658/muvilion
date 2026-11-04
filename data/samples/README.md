@@ -117,3 +117,16 @@ KINTEX operations text distinguishes the four core salon tables from the two ext
 already present in the saved design. Pricing remains unestimated and review limitations remain
 explicit. The current app is filmed through the completed reports and actual PDF export in
 [`video/launch/README.md`](../../video/launch/README.md).
+
+## Feature walls and signature objects (2026-11-05)
+
+The English recordings were extended through Muse chat on the installed samples (no manual
+object edits): feature-wall graphics with English lettering and signature objects, then a
+refreshed planning document with new 3D photos (interior shots use a solid ceiling).
+
+| Sample | Before → after | Added |
+|---|---|---|
+| Seongsu pop-up | 98 → 117 installations, 4 → 9 wall graphics, 21 zones | North wall "SEE WHAT YOU SEE" / "Hey Meta, take a photo", west "AI GLASSES STUDIO", south wood and east plaster panels, "LIVE FROM YOUR EYES" video wall; glasses sculpture photo moment, vitrine centerpiece, fitting-bar truss with spots, nine-globe pendant cluster |
+| KINTEX | 144 → 167 installations, 0 → 11 wall graphics, 20 zones | Stage LED wall, gradient studio walls, wood accent wall, perimeter mural band, LED video wall and "Start a thread" quote wall; truss welcome arch, phone-camera centerpiece, stage truss ring with spots, like-heart sculpture |
+
+Review counts are unchanged (Seongsu 2, KINTEX 38). The Korean recordings on `main` were not upgraded.
