@@ -31,6 +31,17 @@ function hintsFor(draft: PlanDocument, warnings: string[]) {
   return placementHints(draft, ids).slice(0, 16);
 }
 
+/** Installations per activity zone, so the model can see which zones still read as empty floor. */
+function zoneDensity(draft: PlanDocument) {
+  const zones = (draft.zones ?? []).filter(zone => zone.purpose !== "circulation" && zone.purpose !== "operations" && !zone.id.includes("-aisle-"));
+  const rows = zones.map(zone => {
+    const count = (draft.objects ?? []).filter(object => object.zoneId === zone.id).length, area = zone.width * zone.depth;
+    return { zone: zone.id, label: zone.label, area: Math.round(area), installations: count, perHundredSquareMetres: Math.round(count / area * 1000) / 10 };
+  });
+  return { zones: rows, thin: rows.filter(row => row.perHundredSquareMetres < 12).map(row => row.zone),
+    guide: "Zones under about 12 installations per 100 m² read as empty floor in the views; add sets and brand details there." };
+}
+
 /** Shared tools for initial design and revisions. */
 export const designToolRegistrations: readonly ToolRegistration<DesignToolContext>[] = [
   {
@@ -104,7 +115,16 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
           context.revision++;
           context.review = review;
           publish(context, proposal.summary);
-          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
+          // Live runs rarely passed every check, so Muse never saw its floor and left it sparse.
+          // Show the views on the first failed preflights too; this does not use the review budget.
+          const looks = context.calls.get("preflight_views") ?? 0;
+          if (looks < 2) {
+            context.calls.set("preflight_views", looks + 1);
+            const views = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
+            context.signal.throwIfAborted();
+            views.forEach((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Interior massing (preflight)" : "Plan composition (preflight)", image }));
+          }
+          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, density: zoneDensity(draft), reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
         }
         reserveToolCall(context, "review_design", 3);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);

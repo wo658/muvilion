@@ -2,7 +2,7 @@ import { z } from "zod";
 import { FIXTURES } from "@/lib/assets/fixtures";
 import { getModelAsset } from "@/lib/assets/catalog";
 import type { DesignObject, PlanDocument, SpaceZone } from "./schema";
-import { footprintFitsBoundary } from "./design";
+import { footprintFitsBoundary, objectBounds, overlaps } from "./design";
 
 /**
  * Furnished sets Muse places as one unit. The server expands each into fixtures already spaced
@@ -103,7 +103,7 @@ const ACCESS_SIDES: Record<FurnitureSetType, ("south" | "north" | "east" | "west
 };
 
 /** Objects for a set in document coordinates, and its footprint including seat pull-back space. */
-export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | "heightMeters" | "floorBoundary">, set: FurnitureSet) {
+export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | "heightMeters" | "floorBoundary" | "objects">, set: FurnitureSet) {
   const width = document.widthMeters, depth = document.heightMeters;
   if (!width || !depth) throw new Error("Confirm the drawing scale before placing furniture sets.");
   const { items, envelope } = parts(set);
@@ -136,12 +136,25 @@ export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | 
   const inside = (a: typeof access[number]) => !document.floorBoundary || footprintFitsBoundary({ x: a.x0, y: a.y0, width: a.x1 - a.x0, height: a.y1 - a.y0 }, document.floorBoundary);
   const seated = set.type !== "photo-spot" && set.type !== "display-row";
   const aisles = !seated ? [] : either ? [access.find(inside) ?? access[0]] : access;
-  // Each aisle runs 1.2 m past both ends of the set, so a route passing any corner meets it
-  // without having to overlap the furniture.
+  // Each aisle runs up to 1.2 m past both ends of the set, so a route passing a corner meets it
+  // without overlapping the furniture. Each end stops short of other low items and the floor edge;
+  // an aisle across a neighbour would obstruct it and hold the whole set back.
+  const others = (document.objects ?? []).filter(object => !object.id.startsWith(`${set.id}-`) && (object.elevation ?? 0) < 1.8).map(object => objectBounds(object, document as PlanDocument));
+  const clear = (r: { x0: number; x1: number; y0: number; y1: number }) => {
+    const box = { x: r.x0, y: r.y0, width: r.x1 - r.x0, height: r.y1 - r.y0 };
+    return !others.some(other => overlaps(box, other)) && (!document.floorBoundary || footprintFitsBoundary(box, document.floorBoundary));
+  };
   const zones: SpaceZone[] = aisles.map(a => {
     const along = a.side === "north" || a.side === "south";
+    const reach = (sign: -1 | 1) => [aisle, aisle / 2, 0].find(metres => {
+      const step = metres / (along ? width : depth);
+      const r = along ? { ...a, x0: sign < 0 ? a.x0 - step : a.x1, x1: sign < 0 ? a.x0 : a.x1 + step } : { ...a, y0: sign < 0 ? a.y0 - step : a.y1, y1: sign < 0 ? a.y0 : a.y1 + step };
+      return metres === 0 || clear(r);
+    })!;
+    const before = reach(-1), after = reach(1);
+    const r = along ? { ...a, x0: a.x0 - before / width, x1: a.x1 + after / width } : { ...a, y0: a.y0 - before / depth, y1: a.y1 + after / depth };
     return { id: `${set.id}-aisle-${a.side}`, label: `${set.label} · aisle`, purpose: "circulation",
-      x: (a.x0 + a.x1) / 2, y: (a.y0 + a.y1) / 2, width: (a.x1 - a.x0) * width + (along ? 2 * aisle : 0), depth: (a.y1 - a.y0) * depth + (along ? 0 : 2 * aisle), rotation: 0, assignable: false };
+      x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2, width: (r.x1 - r.x0) * width, depth: (r.y1 - r.y0) * depth, rotation: 0, assignable: false };
   });
   return { objects, zones, footprint, access };
 }

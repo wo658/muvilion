@@ -20,12 +20,13 @@ describe('shared Designer Muse tools', () => {
     const bad={...proposal,coverage:[{...proposal.coverage[0],ids:['stage','stage-typo']}]};
     const failure=await review.execute!(bad,options);
     expect(failure).toMatchObject({designReview:{complete:false,requirements:[{count:1,minimum:1,satisfied:false,invalidIds:['stage-typo'],allowedKinds:['stage'],coverageEntryCount:1}]}});
-    expect(c.pendingImages).toHaveLength(0);
+    // A failed preflight shows the floor views without using the review budget.
+    expect(c.pendingImages).toHaveLength(2);
     const geometry=JSON.stringify(c.draft.objects);
     const repaired=await review.execute!({summary:proposal.summary,assumptions:[],coverage:proposal.coverage},options);
     expect(repaired).toMatchObject({designReview:{complete:true}});
     expect(JSON.stringify(c.draft.objects)).toBe(geometry);
-    expect(c.pendingImages).toHaveLength(2);
+    expect(c.pendingImages).toHaveLength(4);
   });
   it('requires furnishings rather than letting whole-floor decoration downgrade to zoning',async()=>{
     const c=Object.assign(context(),{wholeFloorRequired:true,wholeFloorInteriorRequired:true});c.brief=undefined;
@@ -41,21 +42,21 @@ describe('shared Designer Muse tools', () => {
     const seat={id:'chair',kind:'furniture' as const,label:'Chair',fixtureType:'event-chair' as const,x:.5,y:.3,width:.5,depth:.55,height:.85,rotation:0 as const,color:'#335577',useTargetId:'stage'};
     const result=await review.execute!({...proposal,objects:[proposal.objects[0],seat]},options) as {usability:{issues:{code:string}[]}};
     expect(result.usability.issues.map(i=>i.code)).toContain('seat_facing');
-    expect(c.artifacts).toHaveLength(0);expect(c.calls.get('review_design')).toBeUndefined();
+    expect(c.artifacts).toHaveLength(2);expect(c.calls.get('review_design')).toBeUndefined();
   });
 
   it('blocks a partially allocated floor before rendering and accepts repaired whole-floor zoning', async()=>{
     const c=context(),review=createDesignTools(c).review_design;
     const result=await review.execute!({...proposal,zones:[{...proposal.zones[0],width:10,depth:10}]},options) as {floorCoverage:{complete:boolean;unallocatedArea:number}};
     expect(result.floorCoverage).toMatchObject({complete:false,unallocatedArea:300});
-    expect(c.pendingImages).toHaveLength(0);expect(c.calls.get('review_design')).toBeUndefined();
+    expect(c.pendingImages).toHaveLength(2);expect(c.calls.get('review_design')).toBeUndefined();
     const fixed=await review.execute!(proposal,options) as {floorCoverage:{complete:boolean}};
-    expect(fixed.floorCoverage.complete).toBe(true);expect(c.pendingImages).toHaveLength(2);
+    expect(fixed.floorCoverage.complete).toBe(true);expect(c.pendingImages).toHaveLength(4);
   });
   it('rejects a central40x30 interior in90x63 even when its requested objects exist',async()=>{
     const c=context();c.base={...c.base,widthMeters:90,heightMeters:63};c.draft=c.base;c.brief={...c.brief!,scope:'interior'};
     const result=await createDesignTools(c).review_design.execute!({...proposal,zones:[{...proposal.zones[0],width:40,depth:30}]},options) as {floorCoverage:{unallocatedArea:number}};
-    expect(result.floorCoverage.unallocatedArea).toBe(4470);expect(c.review?.complete).toBe(false);expect(c.pendingImages).toEqual([]);
+    expect(result.floorCoverage.unallocatedArea).toBe(4470);expect(c.review?.complete).toBe(false);expect(c.pendingImages).toHaveLength(2);expect(c.calls.get('review_design')).toBeUndefined();
   });
   it('refuses to reduce an initial or explicit whole-floor request to edit scope',async()=>{
     const c=context();c.brief=undefined;
@@ -102,12 +103,13 @@ describe('shared Designer Muse tools', () => {
     const c=context(), review=createDesignTools(c).review_design;
     for (let i=0;i<4;i++) await review.execute!({...proposal,objects:[]},options);
     expect(c.review?.complete).toBe(false);
-    expect(c.artifacts).toHaveLength(0);
+    // Only the first two failed preflights render views.
+    expect(c.artifacts).toHaveLength(4);
     expect(c.calls.get('review_design')).toBeUndefined();
     await review.execute!(proposal,options);
     expect(c.review?.complete).toBe(true);
     expect(c.calls.get('review_design')).toBe(1);
-    expect(c.pendingImages).toHaveLength(2);
+    expect(c.pendingImages).toHaveLength(6);
   });
   it('returns overlapping physical envelopes before consuming visual review budget', async () => {
     const c=context(), review=createDesignTools(c).review_design;

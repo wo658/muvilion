@@ -4,6 +4,7 @@ import { applyDesignPatch, partitionDesignPatch } from "@/lib/plans/design-strea
 import { designWarnings } from "@/lib/plans/design";
 import { reviewUsability } from "@/lib/plans/usability";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
+import { reviewDesignCoverage } from "@/lib/plans/design-review";
 
 const base = PlanDocumentSchema.parse({ schemaVersion: 1, source: { name: "hall", format: "pdf", page: 1, pages: 1, width: 100, height: 100 }, preview: "data:image/png;base64,AA==", widthMeters: 20, heightMeters: 20, scaleConfirmed: true, lines: [], texts: [], warnings: [], method: "pdf-vector", floorBoundary: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }] });
 const patch = { label: "Sets", objects: [], zones: [], removeObjects: [], removeZones: [] };
@@ -51,6 +52,18 @@ describe("furniture sets", () => {
       const doc = applyDesignPatch(base, { ...patch, zones: [{ id: "spine", label: "Spine", purpose: "circulation" as const, ...spine, rotation: 0 as const, assignable: false }], sets: [set(type, rotation)] });
       expect(reviewUsability(doc).issues.filter(issue => ["seat_access", "disconnected_routes"].includes(issue.code)).map(issue => `${type}@${rotation} ${issue.code} ${issue.objectId ?? ""}`)).toEqual([]);
     }
+  });
+  it("stops a set aisle short of a neighbour so the set is not held for obstructing it", () => {
+    const free = expandFurnitureSet(base, set("meeting-4", 0)).zones[0];
+    const neighbour = { id: "plinth", kind: "furniture" as const, label: "Plinth", x: free.x + (free.width / 2 - .4) / 20, y: free.y, width: .5, depth: .5, height: 1, rotation: 0 as const, color: "#335577" };
+    const clipped = expandFurnitureSet({ ...base, objects: [neighbour] }, set("meeting-4", 0)).zones[0];
+    expect(clipped.width).toBeLessThan(free.width);
+    expect(designWarnings(applyDesignPatch({ ...base, objects: [neighbour] }, { ...patch, sets: [set("meeting-4", 0)] }))).toEqual([]);
+  });
+  it("counts a set ID in coverage as its objects of the required kinds", () => {
+    const doc = applyDesignPatch(base, { ...patch, sets: [set("meeting-4", 0)] });
+    const brief = { scope: "interior" as const, direction: "Meetings", requirements: [{ id: "seats", label: "Seats", target: "objects" as const, kinds: ["furniture" as const], minimum: 5 }] };
+    expect(reviewDesignCoverage(brief, doc, [{ requirementId: "seats", ids: ["s"], decision: "One meeting set." }]).requirements[0]).toMatchObject({ count: 5, satisfied: true, invalidIds: [] });
   });
   it("saves or holds a set whole and removes it by set ID", () => {
     const blocker = { id: "box", kind: "furniture" as const, label: "Box", x: .5, y: .5, width: 1, depth: 1, height: 1, rotation: 0 as const, color: "#335577" };
