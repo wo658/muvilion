@@ -76,6 +76,15 @@ describe('live design drafts',()=>{
     await tools.edit_design.execute!({...patch,label:'Lectern',objects:[{...lectern,height:.5,elevation:1}]},options);
     expect(c.draft.objects?.map(o=>o.id)).toEqual(['stage','lectern']);
   });
+  it('holds a seat the usability review cannot evaluate while saving the rest of the group',async()=>{
+    const c:DesignToolContext={base,draft:base,revision:0,phase:'initial',sources:[],signal:new AbortController().signal,env:{},artifacts:[],pendingImages:[],calls:new Map(),brief:{scope:'interior',direction:'Stage',requirements:[{id:'stage',label:'Stage',target:'objects',kinds:['stage'],minimum:1}]}};
+    const tools=createDesignTools(c), options={toolCallId:'test',messages:[],context:{}};
+    const chair={id:'stool',kind:'furniture' as const,label:'Stool',modelAssetId:'modern_arm_chair_01',x:.45,y:.45,width:.820344,depth:.986562,height:1.022852,rotation:0 as const,color:'#335577'};
+    const result=await tools.edit_design.execute!({...patch,objects:[{...object,width:1,depth:1,x:.55,y:.55},chair]},options) as {held:{id:string}[];next:string};
+    expect(c.draft.objects?.map(o=>o.id)).toEqual(['stage']);
+    expect(result.held.map(h=>h.id)).toEqual(['stool']);
+    expect(result.next).toContain('fixtureType "event-chair"');
+  });
   it('transmits only changed elements and reconstructs grouped removal',()=>{
     const first=applyDesignPatch(base,patch);
     const second=applyDesignPatch(first,{...patch,objects:[{...object,id:'second',x:.8}]});

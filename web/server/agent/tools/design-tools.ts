@@ -14,7 +14,7 @@ import { renderDesign } from "./render-design";
 import { generateConceptImage } from "./meta-image";
 import { DesignBriefSchema, DesignCoverageSchema, reviewDesignCoverage } from "@/lib/plans/design-review";
 
-import { DesignPatchSchema, designPreview, partitionDesignPatch } from "@/lib/plans/design-stream";
+import { DesignPatchSchema, designPreview, introducedPatchIssues, partitionDesignPatch } from "@/lib/plans/design-stream";
 
 export const ReviewedDesignSubmission = z.object({ revision: z.number().int().positive(), summary: z.string().min(1).max(2000) }).strict();
 
@@ -51,13 +51,13 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
   {
     name: "edit_design", category: "design", phases,
     create: context => tool({
-      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using groups (one booth's related components together). Items that would add overlaps, out-of-floor objects or blocked circulation are held back with placement fixes while the rest of the group is saved; resend only the held items. Upsert complete objects/zones/wallSurfaces by ID; remove by ID. Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
+      description: "Select operation for each group: inspect (planning/removal), measure (dimensions), arrange (placing/building), paint (finishes). This only cues a decorative mascot, not completed construction. Each group is committed to the project immediately as one undoable operation, so build progressively using groups (one booth's related components together). Items that would add overlaps, out-of-floor objects, blocked circulation or seats without a reviewed seating fixture are held back with placement fixes while the rest of the group is saved; resend only the held items. Upsert complete objects/zones/wallSurfaces by ID; remove by ID. Wall surfaces attach finishes, graphic stripes/frames and literal lettering to existing wall line IDs or partition object IDs without changing geometry. Remove hosted surfaces in the same operation when deleting a partition. Initial design: establish whole-hall zones/circulation, booth forms, partitions/counters, then furnishings/lighting/signage. Revisions: change only affected elements. Never clear unrelated existing design. After edits call review_design with objects/zones omitted to review this draft.",
       inputSchema: DesignPatchSchema,
       execute: async patch => {
         if (!context.brief) throw new Error("Set the design brief first.");
         // The saved part of each group is one operation, so it must not leave new geometry problems.
         const { draft, held, saved, full } = partitionDesignPatch({ ...context.draft, warnings: context.base.warnings }, patch);
-        const issues = full ? introducedWarnings(draft, full) : [];
+        const issues = full ? introducedPatchIssues(draft, full) : [];
         const hints = full ? placementHints(full, held.filter(item => item.kind === "object").map(item => item.id)).slice(0, 16) : [];
         const fixes = `${issues.slice(0, 12).join(" ")}${hints.length ? ` Placement fixes (normalized centre x/y; widths in metres): ${hints.join(" ")}` : ""}`;
         if (!saved)

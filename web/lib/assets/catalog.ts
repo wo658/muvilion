@@ -49,7 +49,7 @@ function model(
 // vertices (X width, Z depth, Y height). These are not surveyed product dimensions.
 const models: readonly ModelAsset[] = [
   model("modern_arm_chair_01", "furniture", "Modern Arm Chair 01",
-    "목재 프레임과 검은 가죽 쿠션의 라운지 암체어. 단일 좌석.",
+    "목재 프레임과 검은 가죽 쿠션의 라운지 암체어. 단일 좌석. 좌석 사용 검토가 없는 장식용 모델이므로 사람이 앉는 좌석은 fixtureType event-chair 또는 lounge-sofa로 둔다.",
     ["의자", "암체어", "좌석", "라운지", "상담", "목재", "chair", "seat", "lounge", "wood", "black leather"],
     0.820344, 0.986562, 1.022852),
   model("modern_coffee_table_01", "furniture", "Modern Coffee Table 01",

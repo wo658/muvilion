@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DesignObjectSchema, ZoneSchema, WallSurfaceSchema, PlanDocumentSchema, type PlanDocument } from "./schema";
 import { applyDesignProposal } from "./muse";
 import { designWarnings } from "./design";
+import { reviewUsability } from "./usability";
 
 export const DesignPatchSchema = z.object({
   operation: MuviOperationKindSchema.optional().describe("Choose Muvi work gesture: inspect for planning/removal, measure for dimensions, arrange for placement/building, paint for finishes. Decorative only."),
@@ -27,18 +28,35 @@ export function applyDesignPatch(base: PlanDocument, patch: z.infer<typeof Desig
 export type DesignPatch = z.infer<typeof DesignPatchSchema>;
 export type HeldPatchItem = { kind: "object" | "zone" | "wallSurface" | "removals"; id: string; label: string };
 /**
- * Split a group into the largest part that adds no geometry warnings and the items held back.
+ * Split a group into the largest part that adds no patch issues and the items held back.
  * Rejecting a whole group for one bad item made the model resend everything, at one model step
  * per attempt. Removals form one unit; items that depend on a held item (an object in a held
  * zone, a surface on a held partition) are held too because applying them fails.
  */
+/**
+ * Problems an edit group must not add: geometry warnings, and seats the usability review cannot
+ * evaluate. The review would only report such a seat at the end of the run, when there is no time
+ * left to replace every one, so it is held back while the model is still placing items.
+ */
+export function patchIssues(document: PlanDocument) {
+  return [...designWarnings(document), ...reviewUsability(document).issues.filter(issue => issue.code === "unsupported_seating").map(issue => issue.message)];
+}
+export function introducedPatchIssues(before: PlanDocument, after: PlanDocument) {
+  const remaining = new Map<string, number>();
+  for (const issue of patchIssues(before)) remaining.set(issue, (remaining.get(issue) ?? 0) + 1);
+  return patchIssues(after).filter(issue => {
+    const count = remaining.get(issue) ?? 0;
+    if (count) remaining.set(issue, count - 1);
+    return !count;
+  });
+}
 export function partitionDesignPatch(base: PlanDocument, patch: DesignPatch) {
   const full = applyDesignPatch(base, patch);
   const before = new Map<string, number>();
-  for (const warning of designWarnings(base)) before.set(warning, (before.get(warning) ?? 0) + 1);
+  for (const warning of patchIssues(base)) before.set(warning, (before.get(warning) ?? 0) + 1);
   const clean = (document: PlanDocument) => {
     const remaining = new Map(before);
-    return designWarnings(document).every(warning => {
+    return patchIssues(document).every(warning => {
       const count = remaining.get(warning) ?? 0;
       remaining.set(warning, count - 1);
       return count > 0;
