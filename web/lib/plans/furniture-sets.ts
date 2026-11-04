@@ -95,6 +95,12 @@ const rotate = (dx: number, dy: number, turn: number) => {
   return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
 };
 
+/** Local sides (+y south, -y north, ±x) seats are approached from, for suggesting an aisle. */
+const ACCESS_SIDES: Record<FurnitureSetType, ("south" | "north" | "east" | "west")[]> = {
+  "meeting-4": ["south", "north"], "consult-desk": ["south", "north"], "counter-bar": ["south"], "lounge-pair": ["east", "west"],
+  "photo-spot": ["south"], "display-row": ["south"], "audience-rows": ["south"],
+};
+
 /** Objects for a set in document coordinates, and its footprint including seat pull-back space. */
 export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | "heightMeters">, set: FurnitureSet) {
   const width = document.widthMeters, depth = document.heightMeters;
@@ -112,5 +118,16 @@ export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | 
   });
   const turned = set.rotation % 180 !== 0;
   const w = turned ? envelope.depth : envelope.width, d = turned ? envelope.width : envelope.depth;
-  return { objects, footprint: { x0: set.x - w / 2 / width, x1: set.x + w / 2 / width, y0: set.y - d / 2 / depth, y1: set.y + d / 2 / depth, width: w, depth: d } };
+  const footprint = { x0: set.x - w / 2 / width, x1: set.x + w / 2 / width, y0: set.y - d / 2 / depth, y1: set.y + d / 2 / depth, width: w, depth: d };
+  // A 1.2 m strip along each approach side; a circulation zone covering one connects the seats.
+  const aisle = 1.2, sides = ["north", "east", "south", "west"] as const;
+  const access = ACCESS_SIDES[set.type].map(side => {
+    const turnedSide = sides[(sides.indexOf(side) + set.rotation / 90) % 4];
+    const ax = aisle / width, ay = aisle / depth;
+    if (turnedSide === "north") return { side: turnedSide, x0: footprint.x0, x1: footprint.x1, y0: footprint.y0 - ay, y1: footprint.y0 };
+    if (turnedSide === "south") return { side: turnedSide, x0: footprint.x0, x1: footprint.x1, y0: footprint.y1, y1: footprint.y1 + ay };
+    if (turnedSide === "east") return { side: turnedSide, x0: footprint.x1, x1: footprint.x1 + ax, y0: footprint.y0, y1: footprint.y1 };
+    return { side: turnedSide, x0: footprint.x0 - ax, x1: footprint.x0, y0: footprint.y0, y1: footprint.y1 };
+  });
+  return { objects, footprint, access };
 }

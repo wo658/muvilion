@@ -71,7 +71,12 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         // Footprints include seat pull-back space: keep them clear of circulation and next to an aisle.
         const savedSets = (patch.sets ?? []).filter(set => !held.some(item => item.kind === "set" && item.id === set.id));
         const setFootprints = savedSets.map(set => { const f = expandFurnitureSet(draft, set).footprint; return `${set.label} (${set.id}): x ${f.x0.toFixed(3)}–${f.x1.toFixed(3)}, y ${f.y0.toFixed(3)}–${f.y1.toFixed(3)} (${f.width.toFixed(1)} × ${f.depth.toFixed(1)} m)`; });
-        const result = { revision: context.revision, objects: draft.objects?.length, zones: draft.zones?.length, ...(setFootprints.length ? { setFootprints } : {}) };
+        // Seat access is otherwise only reported at review, too late to re-plan aisles around every set.
+        const unreachable = new Set(reviewUsability(draft).issues.filter(issue => issue.code === "seat_access").map(issue => issue.objectId));
+        const r = (lo: number, hi: number) => `${lo.toFixed(3)}–${hi.toFixed(3)}`;
+        const setAccess = savedSets.filter(set => setObjectIds(draft, set.id).some(id => unreachable.has(id))).map(set =>
+          `${set.label} (${set.id}) seats do not reach the circulation network: add or extend a ≥1.2 m circulation zone covering ${expandFurnitureSet(draft, set).access.map(a => `the ${a.side} strip x ${r(a.x0, a.x1)}, y ${r(a.y0, a.y1)}`).join(set.type === "lounge-pair" ? " or " : " and ")}, joined to the main route.`);
+        const result = { revision: context.revision, objects: draft.objects?.length, zones: draft.zones?.length, ...(setFootprints.length ? { setFootprints } : {}), ...(setAccess.length ? { setAccess } : {}) };
         if (!held.length) return { ...result, next: "Continue grouped edits, then review_design with geometry omitted." };
         return { ...result, held, heldIssues: issues.slice(0, 12), placementHints: hints, next: `Saved everything except the held items. Resend only those held items with these fixes; do not resend saved items. ${fixes}` };
       },

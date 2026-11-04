@@ -27,6 +27,20 @@ describe("furniture sets", () => {
     for (const o of north.objects) { expect(o.x).toBeGreaterThanOrEqual(north.footprint.x0); expect(o.x).toBeLessThanOrEqual(north.footprint.x1); }
     expect(north.objects.map(o => o.id)).toEqual(["s-table", "s-chair-s1", "s-chair-n1", "s-chair-s2", "s-chair-n2"]);
   });
+  it("connects every seat when circulation zones cover the suggested access strips", () => {
+    for (const type of ["meeting-4", "counter-bar", "lounge-pair"] as const) for (const rotation of [0, 90] as const) {
+      const { access } = expandFurnitureSet(base, set(type, rotation));
+      const strips = type === "lounge-pair" ? access.slice(0, 1) : access;
+      // Each strip is extended across the floor and joined by one spine, so the zones form one network.
+      const across = (a: typeof access[number]) => a.side === "north" || a.side === "south"
+        ? { x: .5, y: (a.y0 + a.y1) / 2, width: 20, depth: (a.y1 - a.y0) * 20 } : { x: (a.x0 + a.x1) / 2, y: .5, width: (a.x1 - a.x0) * 20, depth: 20 };
+      const vertical = strips[0].side === "east" || strips[0].side === "west";
+      const zones = [...strips.map((a, i) => ({ id: `a${i}`, label: `Aisle ${i}`, purpose: "circulation" as const, ...across(a), rotation: 0 as const, assignable: false })),
+        { id: "spine", label: "Spine", purpose: "circulation" as const, ...(vertical ? { x: .5, y: .04, width: 20, depth: 1.5 } : { x: .04, y: .5, width: 1.5, depth: 20 }), rotation: 0 as const, assignable: false }];
+      const doc = applyDesignPatch(base, { ...patch, zones, sets: [set(type, rotation)] });
+      expect(reviewUsability(doc).issues.filter(issue => issue.code === "seat_access").map(issue => `${type}@${rotation} ${issue.objectId}`)).toEqual([]);
+    }
+  });
   it("saves or holds a set whole and removes it by set ID", () => {
     const blocker = { id: "box", kind: "furniture" as const, label: "Box", x: .5, y: .5, width: 1, depth: 1, height: 1, rotation: 0 as const, color: "#335577" };
     const result = partitionDesignPatch({ ...base, objects: [blocker] }, { ...patch, sets: [set("meeting-4", 0), { ...set("lounge-pair", 0), id: "l", x: .2, y: .2 }] });
