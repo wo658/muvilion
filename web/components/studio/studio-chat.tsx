@@ -1,6 +1,7 @@
 "use client";
 import { MUVI_OPERATION_LABELS, type MuviOperation } from "@/lib/muvi/operations";
 import { SECTION_LABELS, type PlanningContent } from "@/lib/plans/planning-artifact";
+import { DESIGN_BUDGET } from "@/lib/plans/design-budget";
 import { IntentDecision } from "@/lib/plans/intent";
 import { localizeMessage } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/provider";
@@ -205,8 +206,8 @@ export function StudioChat({ autoDesign = null, onAutoDesignStart, onOperation, 
                     setInterpretError(`${localizeMessage(locale, outcome.errors[0])} ${outcome.results.length ? t("Successful regions are retained for review.") : t("No regions could be reviewed.")}`);
             }
             else {
-                // Outlast the server's 600 s design budget (route maxDuration 630 s) so its own timeout error reaches the user.
-                const designSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(640_000)]);
+                // Outlast the server's design budget so its own timeout error reaches the user.
+                const designSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(DESIGN_BUDGET.timeoutMs + 40_000)]);
                 const response = await fetch("/api/plans/design", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ locale, document: base, selection: selection ?? null, drawingSelected: true, brief, sources: await selectedReferences(sources, document) }), signal: designSignal });
                 const assertCurrent = () => {
                     designSignal.throwIfAborted();

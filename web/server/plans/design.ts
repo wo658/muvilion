@@ -1,3 +1,4 @@
+import { DESIGN_BUDGET } from "@/lib/plans/design-budget";
 import { operationForTool, type MuviOperation } from "@/lib/muvi/operations";
 import { IntentRequest } from "@/lib/plans/intent";
 import "server-only";
@@ -20,8 +21,8 @@ import { ASSET_INSTRUCTIONS } from "./asset-tools";
 import { PlanServiceError } from "./errors";
 
 /** A run that has not submitted by the deadline is discarded, so the model is told to wrap up before it. */
-export const DESIGN_TIMEOUT_MS = 600_000;
-export const DESIGN_WRAP_UP_MS = 150_000;
+export const DESIGN_TIMEOUT_MS = DESIGN_BUDGET.timeoutMs;
+export const DESIGN_WRAP_UP_MS = DESIGN_BUDGET.wrapUpMs;
 
 export const DesignRequest = z.object({ selection: IntentRequest.shape.selection.optional(), locale: z.enum(["en", "ko"]).optional(), sources: SourceRequestSchema, drawingSelected: z.boolean().default(true), document: PlanDocumentSchema, brief: z.string().trim().min(1).max(6000) });
 
@@ -56,7 +57,7 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
       model: model.model,
       instructions,
       tools: createDesignTools(context),
-      stopWhen: [isStepCount(emitPreview ? 24 : 10), hasToolCall("submit_design")],
+      stopWhen: [isStepCount(emitPreview ? DESIGN_BUDGET.steps : 10), hasToolCall("submit_design")],
       toolCallConcurrency: 1,
       // Meta Model API accepts only auto; named tool choices return HTTP 400.
       // https://dev.meta.ai/docs/cookbook/tool-function-calling
@@ -66,10 +67,10 @@ export async function designPlan(input: z.infer<typeof DesignRequest>, signal: A
         // evidence as user image parts instead, and consume each image only once.
         const images = context.pendingImages.splice(0);
         if (images.some(image => image.kind === "schematic" && image.revision === context.revision)) seenRevision = context.revision;
-        const reviewsRemaining = Math.max(0, 3 - (context.calls.get("review_design") ?? 0));
+        const reviewsRemaining = Math.max(0, DESIGN_BUDGET.reviews - (context.calls.get("review_design") ?? 0));
         const reviewedCurrent = seenRevision === context.revision && context.revision > 0;
         const reviewBudgetUsed = reviewsRemaining === 0;
-        const last = stepNumber === (emitPreview ? 23 : 9);
+        const last = stepNumber === (emitPreview ? DESIGN_BUDGET.steps - 1 : 9);
         const remainingMs = started + DESIGN_TIMEOUT_MS - Date.now();
         const wrapUp = !last && !reviewBudgetUsed && remainingMs < DESIGN_WRAP_UP_MS;
         const injected = [

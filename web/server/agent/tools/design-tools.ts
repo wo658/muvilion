@@ -1,5 +1,6 @@
 import "server-only";
 import { assetTools } from "@/server/plans/asset-tools";
+import { DESIGN_BUDGET } from "@/lib/plans/design-budget";
 import { tool } from "ai";
 import { z } from "zod";
 import { applyDesignProposal, PlanDesignProposal } from "@/lib/plans/muse";
@@ -75,7 +76,7 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
         const fixes = `${issues.slice(0, 12).join(" ")}${hints.length ? ` Placement fixes (normalized centre x/y; widths in metres): ${hints.join(" ")}` : ""}`;
         if (!saved)
           throw new Error(`Group rejected; no item could be saved without new geometry issues and the saved design is unchanged. Fix these and send the group again: ${fixes}`);
-        reserveToolCall(context, "edit_design", 16);
+        reserveToolCall(context, "edit_design", DESIGN_BUDGET.edits);
         context.signal.throwIfAborted();
         context.draft = draft; context.revision++; context.review = undefined;
         publish(context, patch.label);
@@ -124,9 +125,9 @@ export const designToolRegistrations: readonly ToolRegistration<DesignToolContex
             context.signal.throwIfAborted();
             views.forEach((image, i) => addArtifact(context, { kind: "schematic", title: i ? "Interior massing (preflight)" : "Plan composition (preflight)", image }));
           }
-          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, density: zoneDensity(draft), reviewsRemaining: 3 - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
+          return { revision: context.revision, designReview: review, floorCoverage, geometryWarnings, placementHints: hintsFor(draft, geometryWarnings), usability, density: zoneDensity(draft), reviewsRemaining: DESIGN_BUDGET.reviews - (context.calls.get("review_design") ?? 0), next: "Preflight failed: correct all floorCoverage.issues (allocate the entire reviewed floor and furnish every activity zone), designReview requirements (supply exactly one coverage entry per requirement; correct invalidIds using exact current-draft IDs of the required target and allowedKinds, and meet minimum counts without inventing IDs) AND all usability.issues (seat facing, table reach, pull-back/legroom, connected access) AND all geometryWarnings (overlaps, obstructed circulation, or out-of-bounds objects), then call review_design again. No visual-review budget was consumed. Do not submit." };
         }
-        reserveToolCall(context, "review_design", 3);
+        reserveToolCall(context, "review_design", DESIGN_BUDGET.reviews);
         const images = await Promise.all([renderDesign(draft, "plan"), renderDesign(draft, "isometric")]);
         context.signal.throwIfAborted();
         context.draft = draft;
