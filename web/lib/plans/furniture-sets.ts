@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { FIXTURES } from "@/lib/assets/fixtures";
 import { getModelAsset } from "@/lib/assets/catalog";
-import type { DesignObject, PlanDocument } from "./schema";
+import type { DesignObject, PlanDocument, SpaceZone } from "./schema";
+import { footprintFitsBoundary } from "./design";
 
 /**
  * Furnished sets Muse places as one unit. The server expands each into fixtures already spaced
@@ -98,11 +99,11 @@ const rotate = (dx: number, dy: number, turn: number) => {
 /** Local sides (+y south, -y north, ±x) seats are approached from, for suggesting an aisle. */
 const ACCESS_SIDES: Record<FurnitureSetType, ("south" | "north" | "east" | "west")[]> = {
   "meeting-4": ["south", "north"], "consult-desk": ["south", "north"], "counter-bar": ["south"], "lounge-pair": ["east", "west"],
-  "photo-spot": ["south"], "display-row": ["south"], "audience-rows": ["south"],
+  "photo-spot": ["south"], "display-row": ["south"], "audience-rows": ["east", "west"],
 };
 
 /** Objects for a set in document coordinates, and its footprint including seat pull-back space. */
-export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | "heightMeters">, set: FurnitureSet) {
+export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | "heightMeters" | "floorBoundary">, set: FurnitureSet) {
   const width = document.widthMeters, depth = document.heightMeters;
   if (!width || !depth) throw new Error("Confirm the drawing scale before placing furniture sets.");
   const { items, envelope } = parts(set);
@@ -129,5 +130,18 @@ export function expandFurnitureSet(document: Pick<PlanDocument, "widthMeters" | 
     if (turnedSide === "east") return { side: turnedSide, x0: footprint.x1, x1: footprint.x1 + ax, y0: footprint.y0, y1: footprint.y1 };
     return { side: turnedSide, x0: footprint.x0 - ax, x1: footprint.x0, y0: footprint.y0, y1: footprint.y1 };
   });
-  return { objects, footprint, access };
+  // Seating sets bring their own access aisle, so connecting them only needs that aisle to touch a
+  // main route. Either side serves lounge and audience seats; table seats need each side.
+  const either = set.type === "lounge-pair" || set.type === "audience-rows";
+  const inside = (a: typeof access[number]) => !document.floorBoundary || footprintFitsBoundary({ x: a.x0, y: a.y0, width: a.x1 - a.x0, height: a.y1 - a.y0 }, document.floorBoundary);
+  const seated = set.type !== "photo-spot" && set.type !== "display-row";
+  const aisles = !seated ? [] : either ? [access.find(inside) ?? access[0]] : access;
+  // Each aisle runs 1.2 m past both ends of the set, so a route passing any corner meets it
+  // without having to overlap the furniture.
+  const zones: SpaceZone[] = aisles.map(a => {
+    const along = a.side === "north" || a.side === "south";
+    return { id: `${set.id}-aisle-${a.side}`, label: `${set.label} · aisle`, purpose: "circulation",
+      x: (a.x0 + a.x1) / 2, y: (a.y0 + a.y1) / 2, width: (a.x1 - a.x0) * width + (along ? 2 * aisle : 0), depth: (a.y1 - a.y0) * depth + (along ? 0 : 2 * aisle), rotation: 0, assignable: false };
+  });
+  return { objects, zones, footprint, access };
 }

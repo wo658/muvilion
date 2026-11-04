@@ -26,6 +26,7 @@ function merge<T extends { id: string }>(before: T[], updates: T[], removed: str
 
 /** Objects a set expands to; a set's objects are the base objects whose IDs start with `<set id>-`. */
 export const setObjectIds = (document: PlanDocument, setId: string) => (document.objects ?? []).filter(object => object.id.startsWith(`${setId}-`)).map(object => object.id);
+const setZoneIds = (document: PlanDocument, setId: string) => (document.zones ?? []).filter(zone => zone.id.startsWith(`${setId}-aisle-`)).map(zone => zone.id);
 export function applyDesignPatch(base: PlanDocument, patch: z.infer<typeof DesignPatchSchema>) {
   const p = DesignPatchSchema.parse(patch);
   const setRemovals = (p.removeSets ?? []).flatMap(id => {
@@ -33,8 +34,12 @@ export function applyDesignPatch(base: PlanDocument, patch: z.infer<typeof Desig
     if (!ids.length) throw new Error(`Unknown set ID: ${id}.`);
     return ids;
   });
-  const objects = [...p.objects, ...(p.sets ?? []).flatMap(set => expandFurnitureSet(base, set).objects)];
-  return applyDesignProposal(base, { summary: p.label, assumptions: [], objects: merge(base.objects ?? [], objects, [...new Set([...p.removeObjects, ...setRemovals])]), zones: merge(base.zones ?? [], p.zones, p.removeZones), wallSurfaces: merge(base.wallSurfaces ?? [], p.wallSurfaces ?? [], p.removeWallSurfaces ?? []) });
+  const expanded = (p.sets ?? []).map(set => expandFurnitureSet(base, set));
+  const objects = [...p.objects, ...expanded.flatMap(set => set.objects)];
+  // Re-placing a set moves its aisle; stale aisles from an earlier placement go with it.
+  const replaced = (p.sets ?? []).flatMap(set => setZoneIds(base, set.id)).filter(id => !expanded.some(set => set.zones.some(zone => zone.id === id)));
+  const zoneRemovals = [...new Set([...p.removeZones, ...replaced, ...(p.removeSets ?? []).flatMap(id => setZoneIds(base, id))])];
+  return applyDesignProposal(base, { summary: p.label, assumptions: [], objects: merge(base.objects ?? [], objects, [...new Set([...p.removeObjects, ...setRemovals])]), zones: merge(base.zones ?? [], [...p.zones, ...expanded.flatMap(set => set.zones)], zoneRemovals), wallSurfaces: merge(base.wallSurfaces ?? [], p.wallSurfaces ?? [], p.removeWallSurfaces ?? []) });
 }
 export type DesignPatch = z.infer<typeof DesignPatchSchema>;
 export type HeldPatchItem = { kind: "object" | "zone" | "wallSurface" | "set" | "removals"; id: string; label: string };

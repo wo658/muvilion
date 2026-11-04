@@ -41,6 +41,17 @@ describe("furniture sets", () => {
       expect(reviewUsability(doc).issues.filter(issue => issue.code === "seat_access").map(issue => `${type}@${rotation} ${issue.objectId}`)).toEqual([]);
     }
   });
+  it("brings its own aisles, so a route just past any edge connects every seat", () => {
+    for (const type of ["meeting-4", "counter-bar", "lounge-pair", "consult-desk"] as const) for (const rotation of [0, 90, 180, 270] as const) {
+      const { footprint, zones } = expandFurnitureSet(base, set(type, rotation));
+      expect(zones.length).toBeGreaterThan(0);
+      // Set aisles run 1.2 m past the footprint, so a spine touching its east or south edge meets them.
+      const sideways = type === "lounge-pair" ? rotation % 180 === 0 : rotation % 180 !== 0;
+      const spine = sideways ? { x: .5, y: footprint.y1 + .0376, width: 20, depth: 1.5 } : { x: footprint.x1 + .0376, y: .5, width: 1.5, depth: 20 };
+      const doc = applyDesignPatch(base, { ...patch, zones: [{ id: "spine", label: "Spine", purpose: "circulation" as const, ...spine, rotation: 0 as const, assignable: false }], sets: [set(type, rotation)] });
+      expect(reviewUsability(doc).issues.filter(issue => ["seat_access", "disconnected_routes"].includes(issue.code)).map(issue => `${type}@${rotation} ${issue.code} ${issue.objectId ?? ""}`)).toEqual([]);
+    }
+  });
   it("saves or holds a set whole and removes it by set ID", () => {
     const blocker = { id: "box", kind: "furniture" as const, label: "Box", x: .5, y: .5, width: 1, depth: 1, height: 1, rotation: 0 as const, color: "#335577" };
     const result = partitionDesignPatch({ ...base, objects: [blocker] }, { ...patch, sets: [set("meeting-4", 0), { ...set("lounge-pair", 0), id: "l", x: .2, y: .2 }] });
