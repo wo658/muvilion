@@ -34,7 +34,8 @@
     "render": "remotion render src/index.ts Muvilion-Space out/muvilion-space-10s.mp4 --concurrency=2",
     "render:atelier": "remotion render src/index.ts Muvilion-Atelier out/muvilion-atelier-10s.mp4 --concurrency=2",
     "render:inputs": "remotion render src/index.ts Muvilion-Input-Reveal out/muvilion-input-reveal-10s.mp4 --concurrency=2",
-    "render:film": "remotion render src/index.ts Muvilion-Designer-Film out/muvilion-designer-1min-en.mp4 --concurrency=4"
+    "render:film": "remotion render src/index.ts Muvilion-Designer-Film out/muvilion-designer-1min-en.mp4 --concurrency=4",
+    "render:launch": "remotion render src/index.ts Muvilion-Launch-Film out/muvilion-launch-3min-en.mp4 --concurrency=4 --crf=17"
   },
   "allowScripts": {
     "esbuild": false

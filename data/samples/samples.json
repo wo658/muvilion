@@ -2,109 +2,109 @@
   "projects": [
     {
       "id": "popup",
-      "name": "성수 팝업 · Ray-Ban Meta × Messenger 체험 데모",
+      "name": "Seongsu Pop-up · Ray-Ban Meta × Messenger",
       "drawings": [
         {
-          "name": "성수 팝업 스튜디오 · 1층",
+          "name": "Seongsu Pop-up Studio · Ground Floor",
           "file": "popup/seongsu-popup-plan.png"
         }
       ],
       "sources": [
         {
           "kind": "brief",
-          "name": "써 보고·찍고·보내는 AI 글래스 팝업 · 가상 기획서",
+          "name": "Try. Capture. Share. · Pop-up brief",
           "selected": true,
-          "text": "가상 데모 기획이며 Meta의 공식 행사·의뢰·제휴가 아니다. 공간과 수량은 설계 연습용 가정이며 실제 수용 인원이나 안전 검증 결과가 아니다.\n\n목표: 성수동 팝업 스튜디오(약 590㎡, 1층, 북쪽 거리에 면한 쇼윈도)에서 Ray-Ban Meta AI 글래스를 처음 써 보는 방문객이 '써 보기 → 찍어 보기 → 들어 보기 → 친구에게 보내 보기'를 20분 안에 경험하게 한다. 대상은 스마트 글래스를 처음 접하는 20~30대 방문객이다.\n공간 프로그램: 정문 옆 안내·체크인 카운터 1개, 거울이 있는 착용 피팅 바 2개(각 4석), 핸즈프리 촬영 산책로 1개와 포토 스팟 3곳, 오픈이어 오디오 리스닝 라운지 1개(좌석 8), Messenger 핸즈프리 메시지·통화 시연 부스 2개(반쯤 닫힌 파티션), 방문객이 보낸 사진이 모이는 공유 사진 벽 1개, 상담·픽업 카운터 1개를 제안한다.\n동선: 사선으로 꺾인 정문으로 들어와 체크인 → 메인 홀의 피팅 바 → 기둥 사이를 따라 도는 촬영 산책로 → 리스닝 라운지 → 아넥스의 Messenger 부스와 공유 사진 벽 → 상담·픽업 카운터 순서로 한 방향으로 흐르게 한다. 입장 대기 줄이 정문 앞 통로를 막지 않게 하고, 주 통로는 1.5m 이상 비운다. 직원과 재고는 남쪽 서비스 도어와 창고를 쓰며 방문객 동선과 겹치지 않게 한다.\n도면 활용: 도면 하나가 공간 전체다. 메인 홀(북쪽 약 32×15m, 정문 쪽 모서리가 사선, 천장고 4.2m)은 체험 존, 아넥스(남동쪽 약 18×7m, 천장고 3.6m)는 공유·상담 존으로 쓴다. 기둥 3개(0.6m 각)는 철거할 수 없으니 포토 스팟이나 집기 배치에 활용한다. 북쪽 쇼윈도와 동쪽 창 앞은 거리에서 보이는 자리라 피팅 바나 포토 스팟을 두고, 창을 높은 벽으로 막지 않는다. 천장고는 도면 표기에 따른 가정값이며 매달기 하중은 검토하지 않았다. 화장실과 창고 안은 꾸미지 않는다.\n디자인 방향: 따뜻한 오프화이트 바탕에 검은 아세테이트 테와 렌즈를 떠올리게 하는 블랙 라인, 햇빛이 드는 거리 같은 밝은 조명을 쓴다. 촬영 산책로는 성수 골목처럼 낮은 벽돌·식물·간판 소품으로 '찍고 싶은 장면'을 만든다. 이는 데모의 제안 방향이지 공식 브랜드 가이드가 아니다.\n설계 요청 예시: 도면 전체를 쓰는 체험형 팝업으로 꾸며 줘. 피팅 바, 촬영 산책로, 리스닝 라운지, Messenger 부스와 공유 사진 벽, 체크인·상담 카운터를 실제 가구와 파티션으로 배치하고 동선이 한 방향으로 흐르게 해 줘.",
-          "notes": "독자 작성한 데모 기획과 가상 공간. 도면 읽기와 설계는 실제 Muse 호출이며, 운영·안전 시뮬레이션 결과는 포함하지 않는다.",
+          "text": "An independently authored fictional demo, not an official Meta event, commission or partnership. Dimensions and quantities are design assumptions, not measured capacity or safety validation.\n\nObjective: Give first-time visitors in their twenties and thirties a 20-minute journey through trying on glasses, hands-free photography, open-ear listening and sharing with friends. Use the entire approximately 590 m² ground floor in Seongsu.\n\nProgram: One check-in counter; two four-seat fitting bars with mirrors; a photo walk with three photo spots; an eight-seat listening lounge; two semi-enclosed Messenger demo booths; one shared photo wall; one consultation and pickup counter.\n\nJourney: Angled entrance → check-in → fitting bars → photo walk between columns → listening lounge → Messenger booths and photo wall in the annex → consultation and pickup. Keep the main route at least 1.5m clear. Use the south service door and storage for staff and stock.\n\nDrawing: The north main hall is approximately 32 × 15m with a 4.2m assumed ceiling; the southeast annex is approximately 18 × 7m with a 3.6m assumed ceiling. Preserve the three 0.6m square columns. Keep the north shopfront and east windows visible. Ceiling heights are drawing assumptions; suspended loads are unreviewed. Do not furnish the toilets or storage.\n\nDirection: Warm off-white surfaces, black lines inspired by acetate frames, and bright street-like lighting. Low walls, plants and signs create small Seongsu-inspired photo scenes.\n\nRequest: Design the entire floor with actual furniture and partitions, connecting the experiences with a one-way visitor journey.",
+          "notes": "Authored fictional venue and brief. Muse performed the drawing reading and design; no operations or safety simulation is included.",
           "images": []
         },
         {
           "kind": "brand",
-          "name": "Ray-Ban Meta · 공식 URL / 데모 해석",
+          "name": "Ray-Ban Meta · Brand reference",
           "selected": true,
           "url": "https://www.meta.com/ai-glasses/ray-ban-meta/",
-          "text": "카메라·오픈이어 스피커·마이크가 들어간 AI 글래스. 말로 Meta AI에 묻고, 손을 쓰지 않고 사진·영상을 찍고, 음악을 듣고 통화·메시지를 할 수 있다. 데모에서는 착용 피팅, 핸즈프리 촬영 산책, 리스닝 라운지로 해석한다.",
-          "notes": "공식 URL을 참고하는 북마크. 웹페이지 원문이나 로고·제품 사진을 포함하지 않는다. 공간 아이디어는 독자 작성한 가상 기획이며 공식 브랜드 가이드가 아니다.",
+          "text": "AI glasses with a camera, open-ear speakers and microphones. The demo interprets hands-free capture, listening and communication as fitting bars, a photo walk and a listening lounge.",
+          "notes": "Official URL bookmark. No article text, logos or product photos are bundled. Spatial ideas are authored demo interpretations, not official brand guidelines.",
           "images": []
         },
         {
           "kind": "brand",
-          "name": "Messenger · 공식 URL / 데모 해석",
+          "name": "Messenger · Brand reference",
           "selected": true,
           "url": "https://www.messenger.com/",
-          "text": "친구·그룹과 메시지와 음성·영상 통화를 주고받는 서비스. 데모에서는 글래스로 핸즈프리 메시지를 보내고 통화해 보는 시연 부스와, 방문객이 보낸 사진이 모이는 공유 사진 벽으로 해석한다.",
-          "notes": "공식 URL을 참고하는 북마크. 웹페이지 원문이나 로고를 포함하지 않는다. 공간 아이디어는 독자 작성한 가상 기획이며 공식 브랜드 가이드가 아니다.",
+          "text": "Messaging and voice/video conversations with friends and groups. The demo interprets these as hands-free message and call booths, followed by a shared visitor photo wall.",
+          "notes": "Official URL bookmark. No article text, logos or product photos are bundled. Spatial ideas are authored demo interpretations, not official brand guidelines.",
           "images": []
         },
         {
           "kind": "concept",
-          "name": "AI 글래스 착용 피팅 바 · 작성 콘셉트",
+          "name": "AI glasses fitting bar · Authored concept",
           "selected": true,
           "imageFiles": [
             "concepts/glasses-fitting-bar.webp"
           ],
-          "text": "오프화이트 몸체에 검은 상판과 검은 걸레받이를 두른 긴 피팅 카운터(약 4m × 1.2m, 높이 약 1.05m). 상판 가운데 월넛 톤 우드 트레이에 시착용 글래스를 줄지어 놓고, 뒤쪽에 검은 프레임 거울 패널 3장을 세운다. 앞쪽에는 브라스 발걸이 레일과 갈색 쿠션을 얹은 검은 스툴 3개를 둔다. 실제 Ray-Ban Meta 제품 모양을 재현한 이미지가 아니다. 착용·거울 확인·직원 안내를 한 가구에서 하는 방향을 보여 준다.",
-          "notes": "이 저장소의 스크립트(web/scripts/build-sample-popup.mjs)로 SVG 도형을 그려 생성한 콘셉트 이미지. 외부 제품·브랜드 사진과 로고를 쓰지 않았다. 폭·석수는 기획 가정이다.",
+          "text": "A long off-white fitting counter with a black worktop and base, approximately 4m × 1.2m and 1.05m high. A walnut-toned tray holds demonstration glasses; three black-framed mirror panels stand behind it. Three black stools with brown cushions and a brass foot rail illustrate fitting, mirror checks and staff guidance in one furniture unit. This does not reproduce the product design.",
+          "notes": "Concept image drawn with repository script web/scripts/build-sample-popup.mjs. No external product photos, brand photos or logos. Width and seat counts are planning assumptions.",
           "images": []
         },
         {
           "kind": "brand",
-          "name": "Ray-Ban Meta 한국 출시 · 공식 소식 참고",
+          "name": "Ray-Ban Meta Korea launch · News reference",
           "selected": true,
           "url": "https://about.fb.com/news/2026/05/ray-ban-meta-and-oakley-meta-officially-launch-in-korea/",
-          "text": "Ray-Ban Meta와 Oakley Meta가 2026년 5월 한국에 공식 출시되었다는 Meta 소식. 데모에서는 처음 써 보는 한국 방문객을 위한 체험 팝업이라는 맥락으로만 참고한다.",
-          "notes": "공식 기사 북마크. 기사 이미지·로고·원문을 포함하지 않는다.",
+          "text": "Bookmarked Meta news about the May 2026 Korean launch of Ray-Ban Meta and Oakley Meta. Used only as context for a first-time visitor experience in Korea.",
+          "notes": "Official article bookmark; article images, logos and original text are not bundled.",
           "images": []
         }
       ],
       "recorded": {
         "file": "popup/recorded.json",
         "recordedAt": "2026-11-04",
-        "note": "Muse가 실제로 디자인하고 기획 문서까지 작성한 결과를 저장한 녹화본이다. 열면 바로 수정할 수 있고, 'Muse로 처음부터 디자인'을 고르면 새로 실행한다."
+        "note": "Recorded live Muse design and completed planning document in English, then extended through Muse chat with feature walls and signature objects. Opens as an editable saved project; choose Design from scratch to run Muse live."
       }
     },
     {
       "id": "kintex",
-      "name": "KINTEX · Instagram × Threads 크리에이터 데모",
+      "name": "KINTEX · Instagram × Threads Creator Day",
       "drawings": [
         {
-          "name": "KINTEX · 1홀",
+          "name": "KINTEX Hall 1B · 40 × 30m Event Area",
           "file": "kintex/kintex-hall1-layout.jpg"
         }
       ],
       "sources": [
         {
           "kind": "brief",
-          "name": "크리에이터 커넥션 데이 · 가상 기획서",
+          "name": "Creator Connection Day · Event brief",
           "selected": true,
-          "text": "가상 데모 기획이며 Meta의 공식 행사·의뢰·제휴가 아니다. 수량은 설계 연습용 가정이며 실제 수용 인원이나 안전 검증 결과가 아니다.\n\n목표: Instagram의 시각적 창작과 Threads의 공개 대화를 하나의 방문 경험으로 연결한다. 대상은 콘텐츠 크리에이터와 지역 커뮤니티 운영자다.\n공간 프로그램: 공동 안내 데스크 1개, Instagram 세로 영상 촬영 세트 3개(배경 파티션·조명·휴대전화 거치대), 편집 상담 테이블 2개, Threads 주제별 대화 테이블 4개, 짧은 토크 무대 1개와 의자 24개, 휴게 라운지 1개, 장비 보관실 1개를 제안한다.\n동선: 등록 → 촬영 체험 → 편집 피드백 → 관심사 대화 → 휴식. 촬영 대기열과 토크 관람 동선은 분리하고 촬영 조명이 대화 좌석을 직접 비추지 않게 한다. 접근 가능한 통로와 대기 중 앉을 자리를 남긴다.\n도면 활용: 1홀 전체(171 × 63 m)를 채우지 않고, 1B 안의 일부 영역(약 40 × 30 m)을 행사 범위로 잡아 설계한다. 나머지 면적은 비워 두고 행사 범위 밖으로 가구를 놓지 않는다.\n디자인 방향: Instagram은 표현과 제작을 드러내는 밝은 스튜디오, Threads는 글과 대화에 집중하는 차분한 살롱으로 구분한다. 이는 데모의 제안 방향이지 공식 브랜드 가이드가 아니다.\n설계 요청 예시: 1홀에서 사용할 영역과 축척을 확인한 뒤 촬영 세트, 대화 테이블, 무대와 라운지를 실제 가구·파티션으로 구성한 검토용 제안을 만들어 줘. 전체 홀을 자동으로 채우지 말고 필요한 면적은 질문해 줘.",
-          "notes": "독자 작성한 데모 기획. 도면 판독은 Muse를 사용하며, 배치·운영·안전 시뮬레이션 결과는 포함하지 않는다.",
+          "text": "An independently authored fictional demo, not an official Meta event, commission or partnership. Dimensions and quantities are design assumptions, not measured capacity or safety validation.\n\nObjective: Connect Instagram visual creation and Threads public conversation in one visitor journey for content creators and local community organizers.\n\nProgram: One welcome desk; three vertical-video sets with backdrops, lights and phone stands; two editing feedback tables; four topic-based conversation tables; one talk stage with 24 audience chairs; one lounge; one equipment store.\n\nJourney: Registration → capture → editing feedback → conversations → rest. Separate photo queues from stage access. Avoid directing photo lights at conversation seating. Leave accessible routes and seats for waiting visitors.\n\nDrawing: Use only an approximately 40 × 30m area inside Hall 1B, not the full 171 × 63m hall. Leave the remaining area empty.\n\nDirection: A bright production studio for Instagram and a calm conversation salon for Threads. This is an authored interpretation, not an official brand guide.\n\nRequest: Confirm the event area and scale, then arrange actual furniture and partitions for review. Do not automatically fill the entire hall.",
+          "notes": "Authored demo brief. Muse reads the drawing; no layout, operations or safety simulation is included.",
           "images": []
         },
         {
           "kind": "brand",
-          "name": "Instagram · 공식 URL / 데모 해석",
+          "name": "Instagram · Brand reference",
           "selected": true,
           "url": "https://www.meta.com/instagram/",
-          "text": "사진·영상 공유와 Reels 등 시각적 창작을 중심으로 하는 서비스. 데모에서는 촬영, 편집 피드백, 크리에이터 교류를 공간 경험으로 해석한다.",
-          "notes": "공식 URL을 참고하는 북마크. 웹페이지 원문이나 로고를 포함하지 않는다. 공간 아이디어는 독자 작성한 가상 기획이며 공식 브랜드 가이드가 아니다.",
+          "text": "Visual creation and sharing through photos, video and Reels. The demo turns capture, editing feedback and creator exchange into spatial experiences.",
+          "notes": "Official URL bookmark. No article text, logos or product photos are bundled. Spatial ideas are authored demo interpretations, not official brand guidelines.",
           "images": []
         },
         {
           "kind": "brand",
-          "name": "Threads · 공식 URL / 데모 해석",
+          "name": "Threads · Brand reference",
           "selected": true,
           "url": "https://www.threads.com/",
-          "text": "텍스트와 공개 대화를 중심으로 관심사를 나누는 서비스. 데모에서는 주제 카드, 작은 토크와 대화 테이블을 활용한다.",
-          "notes": "공식 URL을 참고하는 북마크. 웹페이지 원문이나 로고를 포함하지 않는다. 공간 아이디어는 독자 작성한 가상 기획이며 공식 브랜드 가이드가 아니다.",
+          "text": "Sharing interests through text and public conversation. The demo uses topic cards, short talks and conversation tables.",
+          "notes": "Official URL bookmark. No article text, logos or product photos are bundled. Spatial ideas are authored demo interpretations, not official brand guidelines.",
           "images": []
         },
         {
           "kind": "concept",
-          "name": "크리에이터 디스플레이 포드 · 생성 콘셉트",
+          "name": "Creator display pod · Generated concept",
           "selected": true,
-          "text": "보라색 아치형 배경판과 코럴색 낮은 받침, 작은 선반이 결합된 촬영·전시 모듈이다. 이미지의 색상 조합, 부드러운 모서리, 시야를 가리지 않는 소규모 전시 구성을 공간 디자인 참고로 사용한다. 실제 도면 위 배치는 지원되는 파티션·받침·선반 요소로 재해석하고, 이미지와 동일한 곡면을 구현했다고 주장하지 않는다.\n\n계획 폭 1.5m를 시작 가정으로 검토한다. 사진에서 측정한 치수가 아니며 높이·깊이·안정성은 별도 확인 대상이다.",
-          "notes": "2026-11-02 독자 작성 프롬프트로 생성한 가상 전시 디자인 이미지. 실제 제품 사진·공식 브랜드 디자인·3D 복원 결과가 아니다. 외부 로고·사진을 입력하거나 복제하지 않았다. Muse가 형태·재료·색상 방향을 읽는 참고 자료이며 제작 가능성은 검증하지 않았다.",
+          "text": "A purple arched backdrop, low coral plinth and small shelf form a compact capture/display module. Color, soft edges and open sightlines inform the design. The actual layout reinterprets the reference using supported partitions, plinths and shelves; it does not claim to reproduce identical curves.\n\nAn assumed width of 1.5m is a starting point, not a photographic measurement. Height, depth and stability need separate review.",
+          "notes": "Fictional display concept generated from an original prompt on 2026-11-02. Not a product photograph, official brand design or 3D reconstruction. No external logos or photos were supplied. Form, material and color reference only; fabrication is unverified.",
           "images": [],
           "imageFiles": [
             "concepts/creator-display-pod.webp"
@@ -112,18 +112,18 @@
         },
         {
           "kind": "brand",
-          "name": "Edits · 공식 영상 제작 워크플로우 참고",
+          "name": "Edits · Video workflow reference",
           "selected": true,
           "url": "https://about.fb.com/news/2025/04/introducing-edits-streamlined-video-creation-app/",
-          "text": "공식 소개에서 Edits는 영상 제작을 지원하는 앱으로 설명된다. 데모는 아이디어 정리 → 촬영 → 편집 피드백이라는 방문 경험으로 재해석한다. 실제 앱 기능을 구현하거나 서비스와 연동한 전시가 아니다.",
-          "notes": "2026-11-02 공식 기사 확인 후 독자 요약. 링크는 북마크이며 앱에서 원문을 자동 수집하지 않는다. 기사 사진·로고·원문은 번들하지 않았다.",
+          "text": "The official introduction describes Edits as a video creation app. This demo interprets idea development, capture and editing feedback as a visitor journey. It does not implement or integrate the service.",
+          "notes": "Independent summary of the official article reviewed on 2026-11-02. The URL is a bookmark, not automatic web ingestion. No article photos, logos or original text are bundled.",
           "images": []
         }
       ],
       "recorded": {
         "file": "kintex/recorded.json",
         "recordedAt": "2026-11-04",
-        "note": "Muse가 실제로 디자인하고 기획 문서까지 작성한 결과를 저장한 녹화본이다. 기획서대로 1B 안 40 × 30 m 영역만 쓴다. 열면 바로 수정할 수 있고, 'Muse로 처음부터 디자인'을 고르면 새로 실행한다."
+        "note": "Recorded live Muse design and completed planning document in English, then extended through Muse chat with feature walls and signature objects. Opens as an editable saved project; choose Design from scratch to run Muse live."
       }
     }
   ]

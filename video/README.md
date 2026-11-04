@@ -50,3 +50,9 @@ minimatch advisories. This is a local authoring tool using trusted static inputs
 do not expose its Studio server as a public service. Recheck upstream fixes before
 turning this into an automated service. Do not apply npm audit's suggested old
 Remotion downgrade or incompatible major overrides blindly.
+
+## Current three-minute launch film
+
+The latest English product film is `Muvilion-Launch-Film`: 180 seconds, 1080p, 30 fps, with newly
+recorded Seongsu and KINTEX demos through completed planning reports and PDF export.
+Run `npm run render:launch`. See [the timeline and recording provenance](launch/README.md).

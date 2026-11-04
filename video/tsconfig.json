@@ -12,5 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "noUnusedLocals": true
   },
-  "exclude": ["remotion.config.ts", "exhibition", "input-reveal"]
+  "exclude": ["remotion.config.ts", "exhibition", "input-reveal", "launch/plan-interior-paths.ts"]
 }

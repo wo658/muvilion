@@ -103,7 +103,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
   }, [photoRenderer, document, onPlanningCaptureReady, applyPhotoSettings]);
   const showCeiling = ceilingMode !== "hidden";
   const estimatedEnclosure = enclosure && (enclosure.assumedWalls || enclosure.assumedCeiling);
-  const enclosureNotice = estimatedEnclosure ? t("Room enclosure partly estimated · {height} m", { height: enclosure.ceiling.height }) : null;
+  const enclosureNotice = estimatedEnclosure ? t("Room enclosure partly estimated · {height} m", { height: Number(enclosure.ceiling.height.toFixed(1)) }) : null;
   const floorShape = useMemo(() => {
     if (!document.floorBoundary?.length) return null;
     const shape = new Shape();
@@ -129,7 +129,7 @@ export default function SceneView({ focus = null, document, wallHeight, selected
       </FieldGroup>
       <details className="mt-4 text-xs text-muted"><summary className="cursor-pointer">{t("View help and model information")}</summary>
         <p className="mt-2">{view==="interior"?t("Click a clear floor point to move. Drag to look around; scroll to zoom. Walls, installations and low overhead elements block travel. Choose nearby points to go around obstacles."):t("Drag to orbit. Right-drag to pan. Scroll to zoom.")}</p>
-        <p className="mt-2">{ceiling?`${t("Ceiling")} ${ceiling.height} m · ${t(ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{wallHeight} {t("m is provisional.")}</p>
+        <p className="mt-2">{ceiling?`${t("Ceiling")} ${Number(ceiling.height.toFixed(1))} m · ${t(ceiling.status)}`:t("Ceiling height not set")}{t(". Wall height")}{Number(wallHeight.toFixed(1))} {t("m is provisional.")}</p>
         <p className="mt-2">{walls.length} {t("wall sections from")}{document.lines.filter(l=>l.kind==="wall").length} {t("source lines. Display settings never change the design or checks.")}</p>
       </details></PopoverContent>
     </Popover>

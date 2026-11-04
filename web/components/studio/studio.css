@@ -68,6 +68,7 @@
 .ps-muse-selection span{font-size:11px;color:var(--muted)}
 .ps-muse-selection strong{overflow-wrap:anywhere;font-size:13px}
 .ps-simple-summary .ps-design-issues{max-width:60%;max-height:140px;overflow:auto}
+.ps-issue-count{display:inline-block;min-width:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--sunken);color:var(--ink);font-variant-numeric:tabular-nums;text-align:center}
 @media(max-width:1120px){
   .ps-canvas-toolbar,.ps-simple-view .ps-canvas-toolbar{height:auto;min-height:62px;flex-wrap:wrap;gap:8px;padding:12px}
   .ps-canvas-title{flex:1 1 100%}

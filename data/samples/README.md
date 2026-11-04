@@ -102,3 +102,31 @@ CAD도 있다: KINTEX는 CAD zip(2005–2007년)을 제공한다. muvilion은 **
 | KINTEX | 1B 안 40 × 30 m 영역, 구역 20개, 설치물 144개 | 구역 카드 8개, 실제 3D 화면 사진 9장 |
 
 녹화 방법: `NEXT_PUBLIC_MUSE_RECORDING_BUDGET=1`로 띄운 개발 서버(실행당 25분)에서 샘플을 만들고, Muse가 자동 디자인한 뒤 채팅으로 완성도 보완과 기획 문서 작성을 요청했다. KINTEX는 기획서대로 바닥 경계를 1B 안 40 × 30 m로 지정하고, 1홀 폭 171 m 기준으로 축척(도면 233.6 × 178.4 m)을 확정했다. 사람이 객체를 직접 옮기지 않았다. Muse의 자체 사용성 검토(좌석 접근·통로 연결)는 일부 항목이 남은 상태로 저장되었으며 프로젝트의 "확인할 사항"에 표시된다. 녹화본은 프로젝트 내보내기 형식이며, 도면 원본은 같은 폴더의 샘플 파일을 경로로 참조한다. 새로 녹화하려면 내보낸 JSON으로 `node web/scripts/record-sample.mjs <export.json> <sample-id> [note]`를 실행한다.
+
+## English demo edition (2026-11-04)
+
+The two shipped demos now use English project names, briefs, reference notes, installation and
+area labels, and complete planning-report text. Original drawing files, geometry, object IDs,
+recorded scene photographs and provenance are preserved. The reference brief text assets are
+also translated, so exports contain the same English brief shown in Sources. The English
+edition starts with an empty document revision history; existing SQLite projects are unaffected.
+Create a new sample to use it. English UI remains the existing language preference.
+
+This is localization of the recorded Muse result, not a new design or validation run. The
+KINTEX operations text distinguishes the four core salon tables from the two extension tables
+already present in the saved design. Pricing remains unestimated and review limitations remain
+explicit. The current app is filmed through the completed reports and actual PDF export in
+[`video/launch/README.md`](../../video/launch/README.md).
+
+## Feature walls and signature objects (2026-11-05)
+
+The English recordings were extended through Muse chat on the installed samples (no manual
+object edits): feature-wall graphics with English lettering and signature objects, then a
+refreshed planning document with new 3D photos (interior shots use a solid ceiling).
+
+| Sample | Before → after | Added |
+|---|---|---|
+| Seongsu pop-up | 98 → 117 installations, 4 → 9 wall graphics, 21 zones | North wall "SEE WHAT YOU SEE" / "Hey Meta, take a photo", west "AI GLASSES STUDIO", south wood and east plaster panels, "LIVE FROM YOUR EYES" video wall; glasses sculpture photo moment, vitrine centerpiece, fitting-bar truss with spots, nine-globe pendant cluster |
+| KINTEX | 144 → 167 installations, 0 → 11 wall graphics, 20 zones | Stage LED wall, gradient studio walls, wood accent wall, perimeter mural band, LED video wall and "Start a thread" quote wall; truss welcome arch, phone-camera centerpiece, stage truss ring with spots, like-heart sculpture |
+
+Review counts are unchanged (Seongsu 2, KINTEX 38). The Korean recordings on `main` were not upgraded.
