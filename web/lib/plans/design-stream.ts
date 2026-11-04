@@ -4,6 +4,7 @@ import { DesignObjectSchema, ZoneSchema, WallSurfaceSchema, PlanDocumentSchema, 
 import { applyDesignProposal } from "./muse";
 import { designWarnings } from "./design";
 import { reviewUsability } from "./usability";
+import { expandFurnitureSet, FurnitureSetSchema } from "./furniture-sets";
 
 export const DesignPatchSchema = z.object({
   operation: MuviOperationKindSchema.optional().describe("Choose Muvi work gesture: inspect for planning/removal, measure for dimensions, arrange for placement/building, paint for finishes. Decorative only."),
@@ -14,6 +15,8 @@ export const DesignPatchSchema = z.object({
   removeZones: z.array(z.string()).max(200),
   wallSurfaces: z.array(WallSurfaceSchema).max(32).optional(),
   removeWallSurfaces: z.array(z.string()).max(200).optional(),
+  sets: z.array(FurnitureSetSchema).max(12).optional().describe("Furnished sets expanded by the server into correctly spaced fixtures. Prefer these for every seating group, counter, photo spot and display row."),
+  removeSets: z.array(z.string()).max(50).optional().describe("Set IDs to remove with all their objects."),
 });
 function merge<T extends { id: string }>(before: T[], updates: T[], removed: string[]) {
   if (new Set(updates.map(x => x.id)).size !== updates.length || new Set(removed).size !== removed.length || updates.some(x => removed.includes(x.id))) throw new Error("Conflicting patch IDs.");
@@ -21,12 +24,20 @@ function merge<T extends { id: string }>(before: T[], updates: T[], removed: str
   return [...before.filter(x => !removed.includes(x.id) && !updates.some(y => y.id === x.id)), ...updates];
 }
 
+/** Objects a set expands to; a set's objects are the base objects whose IDs start with `<set id>-`. */
+export const setObjectIds = (document: PlanDocument, setId: string) => (document.objects ?? []).filter(object => object.id.startsWith(`${setId}-`)).map(object => object.id);
 export function applyDesignPatch(base: PlanDocument, patch: z.infer<typeof DesignPatchSchema>) {
   const p = DesignPatchSchema.parse(patch);
-  return applyDesignProposal(base, { summary: p.label, assumptions: [], objects: merge(base.objects ?? [], p.objects, p.removeObjects), zones: merge(base.zones ?? [], p.zones, p.removeZones), wallSurfaces: merge(base.wallSurfaces ?? [], p.wallSurfaces ?? [], p.removeWallSurfaces ?? []) });
+  const setRemovals = (p.removeSets ?? []).flatMap(id => {
+    const ids = setObjectIds(base, id);
+    if (!ids.length) throw new Error(`Unknown set ID: ${id}.`);
+    return ids;
+  });
+  const objects = [...p.objects, ...(p.sets ?? []).flatMap(set => expandFurnitureSet(base, set).objects)];
+  return applyDesignProposal(base, { summary: p.label, assumptions: [], objects: merge(base.objects ?? [], objects, [...new Set([...p.removeObjects, ...setRemovals])]), zones: merge(base.zones ?? [], p.zones, p.removeZones), wallSurfaces: merge(base.wallSurfaces ?? [], p.wallSurfaces ?? [], p.removeWallSurfaces ?? []) });
 }
 export type DesignPatch = z.infer<typeof DesignPatchSchema>;
-export type HeldPatchItem = { kind: "object" | "zone" | "wallSurface" | "removals"; id: string; label: string };
+export type HeldPatchItem = { kind: "object" | "zone" | "wallSurface" | "set" | "removals"; id: string; label: string };
 /**
  * Split a group into the largest part that adds no patch issues and the items held back.
  * Rejecting a whole group for one bad item made the model resend everything, at one model step
@@ -66,12 +77,14 @@ export function partitionDesignPatch(base: PlanDocument, patch: DesignPatch) {
   const p = DesignPatchSchema.parse(patch);
   type Unit = HeldPatchItem & { add: (part: DesignPatch) => DesignPatch };
   const units: Unit[] = [];
-  if (p.removeObjects.length || p.removeZones.length || p.removeWallSurfaces?.length)
-    units.push({ kind: "removals", id: "removals", label: "Removals", add: part => ({ ...part, removeObjects: p.removeObjects, removeZones: p.removeZones, removeWallSurfaces: p.removeWallSurfaces }) });
+  if (p.removeObjects.length || p.removeZones.length || p.removeWallSurfaces?.length || p.removeSets?.length)
+    units.push({ kind: "removals", id: "removals", label: "Removals", add: part => ({ ...part, removeObjects: p.removeObjects, removeZones: p.removeZones, removeWallSurfaces: p.removeWallSurfaces, removeSets: p.removeSets }) });
   for (const zone of p.zones) units.push({ kind: "zone", id: zone.id, label: zone.label, add: part => ({ ...part, zones: [...part.zones, zone] }) });
   for (const object of p.objects) units.push({ kind: "object", id: object.id, label: object.label, add: part => ({ ...part, objects: [...part.objects, object] }) });
+  // A set is saved or held whole; half a seating group would fail the usability review.
+  for (const set of p.sets ?? []) units.push({ kind: "set", id: set.id, label: set.label, add: part => ({ ...part, sets: [...(part.sets ?? []), set] }) });
   for (const surface of p.wallSurfaces ?? []) units.push({ kind: "wallSurface", id: surface.id, label: surface.label, add: part => ({ ...part, wallSurfaces: [...(part.wallSurfaces ?? []), surface] }) });
-  let accepted: DesignPatch = { operation: p.operation, label: p.label, objects: [], zones: [], removeObjects: [], removeZones: [], wallSurfaces: [], removeWallSurfaces: [] };
+  let accepted: DesignPatch = { operation: p.operation, label: p.label, objects: [], zones: [], removeObjects: [], removeZones: [], wallSurfaces: [], removeWallSurfaces: [], sets: [], removeSets: [] };
   let draft = base, pending = units;
   // Later passes pick up items whose dependency was accepted after them.
   for (let pass = 0; pass < 3 && pending.length; pass++) {
