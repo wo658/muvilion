@@ -2,11 +2,11 @@
 import {AbsoluteFill, Sequence, interpolate, staticFile, useVideoConfig} from 'remotion';
 import {Audio} from '@remotion/media';
 import {TOKENS as T} from '../../web/lib/ui/tokens';
-import {Status, End, CARD} from './LaunchPrimitives';
+import {End} from './LaunchPrimitives';
 import {LaunchOpening3D} from './LaunchOpening3D';
 import {Sources, SeongsuReveal, SeongsuDetail, ViewControls, Listening} from './LaunchSeongsu';
-import {KintexReveal, KintexTop, KintexDetail} from './LaunchKintex';
-import {Report, PopupAreas, KintexAreas, Export, Documents} from './LaunchReport';
+import {KintexBridge, KintexReveal, KintexTop, KintexDetail} from './LaunchKintex';
+import {ReportBridge, Report, PopupAreas, KintexAreas, Export, Documents} from './LaunchReport';
 import {clamp} from './LaunchKit';
 
 // Scenes 0:20–3:00. Every capture floats as a panel in one shared CSS perspective:
@@ -21,11 +21,11 @@ export function LaunchFilm(){const {fps}=useVideoConfig();return <AbsoluteFill s
  <Sequence from={40*fps} durationInFrames={10*fps} name="06 Fitting and photography"><SeongsuDetail/></Sequence>
  <Sequence from={50*fps} durationInFrames={10*fps} name="07 View controls"><ViewControls/></Sequence>
  <Sequence from={60*fps} durationInFrames={10*fps} name="08 Listening lounge photo"><Listening/></Sequence>
- <Sequence from={70*fps} durationInFrames={2.5*fps} name="09 Second scale"><Status frames={2.5*fps} text="From pop-ups to creator events." to={CARD}/></Sequence>
+ <Sequence from={70*fps} durationInFrames={2.5*fps} name="09 Second scale"><KintexBridge/></Sequence>
  <Sequence from={72.5*fps} durationInFrames={12.5*fps} name="10 KINTEX reveal"><KintexReveal/></Sequence>
  <Sequence from={85*fps} durationInFrames={10*fps} name="11 Creator floor"><KintexTop/></Sequence>
  <Sequence from={95*fps} durationInFrames={10*fps} name="12 Creator detail"><KintexDetail/></Sequence>
- <Sequence from={105*fps} durationInFrames={2.5*fps} name="13 Proposal bridge"><Status frames={2.5*fps} text="Bring the whole proposal together." to={CARD}/></Sequence>
+ <Sequence from={105*fps} durationInFrames={2.5*fps} name="13 Proposal bridge"><ReportBridge/></Sequence>
  <Sequence from={107.5*fps} durationInFrames={10*fps} name="14 Completed pop-up report"><Report file="popup-report.mp4" title={'The design\nbecomes a\ndocument.'} eyebrow="03 / Planning report"/></Sequence>
  <Sequence from={117.5*fps} durationInFrames={12.5*fps} name="15 Pop-up area guide"><PopupAreas/></Sequence>
  <Sequence from={130*fps} durationInFrames={10*fps} name="16 Creator event report"><Report file="kintex-report.mp4" title={'The same\nclarity, at\nevent scale.'} eyebrow="KINTEX / completed report" mirror/></Sequence>

@@ -3,6 +3,7 @@ import React from 'react';
 
 import {TOKENS as T} from '../../web/lib/ui/tokens';
 import {BEAT, Clip, Eyebrow, Group, Pane, Stage, Still, Words, footageNote, DOC, PAGE, type Pose, type Key} from './LaunchKit';
+import {Status, CARD} from './LaunchPrimitives';
 
 export function Report({file,title,eyebrow,mirror=false}:{file:string;title:string;eyebrow:string;mirror?:boolean}){
  const cw=1680;
@@ -98,3 +99,6 @@ export function Documents(){
   {decks.map(([name,label],d)=><Words key={name} text={label} at={120+d*8} step={2} size={24} weight={500} color={T.inkSoft} style={{left:d?1010:10,width:900,top:900,textAlign:'center'}}/>)}
  </Stage>;
 }
+
+// 2.5 s chapter bridge (75 frames) before this segment.
+export function ReportBridge(){return <Status frames={75} text="Bring the whole proposal together." to={CARD}/>;}

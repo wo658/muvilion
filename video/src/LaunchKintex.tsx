@@ -3,6 +3,7 @@ import {useCurrentFrame} from 'remotion';
 
 import {TOKENS as T} from '../../web/lib/ui/tokens';
 import {BEAT, CANVAS, Clip, Eyebrow, Pane, Stage, Still, Tag, Words, footageNote} from './LaunchKit';
+import {Status, CARD} from './LaunchPrimitives';
 
 export function KintexReveal(){
  return <Stage note={footageNote} perspective={2600}>
@@ -44,3 +45,6 @@ export function KintexDetail(){
 }
 
 // Document captures: the report column spans about 26–78 % of the frame width.
+
+// 2.5 s chapter bridge (75 frames) before this segment.
+export function KintexBridge(){return <Status frames={75} text="From pop-ups to creator events." to={CARD}/>;}
