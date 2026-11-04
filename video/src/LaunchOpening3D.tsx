@@ -30,7 +30,7 @@ import {
 import { TOKENS as T } from "../../web/lib/ui/tokens";
 import muviFace from "../../web/public/mascot/muvi-face.svg";
 import design from "../public/launch-current/popup-design.json";
-import { CARD, COMPOSER, Panel, Status } from "./LaunchPrimitives";
+import { CARD, COMPOSER, Panel } from "./LaunchPrimitives";
 
 const font = '"SF Pro Display",Arial,sans-serif';
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -1124,6 +1124,100 @@ function SourcesBeat() {
   );
 }
 
+// 17.5–20 s: the folded composer pill lands with energy, shimmers while it
+// drifts, then grows early into the first chapter's card already carrying the
+// Sources dialog, framed exactly as the next scene's first frame (1560 wide,
+// 16:9 capture top-aligned in the 1560 × 816 card at y 566).
+const PILL_BOX = { w: 780, h: 120, cy: 540, r: 60 };
+const SOURCES_STILL = staticFile("launch-current/popup-sources.png");
+const CAPTURE_H = 1560 * (1215 / 2160);
+
+function ContextBridge() {
+  const g = useCurrentFrame();
+  const land = m(g, 0, 16, 0, 1, Easing.bezier(0.2, 1.4, 0.4, 1));
+  const grow = m(g, 28, 70, 0, 1, Easing.bezier(0.7, 0, 0.2, 1));
+  const drift = m(g, 0, 40, 0, 1, inOut);
+  const box = {
+    w: lerp(PILL_BOX.w, CARD.w, grow),
+    h: lerp(PILL_BOX.h, CARD.h, grow),
+    cy: lerp(PILL_BOX.cy - 8 * drift, CARD.cy, grow),
+    r: lerp(PILL_BOX.r, CARD.r, grow),
+  };
+  // Pill breathes a little while it holds, then the scale hands over to size.
+  const pulse = 1 + 0.05 * Math.sin(Math.PI * m(g, 0, 18, 0, 1)) + 0.025 * drift * (1 - grow);
+  const tilt = 14 * Math.sin(Math.PI * m(g, 0, 22, 0, 1)) - 4 * Math.sin(Math.PI * drift) * (1 - grow);
+  const textIn = m(g, 2, 16, 0, 1);
+  const textOut = m(g, 28, 40, 0, 1, inOut);
+  const sweep = interpolate(g, [0, 34], [-40, 140], clamp);
+  const shot = m(g, 46, 70, 0, 1, inOut);
+  return (
+    <AbsoluteFill style={{ background: T.bg, fontFamily: font, perspective: 1600 }}>
+      <div
+        style={{
+          position: "absolute",
+          left: 960 - box.w / 2,
+          top: box.cy - box.h / 2,
+          width: box.w,
+          height: box.h,
+          borderRadius: box.r,
+          overflow: "hidden",
+          background: T.surface,
+          border: `1px solid ${T.hairline}`,
+          boxShadow: `0 ${lerp(30, 40, grow)}px 90px ${T.shadowColor}, 0 8px 24px ${grow > 0.5 ? T.shadowColor : "transparent"}`,
+          transform: `rotateX(${tilt}deg) scale(${pulse})`,
+        }}
+      >
+        <Img
+          src={SOURCES_STILL}
+          style={{
+            position: "absolute",
+            left: (box.w - 1560) / 2,
+            // The next scene shows the capture top-aligned in the card.
+            top: lerp((box.h - CAPTURE_H) / 2, 0, grow),
+            width: 1560,
+            height: CAPTURE_H,
+            opacity: shot,
+            scale: lerp(1.04, 1, shot),
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: box.h / 2 - 60,
+            height: 120,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 20,
+            opacity: textIn * (1 - textOut),
+            filter: `blur(${(1 - textIn) * 10 + textOut * 8}px)`,
+            translate: `0 ${(1 - textIn) * 18 - textOut * 30}px`,
+          }}
+        >
+          <Img src={muviFace} style={{ width: 52, height: 52, rotate: `${(1 - land) * -20}deg`, scale: 0.8 + 0.2 * land }} />
+          <span
+            style={{
+              fontSize: 40,
+              letterSpacing: -0.6,
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+              backgroundImage: `linear-gradient(100deg, ${T.ink} ${sweep - 30}%, ${T.faint} ${sweep}%, ${T.ink} ${sweep + 30}%)`,
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            Start with your context.
+          </span>
+        </div>
+      </div>
+      <Audio src={staticFile("launch/chime.wav")} volume={0.6} />
+    </AbsoluteFill>
+  );
+}
+
 export function LaunchOpening3D() {
   return (
     <AbsoluteFill style={{ background: T.bg }}>
@@ -1134,7 +1228,7 @@ export function LaunchOpening3D() {
         <SourcesBeat />
       </Sequence>
       <Sequence from={SOURCES_END} durationInFrames={OPENING_FRAMES - SOURCES_END} name="Opening · context pill">
-        <Status frames={OPENING_FRAMES - SOURCES_END} text="Start with your context." to={CARD} />
+        <ContextBridge />
       </Sequence>
     </AbsoluteFill>
   );

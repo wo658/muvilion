@@ -87,7 +87,7 @@ export function Sources(){
   <Pane w={1560} h={816} cw={1560} ch={1560*CANVAS} radius={32}
    keys={[[0,{y:26}],[16,{y:26}],[52,{x:310,y:-50,ry:-14,rx:4,s:.72},'inOut'],[150,{x:300,ry:-9,rx:2,s:.74},'inOut'],[190,{x:270,ry:-4,s:.76},'inOut'],away(222)]}
    focus={[[12,{z:1}],[46,{z:2.05,cx:.5,cy:.36}],[4*B,{cy:.36}],[4*B+14,{cy:.555}],[6*B,{cy:.555}],[6*B+14,{cy:.72}],[8*B,{cy:.72,z:2.05}],[8*B+24,{z:1.18,cy:.5}],[222,{z:1.25}]]}>
-   <div style={{width:'100%',height:'100%',opacity:fade(f,2,14)}}><Clip file="popup-sources.mp4"/></div>
+   <div style={{width:'100%',height:'100%',opacity:1}}><Clip file="popup-sources.mp4"/></div>
   </Pane>
   {refs.map((r,i)=><Pane key={r.tag} w={400} h={270} radius={20} z={10+i}
    keys={[[r.at-4,{x:300,y:(r.cy-.5)*500,z:-200,s:.5,ry:-14,o:0}],[r.at+2,{o:1}],[r.at+26,{x:r.x,y:r.y,z:140,s:1,ry:-4,rz:r.rz}],[190,{x:r.x+20,y:r.y-10,z:170},'inOut'],away(220-i*3)]}>

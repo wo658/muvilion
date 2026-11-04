@@ -1,9 +1,10 @@
 import React from 'react';
-import {AbsoluteFill, Img, Sequence, getStaticFiles, interpolate, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Img, Sequence, getStaticFiles, interpolate, staticFile, useCurrentFrame} from 'remotion';
+import {Audio} from '@remotion/media';
 
 import {TOKENS as T} from '../../web/lib/ui/tokens';
-import {BEAT, Clip, Eyebrow, Footnote, Group, OUT, Pane, Words, asset, clamp, font, track, tf, DOC, PAGE, type Pose, type Key} from './LaunchKit';
-import {Status} from './LaunchPrimitives';
+import {BEAT, Clip, Eyebrow, Footnote, Group, IN_OUT, OUT, Pane, Words, asset, clamp, font, track, tf, DOC, PAGE, type Pose, type Key} from './LaunchKit';
+import muviFace from '../../web/public/mascot/muvi-face.svg';
 
 // 1:45–2:52.5 — the saved design becomes a printed planning report.
 // Paper pages are PNG renders of the PDFs the current app exported (launch/README.md);
@@ -70,21 +71,38 @@ function Chip({children,at,out,style,accent=false}:{children:React.ReactNode;at:
 }
 
 // ── 13 Bridge (105–107.5 s) ──────────────────────────────────────────────────
-// The pill fades while the app's planning document swings up into its Report pose.
-const BRIDGE=75,ENTER=40;
+// The pill lands with a tilt and blur-in, then rises away while the app's planning
+// document swings up from below (from frame 20) into its Report pose.
+const BRIDGE=75,ENTER=20;
 const appKeys=(sd:number):Key[]=>sd>0
- ?[[-35,{x:420,y:760,z:-1300,rx:58,ry:-8,rz:-4,o:0}],[-26,{o:1}],[48,{x:300,y:24,z:0,rx:0,ry:-8,rz:0}],[92,{x:260,z:70,ry:-3},'inOut'],[124,{x:640,y:-120,z:-900,ry:34,o:0},'inOut']]
+ ?[[-55,{x:420,y:820,z:-1400,rx:58,ry:-8,rz:-4,o:0}],[-47,{o:1}],[48,{x:300,y:24,z:0,rx:0,ry:-8,rz:0}],[92,{x:260,z:70,ry:-3},'inOut'],[124,{x:640,y:-120,z:-900,ry:34,o:0},'inOut']]
  :[[0,{x:-520,z:-260,ry:42,rz:-2,o:.85}],[6,{o:1}],[52,{x:-300,y:24,z:0,ry:8,rz:0}],[92,{x:-260,z:70,ry:3},'inOut'],[124,{x:-640,y:-120,z:-900,ry:-34,o:0},'inOut']];
 const APP_W=1180;
 export function ReportBridge(){
  return <AbsoluteFill>
-  <Status frames={BRIDGE} text="Bring the whole proposal together."/>
-  <Scene bg={false}>
+  <Scene>
+   <BridgePill/>
    <Pane w={APP_W} h={APP_W*DOC} radius={26} keys={shift(appKeys(1),BRIDGE)}>
     <Sequence from={ENTER}><Clip file="popup-report.mp4"/></Sequence>
    </Pane>
   </Scene>
+  <Audio src={staticFile('launch/chime.wav')} volume={.6}/>
  </AbsoluteFill>;
+}
+function BridgePill(){
+ const f=useCurrentFrame();
+ const e=(a:number,b:number,ease=OUT)=>interpolate(f,[a,b],[0,1],{...clamp,easing:ease});
+ const pop=e(0,16);const away=e(26,60,IN_OUT);
+ const sweep=interpolate(f,[0,40],[-40,140],clamp);
+ const sc=(.55+.45*pop)*(1+.04*e(8,24))*(1-.25*away);
+ return <div style={{position:'absolute',left:960-390,top:540-60-away*330,width:780,height:120,borderRadius:60,background:T.surface,border:`1px solid ${T.hairline}`,
+  boxShadow:`0 30px 90px ${T.shadowColor}`,display:'flex',alignItems:'center',justifyContent:'center',gap:20,fontFamily:font,
+  transform:`translateZ(${away*-300}px) rotateX(${(1-pop)*34+away*20}deg) rotateY(${(1-pop)*-18}deg) scale(${sc})`,filter:`blur(${(1-pop)*14+away*6}px)`,
+  opacity:Math.min(1,pop*2.5)*(1-e(44,62))}}>
+  <Img src={muviFace} style={{width:52,height:52}}/>
+  <span style={{fontSize:40,letterSpacing:-.6,fontWeight:500,whiteSpace:'nowrap',backgroundImage:`linear-gradient(100deg, ${T.ink} ${sweep-30}%, ${T.faint} ${sweep}%, ${T.ink} ${sweep+30}%)`,
+   backgroundClip:'text',WebkitBackgroundClip:'text',color:'transparent'}}>Bring the whole proposal together.</span>
+ </div>;
 }
 
 // ── 14 / 16 Report (10 s each) ───────────────────────────────────────────────
@@ -251,4 +269,36 @@ export function Documents(){
      return <Sheet key={p} d={d} n={p} keys={keys} origin="50% 120%"/>;})}</React.Fragment>;})}
   </Group>
  </Scene>;
+}
+
+// ── 20 End card (172.5–180 s, 225 f) ─────────────────────────────────────────
+// The canonical Muvi face and wordmark land softly; Muvi bobs and blinks (transform only),
+// both report covers drift out of focus behind, the camera dollies, and it all fades to bg.
+export function EndCard(){
+ const f=useCurrentFrame();
+ const e=(a:number,b:number,ease=OUT)=>interpolate(f,[a,b],[0,1],{...clamp,easing:ease});
+ const land=e(0,26);const tag=e(26,48);const out=1-e(195,225,IN_OUT);
+ const dolly=1+.07*e(0,225,IN_OUT);
+ const bob=Math.sin(f/30*Math.PI*.9)*7*land;
+ // A quick blink (squash) every 1.6 s after the landing.
+ const ph=(f-40)%48;const blink=f>40&&ph<8?1-Math.sin(ph/8*Math.PI)*.16:1;
+ const covers:[Deck,number][]=[['popup',-1],['kintex',1]];
+ return <AbsoluteFill style={{background:T.bg,fontFamily:font,color:T.ink,overflow:'hidden',perspective:P}}>
+  <AbsoluteFill style={{transformStyle:'preserve-3d',transform:`scale(${dolly}) rotateY(${interpolate(f,[0,225],[-3,3])}deg)`,opacity:out}}>
+   {covers.map(([d,side])=>{const w=520,h=w*PAGE;const dr=e(0,225,IN_OUT);
+    return <div key={d} style={{position:'absolute',left:960-w/2+side*(560+dr*90),top:540-h/2+40-dr*30,width:w,height:h,background:T.surface,
+     outline:`1px solid ${T.hairline}`,boxShadow:`0 40px 90px ${T.shadowColor}`,transform:`translateZ(${-500-dr*200}px) rotateY(${side*-24}deg) rotateZ(${side*3}deg)`,
+     filter:`blur(${10-4*land}px)`,opacity:.45*(.3+.7*e(0,30))}}>
+     <Img src={asset(`${d}-pdf-p1.png`)} style={{width:'100%',height:'100%',display:'block'}}/>
+    </div>;})}
+   <AbsoluteFill style={{alignItems:'center',justifyContent:'center'}}>
+    <div style={{display:'flex',alignItems:'center',gap:30,opacity:Math.min(1,.3+land*1.6),transform:`scale(${.86+.14*land})`,filter:`blur(${(1-land)*12}px)`}}>
+     <div style={{transform:`translateY(${-bob}px) scaleY(${blink})`,transformOrigin:'50% 90%'}}><Img src={muviFace} style={{width:120,height:120,display:'block'}}/></div>
+     <span style={{fontSize:120,fontWeight:650,letterSpacing:-5}}>muvilion</span>
+    </div>
+    <div style={{marginTop:34,fontSize:38,color:T.inkSoft,opacity:tag,transform:`translateY(${(1-tag)*18}px)`}}>Ideas become spaces.</div>
+   </AbsoluteFill>
+  </AbsoluteFill>
+  <Audio src={staticFile('launch/hit.wav')} volume={.8}/>
+ </AbsoluteFill>;
 }

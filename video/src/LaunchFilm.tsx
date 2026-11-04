@@ -2,11 +2,10 @@
 import {AbsoluteFill, Sequence, interpolate, staticFile, useVideoConfig} from 'remotion';
 import {Audio} from '@remotion/media';
 import {TOKENS as T} from '../../web/lib/ui/tokens';
-import {End} from './LaunchPrimitives';
 import {LaunchOpening3D} from './LaunchOpening3D';
 import {Sources, SeongsuReveal, SeongsuDetail, ViewControls, Listening} from './LaunchSeongsu';
 import {KintexBridge, KintexReveal, KintexTop, KintexDetail} from './LaunchKintex';
-import {ReportBridge, Report, PopupAreas, KintexAreas, Export, Documents} from './LaunchReport';
+import {ReportBridge, Report, PopupAreas, KintexAreas, Export, Documents, EndCard} from './LaunchReport';
 import {clamp} from './LaunchKit';
 
 // Scenes 0:20–3:00. Every capture floats as a panel in one shared CSS perspective:
@@ -32,7 +31,7 @@ export function LaunchFilm(){const {fps}=useVideoConfig();return <AbsoluteFill s
  <Sequence from={140*fps} durationInFrames={12.5*fps} name="17 Creator area guide"><KintexAreas/></Sequence>
  <Sequence from={152.5*fps} durationInFrames={7.5*fps} name="18 Export from the app"><Export/></Sequence>
  <Sequence from={160*fps} durationInFrames={12.5*fps} name="19 Real exported proposals"><Documents/></Sequence>
- <Sequence from={172.5*fps} durationInFrames={7.5*fps} name="20 Muvilion"><End/></Sequence>
+ <Sequence from={172.5*fps} durationInFrames={7.5*fps} name="20 Muvilion"><EndCard/></Sequence>
  <Sequence from={17*fps} durationInFrames={fps} name="Opening exit sound"><Audio src={staticFile('launch/whoosh.wav')} volume={.35}/></Sequence>
  <Sequence from={70*fps} durationInFrames={fps} name="Event transition"><Audio src={staticFile('launch/whoosh.wav')} volume={.3}/></Sequence>
  <Sequence from={105*fps} durationInFrames={fps} name="Document transition"><Audio src={staticFile('launch/whoosh.wav')} volume={.3}/></Sequence>
