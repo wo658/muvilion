@@ -11,7 +11,7 @@ No Apple or Spline footage, music, logos or design files are used. The film uses
 
 ## Input provenance
 
-- Drawing: `data/samples/moscone/west-L3.pdf`, page 1, from [Moscone's official West Level 3 floor-plan page](https://moscone.com/floorplans/moscone-west-level-3-floor-plan). The original source and its existing development-use restrictions are documented in `data/samples/README.md`. The film is a local development sample; public redistribution rights for the source drawing have not been established.
+- Drawing: `video/input-reveal/source/west-L3.pdf`, page 1, from [Moscone's official West Level 3 floor-plan page](https://moscone.com/floorplans/moscone-west-level-3-floor-plan). The drawing is a work of Moscone Center/ASM Global, kept with attribution for development and testing only. It moved here from `data/samples/moscone/` when Moscone stopped being an app sample (2026-11-04). The film is a local development sample; public redistribution rights for the source drawing have not been established.
 - Room: 3011, cropped at x=633,y=350,width=204,height=136 in the engine's 1224×1584 page preview. `cropEvidence` preserves the original vector geometry, IDs and page/crop provenance. It is not a fabricated rectangular source image.
 - Scale: manually calibrated from the printed 0–15m bar, approximately 134 preview pixels. Crop bounds are 22.8358×15.2239m, including border margins. Floor outline is manually reviewed; wall/ceiling heights are estimates. This does not establish measured as-built dimensions or construction/safety approval.
 - Brief: `brief.txt`, independently authored fictional Community Studio program, not an official Meta event.

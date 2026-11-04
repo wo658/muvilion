@@ -154,7 +154,7 @@ describe("sample projects", () => {
       expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
     }
   });
-  it("ships the authored pop-up and two curated venue projects with four drawings", () => {
-    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',1],['moscone',2]]);
+  it("ships the authored pop-up and the KINTEX venue project, one drawing each", () => {
+    expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',1]]);
   });
 });
