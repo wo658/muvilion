@@ -107,7 +107,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
     catch (error) { setError(error instanceof Error ? error.message : "Could not open project."); }
     finally { setSwitching(false); }
   }
-  async function startSample(id: string) {
+  async function startSample(id: string, live = false) {
     if (sampleRequest.current) return;
     const controller = new AbortController();
     sampleRequest.current = controller;
@@ -115,7 +115,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
     try {
       await flush();
       controller.signal.throwIfAborted();
-      const next = await createSampleProject(id, controller.signal);
+      const next = await createSampleProject(id, controller.signal, live);
       controller.signal.throwIfAborted();
       if (sampleRequest.current !== controller) return;
       activate(next);
@@ -147,7 +147,7 @@ export function ProjectWorkspace({ editor: Editor }: { editor: ComponentType<{ p
   }
   if (!ready) return <main className="p-6"><h1>muvilion</h1><p role="status">{localizeMessage(locale, status)}</p>{error && <><p role="alert">{localizeMessage(locale, error)}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry opening projects")}</Button></>}</main>;
   const start = <ProjectStart busy={switching} error={starting ? error : ""} notice={notice}
-    onDrawing={file => void startWithDrawing(file)} onSample={id => void startSample(id)} onStop={readingSample ? cancelSample : undefined}
+    onDrawing={file => void startWithDrawing(file)} onSample={(id, live) => void startSample(id, live)} onStop={readingSample ? cancelSample : undefined}
     onBlank={() => void open(() => createProject(t("Untitled project")))} onCancel={project ? () => { setStarting(false); setError(""); } : undefined}/>;
   function navigate(href: string) { void flush().then(() => window.location.assign(href)).catch(() => {}); }
   const controls: ProjectControls | null = project && {

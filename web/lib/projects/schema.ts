@@ -22,6 +22,10 @@ export const ProjectState = z.object({
   originalDrawingId: z.string().uuid().nullable().default(null),
   /** Set at creation when brand references exist; cleared when Muse's first automatic interior design starts. */
   autoDesignPending: z.boolean().optional(),
+  /** A sample installed from a recorded Muse run rather than computed when opened. Kept as provenance. */
+  recordedDemo: z.object({ sampleId: z.string().min(1).max(100), recordedAt: z.string().min(1).max(40) }).optional(),
+  /** Set when a recorded sample is installed; cleared once the studio has opened its planning document. */
+  openReportOnLoad: z.boolean().optional(),
   /** Page to extract when the original has not been read yet (seeded samples). */
   originalDrawingPage: z.number().int().positive().optional(),
 }).superRefine((state, ctx) => {
@@ -53,6 +57,10 @@ export const SampleSource = ReferenceSourceSchema.omit({ id: true, originalAsset
   kind: z.enum(["brand", "brief", "concept"]),
   imageFiles: z.array(z.string().regex(/^[\w-]+\/[\w.-]+\.(png|jpe?g|webp)$/)).max(12).optional(),
 }).refine(source => source.images.length + (source.imageFiles?.length ?? 0) <= 12, "Too many sample images").refine(source => source.kind !== "brief" || source.text.trim().length > 0, "Sample briefs need document text");
-export const SampleProject = z.object({ id: z.string(), name: z.string(), drawings: z.array(SampleDrawing).min(1).max(12), sources: z.array(SampleSource).max(12).optional() });
+/** A finished project saved from a live Muse run: playback of that run, not a fresh computation. */
+export const SampleRecording = z.object({ file: z.string().regex(/^[\w-]+\/[\w.-]+\.json$/), recordedAt: z.string().min(1).max(40), note: z.string().min(1).max(500) });
+export const SampleProject = z.object({ id: z.string(), name: z.string(), drawings: z.array(SampleDrawing).min(1).max(12), sources: z.array(SampleSource).max(12).optional(), recorded: SampleRecording.optional() });
 export type SampleProject = z.infer<typeof SampleProject>;
 export const ProjectExport = z.object({ projectVersion: z.literal(2), name: z.string(), state: ProjectState, assets: z.array(AssetBundle) });
+/** A recorded sample bundle: an export whose drawing originals may point at sample files instead of repeating their bytes. */
+export const RecordedSampleBundle = ProjectExport.extend({ assets: z.array(z.union([AssetBundle, AssetBundle.omit({ data: true }).extend({ file: z.string().regex(/^[\w-]+\/[\w.-]+\.(pdf|jpe?g|png)$/) })])).max(25) });

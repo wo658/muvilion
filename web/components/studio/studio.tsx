@@ -51,7 +51,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const [settings, setSettings] = useState<string | null>(null);
     // Start with Muse docked on phones so the plan stays visible; the editor only renders client-side.
     const [photoRequest, setPhotoRequest] = useState<{ base: PlanDocument; sources: SourceLibrary; request: import("@/lib/plans/photography-client").PhotoRequest } | null>(null);
-    const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 800px)").matches);
+    const [chatOpen, setChatOpen] = useState(() => Boolean(project.state.openReportOnLoad) || window.matchMedia("(min-width: 800px)").matches);
     const [planningArtifacts, setPlanningArtifacts] = useState(project.state.planningArtifacts ?? []);
     const [sources, setSources] = useState<SourceLibrary>(project.state.sources);
     const sourcesRef = useRef(sources);
@@ -70,7 +70,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
         projectState.current = { ...projectState.current, planningArtifacts: items };
         setPlanningArtifacts(items); controls.change(projectState.current);
     };
-    const planning = usePlanningArtifact({ document, sources, drawingId: activeDrawingId ?? "legacy-drawing", artifact: planningArtifact, onChange: changePlanning, locale });
+    const planning = usePlanningArtifact({ document, sources, drawingId: activeDrawingId ?? "legacy-drawing", artifact: planningArtifact, onChange: changePlanning, locale, initialOpen: Boolean(project.state.openReportOnLoad && planningArtifact) });
     const planningStale = useMemo(() => Boolean(planningArtifact && document && planningIsStale(planningArtifact, document, sources)), [planningArtifact, document, sources]);
 
     const [muviActivity, setMuviActivity] = useState<{ base: PlanDocument; sources: SourceLibrary; operation: MuviOperation } | null>(null);
@@ -83,7 +83,7 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const [history, setHistory] = useState<PlanDocument[]>([]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(project.state.openReportOnLoad ? "This sample opens a recorded Muse run. Edit it freely or ask Muse for changes." : null);
     const [sourceFile, setSourceFile] = useState<File | null>(null);
     const [autoDesignPending, setAutoDesignPending] = useState(Boolean(project.state.autoDesignPending));
     // The 3D camera follows each operation Muse commits.
@@ -92,6 +92,14 @@ function StudioEditor({ project, controls }: { project: Project; controls: Proje
     const consumeAutoDesign = useCallback(() => {
         setAutoDesignPending(false);
         projectState.current = { ...projectState.current, autoDesignPending: undefined };
+        controls.change(projectState.current);
+    }, [controls]);
+    // A recorded sample opens with its planning document beside the finished design, once.
+    const openReport = useRef(Boolean(project.state.openReportOnLoad));
+    useEffect(() => {
+        if (!openReport.current) return;
+        openReport.current = false;
+        projectState.current = { ...projectState.current, openReportOnLoad: undefined };
         controls.change(projectState.current);
     }, [controls]);
     const [width, setWidth] = useState(project.state.document?.widthMeters?.toString() ?? "");

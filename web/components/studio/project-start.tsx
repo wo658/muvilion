@@ -14,7 +14,7 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
   error: string;
   notice: string;
   onDrawing: (file: File) => void;
-  onSample: (id: string) => void;
+  onSample: (id: string, live?: boolean) => void;
   onBlank: () => void;
   onCancel?: () => void;
   onStop?: () => void;
@@ -48,7 +48,9 @@ export function ProjectStart({ busy, error, notice, onDrawing, onSample, onBlank
       </button>
     </div>
     {showSamples && samples && <ul id="pw-samples" className="pw-samples">{samples.map(sample => <li key={sample.id}>
-      <button type="button" disabled={busy} onClick={() => onSample(sample.id)}><strong>{sample.name}</strong><span className="ml-2 text-muted">{t("{count} drawings", { count: sample.drawings.length })}</span><small className="mt-1 block text-muted">{sample.drawings.map(drawing => drawing.name).join(" · ")}</small></button>
+      <button type="button" disabled={busy} onClick={() => onSample(sample.id)}><strong>{sample.name}</strong><span className="ml-2 text-muted">{t("{count} drawings", { count: sample.drawings.length })}</span><small className="mt-1 block text-muted">{sample.drawings.map(drawing => drawing.name).join(" · ")}</small>
+        {sample.recorded && <small className="mt-1 block text-muted">{t("Finished design and report included · recorded Muse run, {date}", { date: sample.recorded.recordedAt })}</small>}</button>
+      {sample.recorded && <button type="button" className="pw-sample-live" disabled={busy} onClick={() => onSample(sample.id, true)}>{t("Design from scratch with Muse")}</button>}
     </li>)}</ul>}
     {message && <p className="pw-start-error" role="alert">{localizeMessage(locale, message)}</p>}
     {busy && <p className="pw-start-status" role="status">{t(onStop ? "Muse is reading the sample drawings. This may take a few minutes." : "Preparing project drawings…")}</p>}
