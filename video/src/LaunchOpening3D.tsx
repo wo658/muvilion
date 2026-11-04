@@ -51,10 +51,10 @@ const W = design.width;
 const D = design.depth;
 const wx = (x: number) => (x - 0.5) * W;
 const wz = (y: number) => (y - 0.5) * D;
-const SLAB = 0.22;
+export const SLAB = 0.22;
 // The saved demo has no ceiling record; the brief assumes 4.2 m in the main hall.
 const saved = design as { ceiling?: { height: number } | null; wallHeight?: number | null };
-const CEIL = saved.ceiling?.height ?? saved.wallHeight ?? 4.2;
+export const CEIL = saved.ceiling?.height ?? saved.wallHeight ?? 4.2;
 const WALL_H = CEIL;
 
 // Saved object colors are mapped onto film tokens (a white study model).
@@ -184,7 +184,7 @@ function Glow({
 }
 
 // Simple, recognizable stand-ins for the saved fixtures (catalog dimensions).
-function Piece({ o }: { o: Obj }) {
+export function Piece({ o }: { o: Obj }) {
   const c = tone(o);
   const { w, d, h } = o;
   let body: React.ReactNode;
@@ -334,7 +334,7 @@ function Piece({ o }: { o: Obj }) {
   );
 }
 
-function Floor() {
+export function Floor() {
   const slab = useMemo(() => {
     const s = new Shape();
     design.floorBoundary.forEach(([x, y], i) =>
@@ -474,7 +474,7 @@ const inFloor = (x: number, y: number) => {
 
 // Ceiling faces down only, so it is invisible from above (a cutaway) and
 // closes the room once the camera is inside.
-function Ceiling() {
+export function Ceiling() {
   const geo = useMemo(() => {
     const s = new Shape();
     design.floorBoundary.forEach(([x, y], i) =>
@@ -509,10 +509,10 @@ function Ceiling() {
 }
 
 // Saved wall-surface designs as finish panels on their host wall or partition.
-function Surfaces() {
+export function Surfaces({ grow }: { grow?: (i: number) => number } = {}) {
   return (
     <>
-      {design.wallSurfaces.map((sf) => {
+      {design.wallSurfaces.map((sf, si) => {
         let x: number, y: number, len: number, bottom: number, thick: number, ang: number;
         if (sf.hostType === "wall") {
           const l = design.walls.find((w) => w.id === sf.hostId);
@@ -552,6 +552,8 @@ function Surfaces() {
         return (
           <group
             key={sf.id}
+            scale={grow ? [1, Math.max(0.001, grow(si)), 1] : 1}
+            visible={!grow || grow(si) > 0.001}
             position={[px - W / 2, SLAB + bottom + sf.elevation + height / 2, py - D / 2]}
             rotation={[0, -(ang + (sign < 0 ? Math.PI : 0)), 0]}
           >

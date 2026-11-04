@@ -3,7 +3,8 @@ import {AbsoluteFill, Sequence, interpolate, staticFile, useVideoConfig} from 'r
 import {Audio} from '@remotion/media';
 import {TOKENS as T} from '../../web/lib/ui/tokens';
 import {LaunchOpening3D} from './LaunchOpening3D';
-import {Sources, SeongsuReveal, SeongsuDetail, ViewControls, Listening} from './LaunchSeongsu';
+import {LaunchBuild} from './LaunchBuild';
+import {Sources, SeongsuReveal, SeongsuDetail, Listening} from './LaunchSeongsu';
 import {KintexBridge, KintexReveal, KintexTop, KintexDetail} from './LaunchKintex';
 import {ReportBridge, Report, PopupAreas, KintexAreas, Export, Documents, EndCard} from './LaunchReport';
 import {clamp} from './LaunchKit';
@@ -16,10 +17,11 @@ function FilmAudio(){const {fps}=useVideoConfig();return <Audio src={staticFile(
 export function LaunchFilm(){const {fps}=useVideoConfig();return <AbsoluteFill style={{background:T.bg}}>
  <Sequence durationInFrames={20*fps} name="01 Opening in 3D"><LaunchOpening3D/></Sequence>
  <Sequence from={20*fps} durationInFrames={7.5*fps} name="04 Current source library"><Sources/></Sequence>
- <Sequence from={27.5*fps} durationInFrames={12.5*fps} name="05 Seongsu reveal"><SeongsuReveal/></Sequence>
- <Sequence from={40*fps} durationInFrames={10*fps} name="06 Fitting and photography"><SeongsuDetail/></Sequence>
- <Sequence from={50*fps} durationInFrames={10*fps} name="07 View controls"><ViewControls/></Sequence>
- <Sequence from={60*fps} durationInFrames={10*fps} name="08 Listening lounge photo"><Listening/></Sequence>
+ <Sequence from={27.5*fps} durationInFrames={16*fps} name="05 Muvi builds the floor"><LaunchBuild/></Sequence>
+ {/* The reveal joins mid-way: the build already showed the overview and the count. */}
+ <Sequence from={43.5*fps} durationInFrames={6.5*fps} name="06 Seongsu entry at eye level"><Sequence from={-180} layout="none"><SeongsuReveal/></Sequence></Sequence>
+ <Sequence from={50*fps} durationInFrames={10*fps} name="07 Fitting and photography"><SeongsuDetail/></Sequence>
+ <Sequence from={60*fps} durationInFrames={10*fps} name="08 Annex and six areas"><Listening/></Sequence>
  <Sequence from={70*fps} durationInFrames={2.5*fps} name="09 Second scale"><KintexBridge/></Sequence>
  <Sequence from={72.5*fps} durationInFrames={12.5*fps} name="10 KINTEX reveal"><KintexReveal/></Sequence>
  <Sequence from={85*fps} durationInFrames={10*fps} name="11 Creator floor"><KintexTop/></Sequence>
@@ -32,6 +34,7 @@ export function LaunchFilm(){const {fps}=useVideoConfig();return <AbsoluteFill s
  <Sequence from={152.5*fps} durationInFrames={7.5*fps} name="18 Export from the app"><Export/></Sequence>
  <Sequence from={160*fps} durationInFrames={12.5*fps} name="19 Real exported proposals"><Documents/></Sequence>
  <Sequence from={172.5*fps} durationInFrames={7.5*fps} name="20 Muvilion"><EndCard/></Sequence>
+ <Sequence from={27.3*fps} durationInFrames={fps} name="Build entrance"><Audio src={staticFile('launch/whoosh.wav')} volume={.25}/></Sequence>
  <Sequence from={17*fps} durationInFrames={fps} name="Opening exit sound"><Audio src={staticFile('launch/whoosh.wav')} volume={.35}/></Sequence>
  <Sequence from={70*fps} durationInFrames={fps} name="Event transition"><Audio src={staticFile('launch/whoosh.wav')} volume={.3}/></Sequence>
  <Sequence from={105*fps} durationInFrames={fps} name="Document transition"><Audio src={staticFile('launch/whoosh.wav')} volume={.3}/></Sequence>
