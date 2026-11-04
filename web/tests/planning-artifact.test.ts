@@ -74,9 +74,10 @@ describe("persistent planning document", () => {
     expect(html).not.toContain("<script>"); expect(html).toContain("&lt;script&gt;");
   });
   it("uses activity zones as area cards when a design has no booths", () => {
-    const zone = (id: string, purpose: string) => ({ id, label: id, purpose, x: .5, y: .5, width: 4, depth: 4, rotation: 0, assignable: false });
-    const plan = { ...boothExample().document, zones: [zone("fitting", "experience"), zone("lounge", "lounge"), zone("main", "circulation"), zone("store", "operations"), zone("bar-aisle-south", "circulation")], objects: [] } as Parameters<typeof planningBooths>[0];
+    type Zone = NonNullable<Parameters<typeof planningBooths>[0]["zones"]>[number];
+    const zone = (id: string, purpose: Zone["purpose"]): Zone => ({ id, label: id, purpose, x: .5, y: .5, width: 4, depth: 4, rotation: 0, assignable: false });
+    const plan = { ...boothExample(), zones: [zone("fitting", "experience"), zone("lounge", "lounge"), zone("main", "circulation"), zone("store", "operations"), zone("bar-aisle-south", "circulation")], objects: [] };
     expect(planningBooths(plan).map(b => b.id)).toEqual(["fitting", "lounge"]);
-    expect(planningBooths({ ...plan, zones: [...plan.zones!, { ...zone("b1", "booth") }] }).map(b => b.id)).toEqual(["b1"]);
+    expect(planningBooths({ ...plan, zones: [...plan.zones, zone("b1", "booth")] }).map(b => b.id)).toEqual(["b1"]);
   });
 });

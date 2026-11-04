@@ -7,6 +7,7 @@ vi.mock("@/server/plans/extract", () => ({ extractDrawing: extract }));
 import { getAsset, getProject, listProjects, exportProject } from "@/server/projects/store";
 import { createSampleProject, listSamples, samplesDirectory } from "@/server/projects/samples";
 import { PlanDocumentSchema } from "@/lib/plans/schema";
+import { planningIsStale } from "@/lib/plans/planning-artifact";
 
 let directory: string, samples: string;
 beforeEach(() => {
@@ -153,6 +154,19 @@ describe("sample projects", () => {
       expect(project.state.sources.items.filter(source => source.url)).toHaveLength(3);
       expect(exportProject(project.id).state.sources.items.find(source => source.kind === "concept")?.images).toEqual(concept?.images);
     }
+  });
+  it("installs each shipped recording with a current report and no drawing reads", async () => {
+    for (const sample of listSamples(samplesDirectory())) {
+      expect(sample.recorded).toBeDefined();
+      const project = await createSampleProject(sample.id, samplesDirectory());
+      const report = project.state.planningArtifacts![0];
+      expect(project.state.openReportOnLoad).toBe(true);
+      expect(project.state.document?.objects?.length).toBeGreaterThan(50);
+      expect(report.photos.length).toBeGreaterThan(5);
+      // Installing remaps asset IDs; the report's snapshot must follow, or it reads as stale.
+      expect(planningIsStale(report, getProject(project.id).state.document!, getProject(project.id).state.sources)).toBe(false);
+    }
+    expect(extract).not.toHaveBeenCalled();
   });
   it("ships the authored pop-up and the KINTEX venue project, one drawing each", () => {
     expect(listSamples(samplesDirectory()).map(p=>[p.id,p.drawings.length])).toEqual([['popup',1],['kintex',1]]);
