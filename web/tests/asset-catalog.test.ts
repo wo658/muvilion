@@ -17,17 +17,17 @@ describe("bundled design asset catalog", () => {
     expect(getModelAsset()).toBeUndefined();
   });
 
-  it("finds assets in Korean and English without an exact phrase match", () => {
-    expect(searchDesignAssets({ query: "라운지 의자", category: "furniture" })[0].id).toBe("modern_arm_chair_01");
+  it("finds assets in English without an exact phrase match", () => {
+    expect(searchDesignAssets({ query: "lounge chair", category: "furniture" })[0].id).toBe("modern_arm_chair_01");
     expect(searchDesignAssets({ query: "WHITE PLASTER", category: "material" }).map(asset => asset.id)).toContain("Plaster001");
-    expect(searchDesignAssets({ query: "조명", category: "light" }).map(asset => asset.id)).toContain("modern_ceiling_lamp_01");
+    expect(searchDesignAssets({ query: "lighting", category: "light" }).map(asset => asset.id)).toContain("modern_ceiling_lamp_01");
     expect(searchDesignAssets({ category: "material" })).toHaveLength(MATERIAL_ASSET_IDS.length);
     expect(searchDesignAssets({ query: "not-an-available-asset" })).toEqual([]);
   });
 
   it("finds modular exhibition walls separately from equipment and preserves earlier furniture", () => {
     expect(searchDesignAssets({ category: "partition" }).map(asset => asset.id)).toEqual(expect.arrayContaining(["gallery_wall", "movable_partition"]));
-    expect(searchDesignAssets({ query: "가벽", category: "partition" }).every(asset => asset.kind === "partition")).toBe(true);
+    expect(searchDesignAssets({ query: "partition wall", category: "partition" }).every(asset => asset.kind === "partition")).toBe(true);
     expect(getModelAsset("gallery_wall")!.url).toMatch(/\.glb$/);
     expect(getModelAsset("gallery_wall")!.aiGenerated).toBe(true);
     expect(getModelAsset("floor_plan_board")!.kind).toBe("equipment");
@@ -88,8 +88,8 @@ describe("bundled design asset catalog", () => {
       expect(model.dimensionSource).toBe("gltf-scene-bounds");
     }
     // Source is a set of fixtures, not a single luminaire or chair.
-    expect(getModelAsset("modular_street_seating")!.description).toContain("세트");
-    expect(getModelAsset("mounted_fluorescent_lights")!.description).toContain("세트");
+    expect(getModelAsset("modular_street_seating")!.description).toMatch(/\b(?:kit|set)\b/i);
+    expect(getModelAsset("mounted_fluorescent_lights")!.description).toMatch(/\b(?:kit|set)\b/i);
     expect(getModelAsset("modern_coffee_table_01")!.depth).toBeCloseTo(1.20183, 5);
   });
 });

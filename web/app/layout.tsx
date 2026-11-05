@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${inter.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${plexMono.variable} h-full antialiased`}>
       <head>
         {/* design tokens (lib/ui/tokens.ts) as CSS variables */}
         <style dangerouslySetInnerHTML={{ __html: tokenCss() }} />
