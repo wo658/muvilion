@@ -2,28 +2,28 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# Muse가 축척과 바닥 외곽선을 정하고, 첫 인테리어를 자동 적용한다
+# Muse sets the scale and floor outline and auto-applies the first interior
 
-현재 변경: [ADR-0013](0013-atomic-muse-operations.md)에 따라 모든 설계가 operation 단위로 즉시 커밋되므로 첫 자동 설계도 예외가 아니다. 자동 실행 조건과 1회 실행 규칙은 유지한다.
+Current change: per [ADR-0013](0013-atomic-muse-operations.md), all design is committed immediately per operation, so the first automatic design is no exception. The auto-run conditions and the run-once rule are kept.
 
-사용자 요청에 따라 도면 준비의 축척 확정을 사용자에서 Muse로 옮기고, 브랜드 자료가 있는 새 프로젝트는 처음 열 때 내부까지 꾸며진 상태로 완성한다. [ADR-0011](0011-nextjs-document-preparation.md)의 "축척은 미확정으로 둔다"와 [ADR-0004](0004-reviewed-design-proposals.md)의 "공간 변경은 사용자 Apply로만 반영"에 대한 예외다.
+At the user's request, finalizing the scale during drawing preparation moves from the user to Muse, and a new project with brand sources is completed with its interior furnished when first opened. This is an exception to [ADR-0011](0011-nextjs-document-preparation.md)'s "scale is left unconfirmed" and [ADR-0004](0004-reviewed-design-proposals.md)'s "spatial changes are applied only through user Apply".
 
-## 축척과 바닥 외곽선
+## Scale and floor outline
 
-- 축척 근거는 [ADR-0008](0008-muse-pdf-wall-tracing.md)의 축척 근거 절대로 벽 추적 호출에서 받고, 짧은 기준은 확대해서 눈금을 다시 읽는다. 이 결정은 그 결과를 누가 확정하는지만 바꾼다.
-- 근거가 인쇄된 축척 막대나 치수선이고 **교차 확인**되면 Muse가 확정한다(`scaleConfirmed: true`, `scaleSource: "muse"`, `scaleEvidence`). 교차 확인은 (a) 확대 crop에서 눈금 맞춤에 성공했거나(`refined`, 코드만 설정하고 모델이 보낸 값은 서버가 지운다) (b) 독립된 길이 기준 2개 이상이 5% 안에서 일치하는 경우다. 확인되지 않은 판독 하나는 한 번 잘못 짚으면 틀린 축척이 조용히 확정되므로 추정치로 남긴다. 화면에 "Muse 측정"과 근거를 표시하고, 사용자가 다시 측정하면 `scaleSource: "user"`로 바뀐다. 면적 표기, 부스 모듈 가정, 서로 어긋나는 근거는 추정치로 남겨 사용자가 확정한다. 기존 문서의 출처 없는 확정은 사용자 확정으로 읽는다.
-- 바닥 외곽선은 벽 추적과 병렬로 도는 별도 Muse 호출에서 받고, 자기 교차가 없는 다각형만 쓴다. 이미 검토된 외곽선이나 사용자 축척은 덮어쓰지 않는다. 실패하면 사용자가 그린다.
-- 두 방식을 비교해 정했다. 사용자만 확정하면(ADR-0008 원래 결정) 필수 축척 단계 때문에 모든 도면이 사용자 입력을 기다리고 첫 자동 설계가 성립하지 않는다. Muse가 무조건 확정하면 판독 하나의 실수가 그대로 남는다. 그래서 근거 수집·눈금 맞춤은 ADR-0008 구현을 정본으로 쓰고, 확정만 교차 확인 조건으로 Muse에 맡긴다. 이 브랜치의 별도 축척 측정 호출(확대·격자 재판독, Moscone West L3 오차 −0.5~+0.8%)은 중복이라 제거했고, 바닥 외곽선 호출만 남겼다. 성수 팝업 샘플은 치수선 4개가 일치해 −0.5% 오차로 확정되었다.
+- Scale evidence is received in the wall tracing call as described in the scale evidence section of [ADR-0008](0008-muse-pdf-wall-tracing.md), and short references are enlarged and their ticks re-read. This decision changes only who finalizes that result.
+- When the evidence is a printed scale bar or dimension line and is **cross-checked**, Muse finalizes it (`scaleConfirmed: true`, `scaleSource: "muse"`, `scaleEvidence`). Cross-checked means either (a) tick fitting succeeded on the enlarged crop (`refined`, set only by code; a value sent by the model is cleared by the server), or (b) two or more independent length references agree within 5%. A single unchecked reading stays an estimate, because one misreading would silently finalize a wrong scale. The screen shows "Measured by Muse" and the evidence, and if the user measures again it changes to `scaleSource: "user"`. Area labels, booth module assumptions and conflicting evidence stay estimates for the user to finalize. Confirmations without a source in existing documents are read as user confirmations.
+- The floor outline comes from a separate Muse call that runs in parallel with wall tracing, and only polygons without self-intersections are used. Already reviewed outlines or user scales are not overwritten. On failure, the user draws it.
+- This was decided by comparing two approaches. If only the user finalizes (ADR-0008's original decision), the mandatory scale step makes every drawing wait for user input and the first automatic design cannot happen. If Muse finalizes unconditionally, a single misreading stays as is. So evidence collection and tick fitting use the ADR-0008 implementation as the source of truth, and only finalization is left to Muse under the cross-check condition. This branch's separate scale measurement call (enlarged grid re-reading, Moscone West L3 error −0.5 to +0.8%) was redundant and removed; only the floor outline call remains. The Seongsu pop-up sample was finalized with −0.5% error because 4 dimension lines agreed.
 
-## 첫 인테리어 자동 적용
+## Auto-applying the first interior
 
-- 샘플 프로젝트 생성 시 선택된 브랜드 URL이나 참고 이미지가 있으면 `autoDesignPending`을 켠다. 업로드로 시작한 빈 프로젝트에는 생성 시 자료가 없으므로 켜지지 않는다.
-- 활성 도면에 축척·바닥 외곽선이 있고 디자인이 비어 있으면 Studio가 바닥 전체 가구 배치 인테리어 설계를 한 번 실행하고 결과를 제안 단계 없이 적용한다. 시작할 때 플래그를 지워 새로고침·실패 뒤에 다시 실행하지 않는다.
-- 녹화된 결과가 있는 샘플(2026-11-04 추가)은 기본으로 그 결과를 새 프로젝트로 설치하므로 자동 설계를 실행하지 않는다. 라이브 설계는 수 분 걸리고 아직 600초 안에 끝나지 않을 때가 있어 데모가 매번 다른 미완성 결과를 보여 줬기 때문이다. 녹화본은 실제 Muse 실행 결과(디자인과 기획 문서)를 저장한 것이며 화면과 `recordedDemo`로 녹화임을 표시한다. "Muse로 처음부터 디자인"을 고르면 이 결정의 자동 설계를 그대로 실행한다.
-- 설계 자체는 기존 Designer Muse 경로를 그대로 쓰므로 기하·동선·좌석 검사와 시각 자체 검토를 거친다. 적용은 [ADR-0013](0013-atomic-muse-operations.md)대로 operation 단위로 커밋된다.
+- When a sample project is created with a selected brand URL or reference images, `autoDesignPending` is set. Empty projects started from an upload have no sources at creation, so it is not set.
+- When the active drawing has a scale and floor outline and the design is empty, Studio runs a full-floor furniture layout interior design once and applies the result without a proposal step. The flag is cleared at start so it does not run again after a reload or failure.
+- Samples with a recorded result (added 2026-11-04) install that result as a new project by default, so automatic design does not run. Live design takes several minutes and sometimes still does not finish within 600 seconds, so the demo showed a different, unfinished result each time. The recording stores the result of a real Muse run (design and planning document) and is marked as a recording on screen and with `recordedDemo`. Choosing "Design from scratch with Muse" runs this decision's automatic design as is.
+- The design itself uses the existing Designer Muse path, so it goes through geometry, circulation and seating checks and visual self-review. Application is committed per operation as in [ADR-0013](0013-atomic-muse-operations.md).
 
-## 재검토 조건
+## Revisit conditions
 
-축척 오차가 설계·견적에 실제 문제를 일으키거나, 자동 적용이 사용자의 의도와 자주 어긋나면 사용자 확인 단계로 되돌린다.
+If scale errors cause real problems in design or quotes, or automatic application often conflicts with user intent, return to a user confirmation step.
 
-근거: [확정 규칙 `scaleIsMeasured`](../../web/lib/plans/trace.ts), [재판독 표시](../../web/server/plans/trace.ts), [바닥 외곽선 호출](../../web/server/plans/floor.ts), [자동 설계 시작](../../web/components/studio/studio-chat.tsx), [회귀 테스트](../../web/tests/muse-scale-floor.test.ts).
+Evidence: [finalization rule `scaleIsMeasured`](../../web/lib/plans/trace.ts), [re-reading flag](../../web/server/plans/trace.ts), [floor outline call](../../web/server/plans/floor.ts), [auto design start](../../web/components/studio/studio-chat.tsx), [regression test](../../web/tests/muse-scale-floor.test.ts).

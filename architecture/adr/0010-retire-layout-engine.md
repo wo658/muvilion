@@ -2,17 +2,17 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# 기존 배치 최적화와 동선 계산을 제거한다
+# Remove the old layout optimization and circulation calculation
 
-현재 Studio는 Meta Model의 편집 도구 호출과 이미지 검토로 공간 설계를 제안하며,
-기존 Python `/layout`·`/validate`는 이 흐름에 연결되지 않는다. 사용하지 않는
-OR-Tools 솔버, Shapely 검증·동선 계산, 캐시, 웹 mock 및 평면 계약을 제거한다.
-이는 ADR-0001의 계산 서비스 유지와 ADR-0003의 기존 평면 계약 보존 결정을 대체한다.
-원본 근거·편집 상태 분리, 사용자 Apply 및 웹의 기존 입력 검사는 유지한다.
+The current Studio proposes spatial designs through Meta Model editing tool calls and image review,
+and the old Python `/layout` and `/validate` are not connected to this flow. Remove the unused
+OR-Tools solver, Shapely validation and circulation calculation, cache, web mock and flat contract.
+This supersedes ADR-0001's decision to keep the computation service and ADR-0003's decision to preserve the old flat contract.
+Separation of source evidence and edit state, user Apply, and the web's existing input checks are kept.
 
-PDF·이미지·DXF 처리는 아직 Python에 의존한다. 다른 작업에서 진행 중인
-모델 기반 도면 읽기를 통합하고 페이지 렌더링을 이전한 뒤 서버 전체를 제거한다.
-이 단계가 완료되기 전에는 Next.js 단독 실행이 가능하다고 설명하지 않는다.
-배치 제안은 최적해나 검증된 피난·동선 시뮬레이션 결과를 의미하지 않는다.
+PDF, image and DXF processing still depends on Python. After integrating the model-based drawing reading
+in progress in other work and moving page rendering, the whole server will be removed.
+Until that step is complete, do not describe Next.js as able to run on its own.
+Layout proposals do not mean optimal solutions or validated egress/circulation simulation results.
 
-후속: [ADR-0011](0011-nextjs-document-preparation.md)에서 문서 준비를 이전하고 Python 서버 제거를 완료했다.
+Follow-up: [ADR-0011](0011-nextjs-document-preparation.md) moved document preparation and completed the removal of the Python server.

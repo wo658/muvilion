@@ -2,38 +2,38 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# 모든 모델 작업은 Muse로 하고, 제안·검증·적용 고리로 묶는다
+# All model work goes through Muse, bound in a propose-validate-apply loop
 
-muvilion에서는 도면 읽기부터 설계·촬영·기획 문서까지 모델이 필요한 작업이 많다. 작업마다 다른 모델이나 공급자를 쓰지 않고 Meta의 Muse 계열 하나로 통일한다. 모든 호출은 Next.js의 한 모델 진입점을 거친다([ADR-0001](0001-service-boundaries.md)). Muse의 출력은 구조화된 제안으로 받고, 코드가 결정론적으로 검증하며, 공간을 바꾸는 결과는 사용자가 검토한 뒤 적용한다. 이렇게 하면 Muse를 도면 이해(비전), 도구 사용 에이전트, 자기 결과의 시각 검토, 문서 작성까지 넓게 쓰면서도 모델 출력이 검증 없이 프로젝트 정본이 되지 않는다.
+muvilion has many tasks that need a model, from reading drawings to design, captures and planning documents. Instead of using a different model or provider per task, everything is unified on Meta's Muse family. All calls go through a single model entry point in Next.js ([ADR-0001](0001-service-boundaries.md)). Muse output is received as structured proposals, code validates it deterministically, and results that change space are applied after user review. This lets Muse be used broadly, for drawing understanding (vision), a tool-using agent, visual review of its own results and document writing, without model output becoming the project's source of truth unvalidated.
 
-## 모델과 진입점
+## Models and entry point
 
-- 텍스트·비전·도구 호출: Muse Spark. 기본은 Meta Model API의 `muse-spark-1.3`이고, Baseten의 공개 가중치 `meta-models/muse-spark-open-1026`으로 바꿀 수 있다. 둘 다 [`getModel()`](../../web/server/agent/model.ts) 하나로 얻는다.
-- 이미지 생성: Muse Image(`muse-image-1.0`). [콘셉트 이미지 호출](../../web/server/agent/tools/meta-image.ts)에서만 쓴다.
-- Muse Spark 키는 설정 화면(SQLite) 또는 `web/.env.local`에 둔다. Muse Image는 현재 `MODEL_API_KEY` 환경 변수만 읽는다. 키가 없으면 각 기능이 503과 설정 안내를 돌려주고, 결과를 지어내지 않는다.
+- Text, vision and tool calls: Muse Spark. The default is `muse-spark-1.3` on the Meta Model API, and it can be switched to the open weights `meta-models/muse-spark-open-1026` on Baseten. Both are obtained through the single [`getModel()`](../../web/server/agent/model.ts).
+- Image generation: Muse Image (`muse-image-1.0`). Used only in the [concept image call](../../web/server/agent/tools/meta-image.ts).
+- The Muse Spark key lives in the settings screen (SQLite) or `web/.env.local`. Muse Image currently reads only the `MODEL_API_KEY` environment variable. Without a key, each feature returns 503 with setup guidance and does not fabricate results.
 
-## 적용 지점
+## Where it applies
 
-| 단계 | Muse의 역할 | 입력 | 결과를 지키는 장치 |
+| Stage | Muse's role | Input | Safeguard on the result |
 | --- | --- | --- | --- |
-| 도면 읽기 | 업로드·샘플 도면 미리보기에서 벽 선분, 텍스트, 축척 근거(막대·치수선·면적) 찾기([ADR-0008](0008-muse-pdf-wall-tracing.md)) | 렌더링 이미지 | 미터는 코드가 계산, 짧은 근거는 확대해 재판독, 축척 미확정, 한 번 재시도 후 오류([ADR-0011](0011-nextjs-document-preparation.md)) |
-| 도면 분석 | 추출 선을 벽·치수선으로 분류, 전체 도면 2차 감사 | 영역별 잘라낸 이미지, 선 ID | 받은 ID만 허용, 신뢰도 0.7 미만은 미분류로 유지 |
-| 요청 분류 | 채팅 문장을 설계·대화·분석·되묻기로 나눔 | 사용자 문장, 선택 상태 | 도구 실행 없이 다음 단계만 고름 |
-| 대화 | 공간·브랜드 상담 | 도면 근거(이미지 바이트 없이), 참고 자료 | 편집·검증 완료를 주장하지 않음 |
-| 공간 설계 | Designer Muse 도구 에이전트: 브리프 기록 → 자산 검색 → 편집 → 평면·아이소 렌더를 보고 자체 검토 → 제출 | 도면, 브리프, 참고 이미지 | 기하·동선·좌석 검사가 차단 이슈를 돌려줌. 사용자가 Apply해야 반영([ADR-0004](0004-reviewed-design-proposals.md)) |
-| 콘셉트 이미지 | 설계 방향 시안 생성(Muse Image) | 참고 이미지, 현재 초안 | 편집 가능한 기하가 아님을 표시. 실제 촬영으로 내세우지 않음 |
-| 사진 연출 | 촬영 의도·카메라 계획 후 실제 3D 촬영본을 보고 재조정 | 장면 요약, 브라우저 촬영 이미지 | 라운드 수 제한, 실제 장면만 촬영 |
-| 기획 문서 | 섹션·부스 문구 작성과 수정, 촬영 요청 | 기획 문서, 부스 기하, 참고 자료 | 허용된 섹션·ID만 변경, 기하는 바꾸지 않음([ADR-0007](0007-persistent-planning-artifacts.md)) |
+| Drawing reading | Find wall segments, text and scale evidence (bars, dimension lines, areas) in uploaded and sample drawing previews ([ADR-0008](0008-muse-pdf-wall-tracing.md)) | Rendered image | Code computes meters, short evidence is enlarged and re-read, scale left unconfirmed, error after one retry ([ADR-0011](0011-nextjs-document-preparation.md)) |
+| Drawing analysis | Classify extracted lines as walls or dimension lines, second-pass audit of the full drawing | Per-region cropped images, line IDs | Only received IDs allowed, confidence below 0.7 stays unclassified |
+| Request classification | Split chat messages into design, conversation, analysis or clarification | User message, selection state | Only picks the next step, without running tools |
+| Conversation | Space and brand consultation | Drawing evidence (without image bytes), reference sources | Does not claim edits or validation were completed |
+| Spatial design | Designer Muse tool agent: record brief → search assets → edit → self-review from plan and isometric renders → submit | Drawing, brief, reference images | Geometry, circulation and seating checks return blocking issues. Applied only when the user clicks Apply ([ADR-0004](0004-reviewed-design-proposals.md)) |
+| Concept images | Generate design direction drafts (Muse Image) | Reference images, current draft | Marked as not editable geometry. Not presented as real captures |
+| Photo direction | Plan capture intent and camera, then readjust after viewing real 3D captures | Scene summary, browser capture images | Limited number of rounds, captures only the real scene |
+| Planning document | Write and edit section and booth copy, request captures | Planning document, booth geometry, reference sources | Changes only allowed sections and IDs, does not change geometry ([ADR-0007](0007-persistent-planning-artifacts.md)) |
 
-## 공통 규칙
+## Common rules
 
-- 출력은 도구 호출(zod 스키마)로 받고, 스키마와 업무 규칙으로 다시 검증한다. 자유 텍스트를 파싱해 상태를 바꾸지 않는다.
-- 도면 텍스트·참고 자료는 신뢰하지 않는 데이터로 넘기며, 그 안의 지시를 따르지 않도록 지시문에 명시한다.
-- Muse의 추정(벽 위치, 축척, 신뢰도)은 근사치로 표시한다. 실측·구조 안전·법규 적합을 확인했다고 말하지 않는다.
-- 실패는 명확한 오류나 표시된 대체 결과로 끝낸다. 성공한 것처럼 꾸미지 않고, 서버 로그에 이유를 남긴다.
+- Output is received as tool calls (zod schemas) and validated again against the schema and business rules. State is not changed by parsing free text.
+- Drawing text and reference sources are passed as untrusted data, and the prompts state explicitly that instructions inside them must not be followed.
+- Muse estimates (wall positions, scale, confidence) are marked as approximate. Do not claim surveyed accuracy, structural safety or code compliance was checked.
+- Failures end in a clear error or a marked fallback result. They are not dressed up as success, and the reason is written to the server log.
 
-## 재검토 조건
+## Revisit conditions
 
-다른 모델이 특정 작업에서 확실히 낫거나, Muse API의 기능·비용·지연이 요구를 맞추지 못하면 해당 작업만 다른 모델로 바꾸는 방안을 새 ADR로 결정한다. 그때도 `getModel()` 진입점과 제안·검증·적용 고리는 유지한다.
+If another model is clearly better at a specific task, or the Muse API's features, cost or latency do not meet requirements, decide in a new ADR whether to switch only that task to another model. Even then, keep the `getModel()` entry point and the propose-validate-apply loop.
 
-근거: [모델 진입점](../../web/server/agent/model.ts), [벽 추적](../../web/server/plans/trace.ts), [선 분류](../../web/server/plans/interpret.ts), [요청 분류](../../web/server/plans/intent.ts), [대화](../../web/server/plans/chat.ts), [설계 에이전트](../../web/server/plans/design.ts), [설계 도구](../../web/server/agent/tools/design-tools.ts), [사진 연출](../../web/server/plans/photography.ts), [기획 문서](../../web/server/plans/planning.ts), [지시문](../../web/server/plans/prompts.ts).
+Evidence: [model entry point](../../web/server/agent/model.ts), [wall tracing](../../web/server/plans/trace.ts), [line classification](../../web/server/plans/interpret.ts), [request classification](../../web/server/plans/intent.ts), [conversation](../../web/server/plans/chat.ts), [design agent](../../web/server/plans/design.ts), [design tools](../../web/server/agent/tools/design-tools.ts), [photo direction](../../web/server/plans/photography.ts), [planning document](../../web/server/plans/planning.ts), [prompts](../../web/server/plans/prompts.ts).

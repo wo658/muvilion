@@ -2,18 +2,17 @@
 status: superseded by ADR-0011
 recorded: 2026-11-02
 ---
-# Next.js는 앱과 모델 작업, Python은 계산을 소유한다
+# Next.js owns the app and model work; Python owns computation
 
-현재 변경: [ADR-0010](0010-retire-layout-engine.md)이 기존 계산을 제거하고 [ADR-0011](0011-nextjs-document-preparation.md)가 서비스 경계와 도면 계약을 대체한다. 아래는 당시 결정 기록이다.
+Current change: [ADR-0010](0010-retire-layout-engine.md) removes the old computation and [ADR-0011](0011-nextjs-document-preparation.md) replaces the service boundary and drawing contract. What follows is the record of the decision at the time.
 
-화면·모델 작업·저장 상태와 도면 추출·기하 계산은 변경 이유와 실행 환경이 다르다. 기존 Next.js + FastAPI 구조를 유지하고, Next.js는 앱 API·모델 호출·작업 조율·프로젝트를, Python은 추출·최적화·검사를 소유한다. 계산 서버에 UI 상태나 모델 호출을 넣지 않아 경계를 유지하며, 재구성만을 위해 세 번째 서버·지속 작업 시스템·데이터베이스를 추가하지 않는다.
+Screens, model work and saved state change for different reasons and run in different environments than drawing extraction and geometry computation. Keep the existing Next.js + FastAPI structure: Next.js owns the app API, model calls, work orchestration and projects; Python owns extraction, optimization and checks. Keep the boundary by not putting UI state or model calls in the computation server, and do not add a third server, durable job system or database just to reorganize.
 
-## 영향과 재검토 조건
+## Consequences and revisit conditions
 
-- 브라우저는 Next.js API를 사용한다. 엔진 HTTP 호출은 `web/server/engine/client.ts`로 모아 설정·응답 검증·타임아웃·취소 처리를 공유한다.
-- HTTP 핸들러는 입력/응답 매핑을 맡고 재사용 로직은 기능 모듈에 둔다. 서버 전용 코드와 브라우저/공유 순수 코드를 분리한다.
-- Python의 선택적 디스크 캐시는 폐기 가능한 계산 결과다. 캐시의 프로세스 간 한도·보존이나 병렬 솔버 결과를 절대적인 재현성 보장으로 간주하지 않는다.
-- 연결 종료나 프로세스 재시작 후 작업을 계속해야 한다는 요구가 생기면 요청 수명과 실행 구조를 재검토한다. 지금의 구조를 내구성 있는 작업 큐로 설명하지 않는다.
+- The browser uses the Next.js API. Engine HTTP calls are gathered in `web/server/engine/client.ts` so configuration, response validation, timeouts and cancellation are shared.
+- HTTP handlers map inputs/responses, and reusable logic lives in feature modules. Server-only code is kept separate from browser/shared pure code.
+- Python's optional disk cache holds disposable computation results. The cache's cross-process limits and retention, and parallel solver results, are not treated as an absolute reproducibility guarantee.
+- If a requirement arises for work to continue after a disconnect or process restart, revisit the request lifetime and execution structure. Do not describe the current structure as a durable job queue.
 
-근거: [루트 규칙](../../AGENTS.md), [엔진 규칙](../../engine/AGENTS.md), [중앙 엔진 클라이언트](../../web/server/engine/client.ts), [엔진 캐시](../../engine/app/layout/cache.py). 경계 정리 이력: `304a921`, `3214e2c`.
-
+Evidence: [root rules](../../AGENTS.md), [engine rules](../../engine/AGENTS.md), [central engine client](../../web/server/engine/client.ts), [engine cache](../../engine/app/layout/cache.py). Boundary cleanup history: `304a921`, `3214e2c`.

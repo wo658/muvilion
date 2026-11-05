@@ -1,52 +1,52 @@
-# 공간 제작
+# Space Production
 
-도면과 브랜드 자료를 바탕으로 공간을 설계하고 검토용 기획서를 만드는 제품의 용어다. 참가 플랫폼의 조직·신청·승인은 현재 제작 범위 밖이다.
+Terms for the product that designs spaces from drawings and brand sources and produces planning documents for review. Organizations, applications and approvals for a participant platform are outside the current production scope.
 
 ## Language
 
-**프로젝트**:
-함께 다루는 도면과 참고 자료, 공간 설계와 기획 문서의 작업 묶음.
-_Avoid_: 행사 계정, 참가 신청
+**Project**:
+A working bundle of the drawings and reference sources handled together, plus the spatial design and planning documents.
+_Avoid_: event account, participant application
 
-**도면**:
-공간의 원본 표현과 확인된 치수·경계, 그 위에서 작업하는 공간 설계의 기준.
-_Avoid_: 기획서
+**Drawing**:
+The source representation of a space with its confirmed dimensions and boundaries; the basis for the spatial design worked on top of it.
+_Avoid_: planning document
 
-**참고 자료**:
-공간의 목적과 브랜드 표현을 설명하는 이미지·브리프·메모·브랜드 북마크. 북마크는 링크된 본문을 읽었다는 증거가 아니다.
+**Reference sources**:
+Images, briefs, notes and brand bookmarks that describe the purpose of a space and its brand expression. A bookmark is not evidence that the linked content was read.
 
-**영역**:
-전시·체험·휴식·운영·동선 등의 목적을 정한 구역. 영역 자체는 물리적인 벽이나 장애물이 아니다.
-_Avoid_: 설치물
+**Zone**:
+An area with a set purpose, such as exhibition, experience, rest, operations or circulation. A zone itself is not a physical wall or obstacle.
+_Avoid_: installation
 
-**설치물**:
-부스 구조물·가벽·가구·장비처럼 위치와 물리 치수를 가진 공간 구성 요소.
-_Avoid_: 영역
+**Installation**:
+A spatial element with a position and physical dimensions, such as a booth structure, partition, furniture or equipment.
+_Avoid_: zone
 
-**설계 제안**:
-현재 공간에 반영하기 전 검토하는 변경안. 제안의 존재는 사용자가 적용했음을 뜻하지 않는다.
-_Avoid_: 완료된 설계
+**Design proposal**:
+A change reviewed before it is applied to the current space. The existence of a proposal does not mean the user has applied it.
+_Avoid_: completed design
 
-**기획 문서**:
-공간의 목적·구성·동선·운영 가정과 관련 사진을 설명하고 계속 수정하는 문서.
-_Avoid_: 도면, PDF 원본
+**Planning document**:
+A document, kept up to date, that describes a space's purpose, layout, circulation, operating assumptions and related photos.
+_Avoid_: drawing, PDF original
 
-**기획 PDF**:
-특정 시점의 기획 문서를 전달·열람하기 위한 출력물.
-_Avoid_: 편집 정본, 시공 도서
+**Planning PDF**:
+An output for delivering and viewing the planning document as of a specific point in time.
+_Avoid_: editable source of truth, construction documents
 
-**실제 장면 캡처**:
-설계된 3D 공간을 특정 카메라 구도에서 촬영한 이미지.
-_Avoid_: 생성 콘셉트, 현장 실사
+**Real scene capture**:
+An image of the designed 3D space taken from a specific camera composition.
+_Avoid_: generated concept, on-site photo
 
-**부스**:
-공간 설계에서 부스 용도로 정한 영역 또는 부스 구조물. 참가 회사의 신청이나 배정 상태를 내포하지 않는다.
+**Booth**:
+A zone or booth structure designated for booth use in a spatial design. It does not imply a participating company's application or assignment status.
 
-**예상 참가비**:
-기획 문서에서 근거·포함 조건·세금 상태와 함께 검토하는 참가 비용.
-_Avoid_: 확정 견적, 결제 금액, 시공비
+**Estimated participation fee**:
+A participation cost reviewed in the planning document together with its basis, included terms and tax status.
+_Avoid_: final quote, payment amount, construction cost
 
 
-## 벽면 디자인
+## Wall surface design
 
-기존 벽이나 가벽의 면에 적용하는 색상·재질 마감과 문구·그래픽 구성. 벽의 위치와 형태를 바꾸는 작업과 구분하며, 벽면에 붙이는 디자인은 독립된 가구나 가벽으로 세지 않는다.
+Color and material finishes, plus copy and graphic compositions, applied to a face of an existing wall or partition. It is distinct from changing a wall's position or shape, and a design attached to a wall face is not counted as a standalone piece of furniture or partition.

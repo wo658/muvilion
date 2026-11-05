@@ -2,18 +2,17 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# 프로젝트와 자산의 정본은 로컬 SQLite에 둔다
+# Local SQLite is the source of truth for projects and assets
 
-도면과 자료를 브라우저 저장소에만 두면 원본 파일과 편집 상태를 함께 복원·이동하기 어렵다. 프로젝트, 원본/파생 자산과 앱 설정을 Next.js가 관리하는 로컬 SQLite로 모으고, 프로젝트 수정은 리비전을 확인하여 다른 탭의 변경을 조용히 덮어쓰지 않도록 한다. 현재는 로컬 단일 사용자 제품이며 다중 조직 플랫폼을 위한 저장·인증 설계가 아니다.
+If drawings and sources live only in browser storage, original files and edit state are hard to restore or move together. Projects, original/derived assets and app settings are gathered in a local SQLite database managed by Next.js, and project updates check the revision so changes from another tab are not silently overwritten. This is currently a local single-user product, not a storage/authentication design for a multi-organization platform.
 
-## 영향과 제약
+## Consequences and constraints
 
-- `projects.state_json`과 프로젝트별 자산을 같은 데이터베이스에서 관리한다. 도면별 기획 문서도 프로젝트 상태에 포함된다([0007](0007-persistent-planning-artifacts.md)).
-- 한 프로젝트는 여러 도면과 공유 참고 자료를 가진다. 현재 도면만 Muse의 공간 문맥으로 보내고 첨부된 참고 자료는 모두 포함한다. 이전 선택 플래그는 호환 데이터이며 제외 스위치가 아니다.
-- 예전 브라우저 데이터는 서버가 복구 프로젝트를 받아들인 후 제거한다. 새 프로젝트의 저장 대상으로 localStorage/IndexedDB를 추가하지 않는다. 언어 설정 같은 브라우저 환경설정은 별개다.
-- 프로젝트 내보내기는 원본 자산을 포함하며 API 키는 제외한다. 데이터베이스 전체 복사는 프로젝트 내보내기와 동일하지 않다.
-- 저장된 키는 서버 파일 권한으로 제한되지만 암호화된 비밀 저장소는 아니다. 저장 API의 loopback/명시적 앱 origin 제한 역시 공개 서비스의 사용자 인증을 대체하지 않는다.
-- 원격 협업·사용자별 권한·동시 쓰기 규모가 요구되면 인증 및 저장 경계를 함께 다시 결정한다.
+- `projects.state_json` and per-project assets are managed in the same database. Per-drawing planning documents are also part of project state ([0007](0007-persistent-planning-artifacts.md)).
+- A project has multiple drawings and shared reference sources. Only the current drawing is sent to Muse as spatial context, and all attached reference sources are included. The old selection flag is compatibility data, not an exclusion switch.
+- Old browser data is removed after the server accepts the recovery project. Do not add localStorage/IndexedDB as a storage target for new projects. Browser preferences such as the language setting are separate.
+- Project exports include original assets and exclude API keys. A full database copy is not the same as a project export.
+- Stored keys are restricted by server file permissions but are not an encrypted secret store. The storage API's loopback/explicit app origin restriction also does not replace user authentication for a public service.
+- If remote collaboration, per-user permissions or concurrent-write scale is required, decide the authentication and storage boundaries again together.
 
-근거: [데이터베이스](../../web/server/database.ts), [프로젝트 저장 서비스](../../web/server/projects/store.ts), [프로젝트 스키마](../../web/lib/projects/schema.ts), [접근 제한](../../web/server/settings/meta-key.ts), [도면 자료 문서](../../web/docs/project-sources.md). 관련 이력: `0c1835b`, `8ec4015`.
-
+Evidence: [database](../../web/server/database.ts), [project storage service](../../web/server/projects/store.ts), [project schema](../../web/lib/projects/schema.ts), [access restriction](../../web/server/settings/meta-key.ts), [drawing sources document](../../web/docs/project-sources.md). Related history: `0c1835b`, `8ec4015`.

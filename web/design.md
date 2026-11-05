@@ -77,7 +77,7 @@ In the drawing space, Muvi is a small companion: cap model scale at 0.4 (about 0
 
 ## Language
 
-Only `en` (Eng) and `ko` (한국어) are supported. App Settings changes the UI immediately; Korean is the default. The browser stores the preference and synchronizes other tabs. When storage is unavailable, the preference works for the session.
+Only `en` (English) and `ko` (Korean) are supported. The app always starts in English. Korean is an opt-in for the current session from Settings: it changes the UI immediately and is not remembered across launches.
 
 `lib/i18n/en.json` and `ko.json` are the language packs. Both must have matching keys and interpolation parameters. Use `useI18n().t()` in components and `translate()` in pure helpers. Keep full sentences together when numbers or word order differ.
 

@@ -1,48 +1,48 @@
-# 1분 SaaS 데모 영상: 조사와 수정 계획
+# One-minute SaaS demo video: research and revision plan
 
-작성일: 2026-11-01. 대상: Muvilion-Designer-Film, 60초.
+Written: 2026-11-01. Subject: Muvilion-Designer-Film, 60 seconds.
 
-## 조사 근거
+## Research basis
 
-- 사용자 레퍼런스 [LangEase](https://www.youtube.com/watch?v=SgmuplXU2iY): 이전 시청에서 큰 타이포, 선택적 UI 확대, 커서와 화면 움직임을 확인했다. 이를 정보 하나씩 전달하는 구성에 적용한다.
-- 사용자 레퍼런스 [Lovio](https://www.youtube.com/watch?v=_PLSHdVR4no): 이전 시청에서 결과물 위의 중앙 입력창과 겹쳐진 UI를 확인했다. 공간 디자인에서는 첨부자료→입력→배치→카메라→사진의 인과관계로 바꾼다.
-- 제작사 [Zelios](https://zelios.agency/)는 두 작업을 제품 소개·출시 사례로 제시한다. 성과 수치는 이 영상의 효과를 예측하는 근거로 사용하지 않는다.
-- [Screen Studio의 애니메이션 가이드](https://screen.studio/guide/animations): 화면·커서 이동 속도와 부드러움은 제어할 수 있다. 우리 영상에는 움직임을 많이 추가하기보다, 필요한 클릭만 따라가고 결과를 읽을 시간을 주는 방식으로 적용한다.
+- User reference [LangEase](https://www.youtube.com/watch?v=SgmuplXU2iY): an earlier viewing showed large typography, selective UI zooms, and cursor and screen motion. We apply this to a structure that delivers one piece of information at a time.
+- User reference [Lovio](https://www.youtube.com/watch?v=_PLSHdVR4no): an earlier viewing showed a central input box over the output and layered UI. For spatial design we turn this into the causal chain attachments → input → layout → camera → photo.
+- The studio [Zelios](https://zelios.agency/) presents both works as product introduction and launch cases. Their performance figures are not used as grounds for predicting this video's effect.
+- [Screen Studio's animation guide](https://screen.studio/guide/animations): screen and cursor movement speed and smoothness can be controlled. In our video, rather than adding lots of motion, we follow only the necessary clicks and give time to read the results.
 
-아래 시간·폰트·배율은 출처의 규정이 아니라 이번 영상의 편집 판단이다.
+The timings, fonts and zoom factors below are this video's editing judgements, not rules from the sources.
 
-## 먼저 확인한 문제와 수정안
+## Problems found first and fixes
 
-| 구간 | 문제 | 수정 |
+| Segment | Problem | Fix |
 |---|---|---|
-|0–15초|전송 확대와 이동 폭이 크고 소스 흡수 후 공간 전환이 빠름|핵심 흡수 모션 유지, 최대 확대·좌우 이동폭 완화|
-|15–20초|실제 UI로 급격히 바뀌며 기능 설명이 모호함|짧은 설명 'AI arranges your space.'와 안정된 진입|
-|20–25초|첫 클릭 이전 0.3–0.5초에1.75배로 확대|1.48배 상한, 최소0.9초 진입, 결과를 보는 시간 확보|
-|25–33초|비슷한 UI 구도가 연속|시점 전환 목적을 제목으로 설명, 과도한 재확대 금지|
-|33–35초|추상적인 문구|구체적인 'Design it. / Then capture it.'로 촬영을 예고|
-|35–41초|문구·입력창은 개선됐으나 앞 장면과 상단 여백 차이|공통 유리 재질·버튼 유지, 의도된 두 줄과 읽기 시간 확인|
-|41–49초|긴 실제 앱 설명문은 광고 화면에서 읽기 어려움|전체 설명 읽기를 요구하지 않고 'Find the best angle.' / 'Capture. Refine. Repeat.'로 한 가지 의미 전달|
-|49–57초|사진이 작은 크기에서 너무 크게 튀어나옴|0.28배에서 시작,2초에 걸쳐 확대, 제목과 사진 간 안전거리 유지|
-|전체|모든 컷에 반복되는 수축 브릿지가 시선을 분산|맥락이 바뀌는15/35/41/49/57초만 유지, 블러 강도 절반|
+|0–15s|Send zoom and travel are large, and the transition to the space after source absorption is fast|Keep the core absorption motion; reduce maximum zoom and horizontal travel|
+|15–20s|Abrupt switch to the real UI; the feature explanation is vague|Short caption 'AI arranges your space.' and a steady entry|
+|20–25s|Zooms to 1.75× within 0.3–0.5s before the first click|1.48× cap, at least 0.9s entry, time to see the result|
+|25–33s|Similar UI compositions in a row|Explain the purpose of the view change with a title; no excessive re-zoom|
+|33–35s|Abstract wording|Concrete 'Design it. / Then capture it.' to foreshadow capture|
+|35–41s|Copy and input box improved, but top margin differs from the previous scene|Keep shared glass material and buttons; check the intended two lines and reading time|
+|41–49s|Long real-app descriptions are hard to read on an ad screen|Do not require reading the full description; convey one meaning with 'Find the best angle.' / 'Capture. Refine. Repeat.'|
+|49–57s|The photo pops out too large from a small size|Start at 0.28×, scale up over 2s, keep a safe distance between title and photo|
+|Overall|A shrink bridge repeated on every cut distracts the eye|Keep it only at context changes at 15/35/41/49/57s, with half the blur strength|
 
-## 공통 기준
+## Common standards
 
-- 광고 카피는 한 화면 한 메시지, 제목3–6단어 권장. 영문은 의미 단위로 줄바꿈.
-- 제목 좌우130px 이상 안전 여백. 실제 앱 작은 본문은 반드시 전부 읽히는 텍스트로 취급하지 않는다.
-- 제목·전송 버튼·유리 모서리·그림자는 동일한 역할/규격을 사용한다.
-- 생성·촬영을 실제 속도처럼 오인시키지 않도록 속도 표기 유지.
-- 음성 없이도 이해되게 짧은 설명 카피 추가. 배경음과 두 입력 장면의 키보드 효과음 유지.
-- 참가자 기능, PDF 기획안, 검증되지 않은 자동 URL 수집은 추가하지 않는다.
+- Ad copy: one message per screen; titles of 3–6 words recommended. Break English lines at units of meaning.
+- At least 130px safe margin left and right of titles. Small body text in the real app is not treated as text that must be fully readable.
+- Titles, send buttons, glass corners and shadows use the same roles and specifications.
+- Keep the speed labels so generation and capture are not mistaken for real-time speed.
+- Add short explanatory copy so it is understandable without voice. Keep the background music and the keyboard sound effects in the two input scenes.
+- Do not add participant features, PDF proposals or unverified automatic URL collection.
 
-## 검증 계획
+## Verification plan
 
-기존60초를 순서대로 검토하고2초 간격 전체 콘택트시트 및 전환 주변 프레임을 비교한다. 수정 후 전체 렌더 디코딩,60초/1800프레임 확인, 카피·버튼·사진 구도를 육안으로 확인한다. 점검 증거와 한계는 완료 후 아래에 기록한다.
+Review the existing 60 seconds in order and compare a full contact sheet at 2-second intervals and frames around transitions. After revision, decode the full render, confirm 60s/1800 frames, and visually check copy, buttons and photo composition. Record the inspection evidence and limits below when done.
 
-## 적용 및 검증 결과
+## Applied changes and verification results
 
-- 위 수정안을 적용한 최종본: `out/muvilion-designer-reviewed-60s.mp4`.
-- 전체60초를2초 간격으로 순서대로 비교(`audit-before.jpg`, `audit-after.jpg`); 가장 급했던19.6–21.4초를0.2초 간격으로 별도 확인(`audit-apply-transition.jpg`). 이 점검은 프레임·타임라인 검토이며 사람의 실시간 연속 시청을 대신했다고 주장하지 않는다.
-- 광고 제목, 두 줄 입력 문구, 전송 버튼, 마지막 사진은 점검 프레임에서 잘리지 않는다. 확대된 실제 앱의 긴 본문 일부는 의도적으로 크롭되며, 모든 앱 본문을 읽히게 하는 튜토리얼 구성은 아니다.
-- 클릭 카메라 상한1.48배, 최소28프레임 진입. 오프닝 전송 최대1.35배. 사진 카드 확대60프레임. 같은 의미의 앱 컷끼리는 반복 수축 효과 제거.
-- H.2641920×1080,30fps,1800프레임,영상60.000초. AAC 패킷 길이60.011초. 전체 디코딩 오류 없음.
-- 영상 ESLint/TypeScript 및 저장소 web test/typecheck/lint, engine pytest/ruff 검증.
+- Final version with the fixes above applied: `out/muvilion-designer-reviewed-60s.mp4`.
+- Compared the full 60 seconds in order at 2-second intervals (`audit-before.jpg`, `audit-after.jpg`); separately checked the most abrupt part, 19.6–21.4s, at 0.2-second intervals (`audit-apply-transition.jpg`). This inspection is a frame and timeline review and does not claim to replace a person watching continuously in real time.
+- Ad titles, the two-line input copy, the send button and the final photo are not clipped in the inspected frames. Some long body text of the zoomed real app is intentionally cropped; this is not a tutorial structure that makes all app body text readable.
+- Click camera cap 1.48×, minimum 28-frame entry. Opening send maximum 1.35×. Photo card scale-up 60 frames. Repeated shrink effect removed between app cuts with the same meaning.
+- H.264 1920×1080, 30fps, 1800 frames, video 60.000s. AAC packet duration 60.011s. No errors in full decoding.
+- Verified with video ESLint/TypeScript and repository web test/typecheck/lint, engine pytest/ruff.
