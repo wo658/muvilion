@@ -2,16 +2,15 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# 제작 스튜디오를 먼저 완성하고 참가 플랫폼은 보류한다
+# Finish the production studio first and defer the participant platform
 
-현재 제품 범위는 **도면·브랜드 소스 → 3D·Design → 캡처·PDF 기획서**다. 주최측·참가측으로 제품을 나누는 대신 하나의 편집 흐름을 유지하며, 회사별 부스 제출·배정·신청·승인·결제 플랫폼은 향후 계획으로 둔다. 사용자가 선택한 제품 범위를 실제 코드 경계에 반영한 결정이다.
+The current product scope is **drawing and brand sources → 3D and Design → captures and PDF planning document**. Instead of splitting the product into organizer and participant sides, keep a single editing flow, and leave a platform for per-company booth submission, assignment, application, approval and payment as a future plan. This decision reflects the user-chosen product scope in the actual code boundaries.
 
-## 영향과 제약
+## Consequences and constraints
 
-- 일반 공간의 부스 설계는 남긴다. 부스라는 도형·영역을 가진다는 이유로 참가 회사나 승인 권한이 생기지 않는다.
-- 기존 참가 페이지는 Studio로 이동하고 기존 부스 API는 `410 PLATFORM_DEFERRED`를 반환한다. 과거 부스 데이터는 삭제하거나 새 프로젝트에 자동 합치지 않는다.
-- 현재 기획 문서는 부스 설명·계획 동선·가정이 명시된 예상 참가비를 담을 수 있다. 이는 문서 내용이며 실제 판매 가격 설정·신청·결제 기능의 복구가 아니다.
-- 로컬 비공개 플랫폼 Plan은 미래 시나리오다. 조직·권한·행사·제출·검토 기능을 재개하려면 데이터 소유권, 접근 제어, 상태 전이 및 마이그레이션을 새 결정으로 확정해야 한다.
+- Booth design within a general space stays. Having a shape or zone called a booth does not create a participating company or approval rights.
+- The old participant page redirects to Studio and the old booth API returns `410 PLATFORM_DEFERRED`. Past booth data is not deleted or automatically merged into new projects.
+- The current planning document can contain booth descriptions, planned circulation and an estimated participation fee with stated assumptions. This is document content, not a restoration of real pricing, application or payment features.
+- The local private platform plan is a future scenario. Resuming organization, permission, event, submission or review features requires a new decision settling data ownership, access control, state transitions and migration.
 
-근거: [현재 제품 범위](../../web/README.md#current-product-scope), [보류 응답](../../web/server/plans/platform-deferred.ts), [이전 참가 링크](../../web/app/participate/[projectId]/page.tsx), [통합 회귀](../../integration/retired-platform.test.ts), [기획 문서 서비스](../../web/server/plans/planning.ts). 구현 이력: `c1f172e`.
-
+Evidence: [current product scope](../../web/README.md#current-product-scope), [deferred response](../../web/server/plans/platform-deferred.ts), [old participant link](../../web/app/participate/[projectId]/page.tsx), [integration regression](../../integration/retired-platform.test.ts), [planning document service](../../web/server/plans/planning.ts). Implementation history: `c1f172e`.

@@ -2,23 +2,22 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# 기획 문서는 도면별로 저장하고 PDF는 그 문서에서 출력한다
+# Planning documents are stored per drawing and PDFs are output from them
 
-세션 캡처만으로는 기획 내용을 다시 열거나 대화로 수정하는 작업을 이어갈 수 없다. 기획 문서를 도면별 프로젝트 상태로 저장하고, Muse는 문서의 글과 실제 사진 요청만 수정하며 공간 기하는 변경하지 않도록 한다. PDF는 편집 정본이 아닌 기획 문서의 파생 출력으로 유지한다. 이 결정은 [ADR-0006](0006-session-only-planning-output.md)을 대체한다.
+Session captures alone do not let users reopen planning content or keep editing it through chat. Planning documents are stored as per-drawing project state, and Muse edits only the document text and real photo requests, never spatial geometry. The PDF remains a derived output of the planning document, not the editable source of truth. This decision supersedes [ADR-0006](0006-session-only-planning-output.md).
 
-## 저장과 변경의 경계
+## Storage and change boundaries
 
-- 프로젝트의 `planningArtifacts`에 도면별 문서, 기준 도면/참고 자료, 문서 리비전, 실제 사진과 최대 5개 이전 텍스트 리비전을 보관한다. 기존 SQLite 저장·리비전 충돌 처리·프로젝트 내보내기를 재사용한다.
-- 미리보기는 읽기 전용이고 사용자는 기존 Muse 대화로 섹션·부스 내용을 수정한다. 모델 결과는 허용된 섹션과 대상 ID를 검증하며 관계없는 내용을 보존한다.
-- 사진 요청은 촬영 성공이 아니다. 브라우저가 실제 3D 장면을 촬영하고 누락 사진을 명시한다. 생성 콘셉트 이미지를 실장면 촬영으로 표시하지 않는다.
-- 기준 도면이나 참고 자료가 바뀌면 오래된 문서임을 판별하고 명시적 갱신을 요구한다. 현재 Studio의 갱신은 새 기준을 반영하면서 사진과 이전 텍스트 이력을 비우고, 기존 본문과 여전히 존재하는 부스의 비용 설명은 검토용으로 유지한다.
-- 예상 참가비에는 금액·통화·근거·포함 조건·세금 상태가 있다. 근거 없는 가격을 확정하거나 실제 판매/결제 상태로 취급하지 않는다([0005](0005-design-studio-scope.md)).
+- The project's `planningArtifacts` holds per-drawing documents, the reference drawing/sources, the document revision, real photos and up to 5 previous text revisions. The existing SQLite storage, revision conflict handling and project export are reused.
+- The preview is read-only, and users edit section and booth content through the existing Muse chat. Model results are validated against allowed sections and target IDs, and unrelated content is preserved.
+- A photo request is not a successful capture. The browser captures the real 3D scene and states which photos are missing. Generated concept images are not shown as real scene captures.
+- When the reference drawing or sources change, the document is detected as stale and an explicit refresh is required. The current Studio refresh applies the new reference while clearing photos and previous text history, and keeps the existing body and cost descriptions of booths that still exist for review.
+- An estimated participation fee has an amount, currency, basis, included terms and tax status. Prices without a basis are not finalized or treated as a real sale/payment state ([0005](0005-design-studio-scope.md)).
 
-## 출력과 한계
+## Output and limits
 
-브라우저 인쇄에서 사용자가 PDF로 저장한다. 보고서는 사용자 내용을 escape하고 내장 이미지·글꼴 준비를 기다리며 외부 브랜드 링크 본문을 임의로 가져오지 않는다. 실패나 누락 이미지를 성공한 촬영으로 꾸미지 않는다. PDF 조판·페이지 구성 규칙은 [UI 명세](../../web/design.md)에 둔다.
+The user saves a PDF from browser printing. The report escapes user content, waits for embedded images and fonts to be ready, and does not fetch the content of external brand links on its own. Failures or missing images are not dressed up as successful captures. PDF typesetting and page layout rules are in the [UI specification](../../web/design.md).
 
-이전 텍스트 5개는 전체 프로젝트 감사 이력이나 공동 편집 기능이 아니다. 기획 문서에 도면·이미지를 함께 저장하는 용량 비용이 있으며 프로젝트/API의 제한을 따른다. 향후 무제한 문서 이력, 공동 편집, 서버 자동 PDF 배포가 필요하면 저장·충돌·출력 구조를 다시 결정한다.
+The 5 previous texts are not a full project audit history or a co-editing feature. Storing drawings and images with planning documents has a storage cost and follows project/API limits. If unlimited document history, co-editing or automatic server PDF distribution becomes necessary, decide the storage, conflict and output structure again.
 
-근거: [문서 스키마와 변경 함수](../../web/lib/plans/planning-artifact.ts), [프로젝트 스키마](../../web/lib/projects/schema.ts), [문서 편집 서비스](../../web/server/plans/planning.ts), [Studio 갱신/Undo 연결](../../web/components/studio/studio.tsx), [문서 패널](../../web/components/studio/planning-artifact-panel.tsx), [보고서 출력](../../web/lib/plans/planning-report.ts), [문서 회귀 테스트](../../web/tests/planning-artifact.test.ts). 관련 이력: `18ceb83`, `93c3a19`, `dfa4ceb`.
-
+Evidence: [document schema and change functions](../../web/lib/plans/planning-artifact.ts), [project schema](../../web/lib/projects/schema.ts), [document editing service](../../web/server/plans/planning.ts), [Studio refresh/Undo wiring](../../web/components/studio/studio.tsx), [document panel](../../web/components/studio/planning-artifact-panel.tsx), [report output](../../web/lib/plans/planning-report.ts), [document regression test](../../web/tests/planning-artifact.test.ts). Related history: `18ceb83`, `93c3a19`, `dfa4ceb`.

@@ -1,34 +1,33 @@
-# 아키텍처와 결정 기록
+# Architecture and Decision Records
 
-기준: 2026-11-02 KST. 이 문서는 현재 구조를 안내하며, 개별 선택의 배경과 변경 관계는 [ADR 목록](adr/README.md)에 기록한다.
+As of: 2026-11-02 KST. This document describes the current structure. The background of individual choices and how they replace one another are recorded in the [ADR index](adr/README.md).
 
-## 현재 구조
+## Current structure
 
-| 경계 | 책임과 정본 |
+| Boundary | Responsibility and source of truth |
 | --- | --- |
-| 브라우저 | 도면 편집·3D 표시·실제 장면 촬영·기획서 미리보기와 인쇄. 공간 변경은 제안 검토 후 Apply |
-| Next.js | 브라우저 API, Muse 모델 호출([ADR-0009](adr/0009-muse-model-workflows.md))·작업 조율, 프로젝트·원본 자산·설정 저장. 서버 기능은 `web/server/`에서 관리 |
-| 문서 준비 | Next.js의 요청 단위 Node worker가 PDF/이미지 미리보기 생성. 로컬 OCR·선 추출 없음([ADR-0011](adr/0011-nextjs-document-preparation.md)) |
-| SQLite | 프로젝트와 원본/파생 자산, 도면별 기획 문서, 앱 설정. 일반 프로젝트 내보내기에서 키는 제외 |
-| 도면 계약 | `web/lib/plans/schema.ts`가 편집·저장·모델 결과의 런타임 검증을 소유 |
-| PDF | 저장된 기획 문서를 읽기 위한 파생 출력. 편집 정본은 프로젝트의 기획 문서 |
+| Browser | Drawing editing, 3D display, real scene captures, planning document preview and printing. Spatial changes are applied with Apply after reviewing a proposal |
+| Next.js | Browser APIs, Muse model calls ([ADR-0009](adr/0009-muse-model-workflows.md)) and work orchestration, storage of projects, original assets and settings. Server features live in `web/server/` |
+| Document preparation | A request-scoped Node worker in Next.js renders PDF/image previews. No local OCR or line extraction ([ADR-0011](adr/0011-nextjs-document-preparation.md)) |
+| SQLite | Projects, original/derived assets, per-drawing planning documents, app settings. Keys are excluded from regular project exports |
+| Drawing contract | `web/lib/plans/schema.ts` owns runtime validation for edits, saves and model results |
+| PDF | Derived output for reading a saved planning document. The editable source of truth is the project's planning document |
 
-브라우저 요청은 Next.js를 거친다. Meta Model이 도면 이미지를 읽고 공간 설계를 제안한다. Python 서버·기존 `/layout`·`/validate`와 동선 계산은 제거했다. 문서 worker는 요청 종료 시 폐기하며 별도 서버나 영속 작업 큐가 아니다. 작업 중 제안·촬영과 저장된 프로젝트 상태도 구분한다.
+Browser requests go through Next.js. Meta Model reads drawing images and proposes spatial designs. The Python server, the old `/layout` and `/validate`, and circulation calculations have been removed. Document workers are discarded when the request ends; they are not a separate server or a durable job queue. In-progress proposals and captures are also kept distinct from saved project state.
 
-## 문서를 찾는 순서
+## Where to look
 
-- [AGENTS.md](../AGENTS.md), [웹 규칙](../web/AGENTS.md): 작업 시 지켜야 할 경계와 검증 절차.
-- [ADR 목록](adr/README.md): 결정 이유, 유지할 제약, 대체된 결정.
-- [용어집](../GLOSSARY.md): 도면·공간 설계·기획 문서·부스의 의미.
-- [웹 실행·기능 설명](../web/README.md): 사용법과 현재 API.
-- [UI 명세](../web/design.md): 인터페이스·언어·색상·출력 규칙.
-- [도면 자료 관리](../web/docs/project-sources.md), [치수 기준](../web/docs/dimensions.md), [Designer Muse 도구](../web/documentation/designer-muse-tools.md): 기능별 상세 계약.
+- [AGENTS.md](../AGENTS.md), [web rules](../web/AGENTS.md): boundaries and verification steps to follow when working.
+- [ADR index](adr/README.md): reasons for decisions, constraints to keep, superseded decisions.
+- [Glossary](../GLOSSARY.md): meaning of drawing, spatial design, planning document and booth.
+- [Web setup and features](../web/README.md): usage and the current API.
+- [UI specification](../web/design.md): interface, language, color and output rules.
+- [Drawing source management](../web/docs/project-sources.md), [dimension rules](../web/docs/dimensions.md), [Designer Muse tools](../web/documentation/designer-muse-tools.md): detailed per-feature contracts.
 
-루트 `README.md`는 공개 개요이고, `docs/`는 비공개 로컬 계획이며 Git으로 관리하지 않는다. 공개 문서는 이 경로의 존재에 의존하지 않는다. 초기 조사·제안은 현재 구현을 설명하는 근거로 그대로 사용하지 않는다. 그 안의 제품 범위/플랫폼 Plan은 미래 계획이며, 필요한 현재 결정만 ADR로 옮긴다.
+The root `README.md` is the public overview; `docs/` holds private local plans and is not tracked in Git. Public documents do not depend on that path existing. Early research and proposals are not used as-is to describe the current implementation. The product scope/platform plans in them are future plans; only the current decisions that are needed are moved into ADRs.
 
-## 갱신 규칙
+## Update rules
 
-역할·데이터 소유권·저장 방식·계약처럼 바꾸는 비용이 큰 선택을 변경할 때 ADR을 코드와 같은 변경에 포함한다. 기존 결정을 뒤집으면 새 ADR을 추가하고 이전 문서에 대체 관계를 남긴다. 단순 설명 정정과 증거 링크 갱신은 기존 ADR에서 한다. UI 세부사항은 `web/design.md`, 작업 목록은 계획 문서에 기록하여 ADR을 기능 목록으로 늘리지 않는다.
+When changing a choice that is costly to change, such as roles, data ownership, storage or contracts, include the ADR in the same change as the code. When reversing an existing decision, add a new ADR and record the supersession in the old document. Simple wording corrections and evidence link updates are made in the existing ADR. Record UI details in `web/design.md` and task lists in planning documents, so ADRs do not grow into feature lists.
 
-ADR은 결정의 기록이고 테스트 통과 증명은 아니다. 검증은 각 변경의 테스트·커밋 및 Redpact 실행 기록으로 확인한다. 문서와 코드가 다르면 차이를 명시하고, 어느 쪽이 현재 동작인지 확인한 뒤 수정한다.
-
+An ADR records a decision; it does not prove that tests pass. Verification is confirmed by each change's tests, commits and Redpact run records. When a document and the code disagree, state the difference, confirm which reflects current behavior, and then fix it.

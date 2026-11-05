@@ -1,30 +1,29 @@
 # Architecture Decision Records
 
-루트 `docs/`는 비공개·gitignore 경로이므로 ADR은 Git으로 추적되는 `architecture/adr/`에 둔다. [전체 문서 안내](../README.md).
+The root `docs/` path is private and gitignored, so ADRs live in `architecture/adr/`, which is tracked in Git. [Documentation overview](../README.md).
 
-이번 기록일은 **2026-11-02 KST**다. 기존 결정들을 현재 코드·규칙·Git 이력에서 소급 정리했다. 번호는 정리 순서이며 실제 결정 날짜 순서를 뜻하지 않는다. 최초 결정일을 추정하지 않으며, 아래 이유는 명시된 규칙과 구현상 제약에 근거한다. 별도 비교 실험이나 고객 검증을 수행했다는 뜻은 아니다.
+This record date is **2026-11-02 KST**. Existing decisions were written up retroactively from the current code, rules and Git history. Numbers reflect the order of writing, not the order in which decisions were actually made. Original decision dates are not estimated, and the reasons below rest on stated rules and implementation constraints. They do not imply that separate comparative experiments or customer validation were carried out.
 
-| ADR | 결정 | 상태 |
+| ADR | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-service-boundaries.md) | Next.js가 앱과 모델 작업, Python이 계산을 소유 | superseded by ADR-0011 |
-| [0002](0002-local-project-persistence.md) | 로컬 SQLite를 프로젝트·자산 정본으로 사용 | accepted |
-| [0003](0003-evidence-and-spatial-contracts.md) | 원본 근거·공간 편집 모델·엔진 계약 분리 | superseded by ADR-0011 |
-| [0004](0004-reviewed-design-proposals.md) | 요청 단위 모델 작업과 명시적 공간 변경 적용 | superseded by ADR-0013 for design; line review still applies |
-| [0005](0005-design-studio-scope.md) | 단일 제작 흐름 유지, 참가 플랫폼은 보류 | accepted |
-| [0006](0006-session-only-planning-output.md) | 세션 캡처 기반 일회성 기획서 출력 | superseded by ADR-0007 |
-| [0007](0007-persistent-planning-artifacts.md) | 도면별 영속 기획 문서와 파생 PDF 출력 | accepted |
-| [0008](0008-muse-pdf-wall-tracing.md) | 도면 벽과 축척 근거는 Muse가 이미지에서 찾음 | accepted, amended by ADR-0011, ADR-0012 |
-| [0009](0009-muse-model-workflows.md) | 모든 모델 작업은 Muse로, 제안·검증·적용 고리로 묶음 | accepted |
-| [0010](0010-retire-layout-engine.md) | 기존 배치 최적화·검증·동선 계산 제거 | accepted |
-| [0011](0011-nextjs-document-preparation.md) | Next.js 문서 준비·Meta Model 해석으로 Python 제거 | accepted, amended by ADR-0012 |
-| [0012](0012-muse-scale-floor-auto-design.md) | Muse가 축척·바닥 외곽선을 정하고 첫 인테리어를 자동 적용 | accepted, amended by ADR-0013 |
-| [0013](0013-atomic-muse-operations.md) | Muse 작업을 원자적 operation 단위로 즉시 커밋 | accepted |
+| [0001](0001-service-boundaries.md) | Next.js owns the app and model work; Python owns computation | superseded by ADR-0011 |
+| [0002](0002-local-project-persistence.md) | Local SQLite is the source of truth for projects and assets | accepted |
+| [0003](0003-evidence-and-spatial-contracts.md) | Separate source evidence, the spatial editing model and the engine contract | superseded by ADR-0011 |
+| [0004](0004-reviewed-design-proposals.md) | Request-scoped model work and explicit application of spatial changes | superseded by ADR-0013 for design; line review still applies |
+| [0005](0005-design-studio-scope.md) | Keep a single production flow; defer the participant platform | accepted |
+| [0006](0006-session-only-planning-output.md) | One-off planning document output from session captures | superseded by ADR-0007 |
+| [0007](0007-persistent-planning-artifacts.md) | Persistent per-drawing planning documents with derived PDF output | accepted |
+| [0008](0008-muse-pdf-wall-tracing.md) | Muse finds drawing walls and scale evidence in images | accepted, amended by ADR-0011, ADR-0012 |
+| [0009](0009-muse-model-workflows.md) | All model work goes through Muse, bound in a propose-validate-apply loop | accepted |
+| [0010](0010-retire-layout-engine.md) | Remove the old layout optimization, validation and circulation calculation | accepted |
+| [0011](0011-nextjs-document-preparation.md) | Remove Python with Next.js document preparation and Meta Model interpretation | accepted, amended by ADR-0012 |
+| [0012](0012-muse-scale-floor-auto-design.md) | Muse sets scale and floor outline and auto-applies the first interior | accepted, amended by ADR-0013 |
+| [0013](0013-atomic-muse-operations.md) | Commit Muse work immediately in atomic operations | accepted |
 
-| [0014](0014-wall-surface-designs.md) | 기존 벽·가벽의 표면 디자인을 근거와 분리해 저장 | accepted |
+| [0014](0014-wall-surface-designs.md) | Store surface designs for existing walls and partitions separately from evidence | accepted |
 
-## 읽고 갱신하기
+## Reading and updating
 
-`accepted`는 현재 채택된 결정, `proposed`는 검토 중, `deprecated`는 더 이상 권장하지 않는 결정이다. `superseded by ADR-NNNN`은 대체 문서가 있음을 뜻한다. 새 결정에는 다음 번호를 쓰고, 맥락·선택·이유를 먼저 짧게 적는다. 영향·제약·코드 근거·재검토 조건은 필요할 때 덧붙인다.
+`accepted` is a currently adopted decision, `proposed` is under review, and `deprecated` is a decision no longer recommended. `superseded by ADR-NNNN` means a replacement document exists. Use the next number for a new decision, and first write the context, choice and reason briefly. Add consequences, constraints, code evidence and revisit conditions when needed.
 
-과거 방식을 현재 권장사항처럼 남기지 않는다. 예를 들어 기획서가 패널을 닫으면 사라진다는 설명은 0006의 과거 동작이고, 현재 기획 문서의 저장/출력 정책은 0007이다. 관련 README와 UI 명세도 같은 변경에서 맞춘다.
-
+Do not leave past approaches looking like current recommendations. For example, the statement that the planning document disappears when the panel closes is past behavior from 0006; the current storage/output policy for planning documents is 0007. Align the related READMEs and UI specification in the same change.

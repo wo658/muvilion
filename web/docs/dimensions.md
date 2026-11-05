@@ -1,54 +1,54 @@
-# 치수 기준
+# Dimension conventions
 
-## 좌표와 도면
+## Coordinates and drawings
 
-- 1 scene unit = 1 m. 도면 x/y는 좌상단 기준 0..1이며 미터 좌표는 x × widthMeters, y × heightMeters다.
-- 객체 width/depth/height는 회전 전 X/Z/Y 외곽 치수다. 90° 회전은 방향만 바꾸고 치수 필드는 서로 바꾸지 않는다.
-- 크롭 후 축척을 다시 확인한다. 범례를 포함한 전체 이미지에 홀 치수를 적용하지 않는다. 래스터 도면은 축별 왜곡이 있을 수 있어 알려진 가로·세로 전체 치수 확인을 우선한다.
-- KINTEX 1홀 원본에서 1B는 표기상 90 × 63 m다. 1B 영역만 자른 후 이 치수를 적용한다. 인쇄 도면에 근거한 개략 보정이며 현장 실측이 아니다.
-- 경계, 기둥, 출입구, 천장고는 별도 확인 대상이다. 행사영역과 통로는 도면 축척으로부터 자동 확정되는 사실이 아니다.
+- 1 scene unit = 1 m. Drawing x/y are 0..1 from the top-left; metre coordinates are x × widthMeters and y × heightMeters.
+- Object width/depth/height are the X/Z/Y outer dimensions before rotation. A 90° rotation changes only the orientation; the dimension fields are not swapped.
+- Re-check the scale after cropping. Do not apply hall dimensions to the whole image including the legend. Raster drawings may be distorted per axis, so prefer checking known overall horizontal and vertical dimensions.
+- In the KINTEX Hall 1 original, 1B is labelled 90 × 63 m. Apply this dimension only after cropping to the 1B area. This is an approximate calibration based on the printed drawing, not a site survey.
+- Boundaries, columns, entrances and ceiling heights must be checked separately. Event areas and aisles are not facts determined automatically from the drawing scale.
 
-## 객체 기준 (m)
+## Object conventions (m)
 
-| 개략 기구 | 가로 | 깊이 | 전체 높이 | 용도 |
+| Schematic fixture | Width | Depth | Overall height | Use |
 |---|---:|---:|---:|---|
-| work-table | 1.20 | 0.60 | 0.74 | 앉아서 편집·상담 |
-| meeting-table | 1.40 | 0.80 | 0.74 | 4인 대화 |
-| event-chair | 0.50 | 0.55 | 0.85 | 좌면 높이 0.45 |
-| phone-stand | 0.60 | 0.60 | 1.60 | 바닥 받침·기둥·휴대전화 클램프 |
-| studio-light | 0.60 | 0.60 | 2.10 | 받침·기둥·소프트박스 개략 형상 |
-| lounge-sofa | 1.80 | 0.80 | 0.85 | 2인 휴게 좌석 |
+| work-table | 1.20 | 0.60 | 0.74 | Seated editing and consultation |
+| meeting-table | 1.40 | 0.80 | 0.74 | Four-person conversation |
+| event-chair | 0.50 | 0.55 | 0.85 | Seat height 0.45 |
+| phone-stand | 0.60 | 0.60 | 1.60 | Floor base, pole and phone clamp |
+| studio-light | 0.60 | 0.60 | 2.10 | Schematic base, pole and softbox |
+| lounge-sofa | 1.80 | 0.80 | 0.85 | Two-person lounge seating |
 
-위 값은 이 앱의 명시적 설계 가정이다. 특정 제품 실측치나 인체공학·안전 인증값이 아니다. 정본은 `lib/assets/fixtures.ts`이며 API 도구와 3D 메시가 함께 사용한다.
+These values are explicit design assumptions of this app. They are not measurements of specific products or ergonomic or safety certification values. The canonical source is `lib/assets/fixtures.ts`, shared by the API tools and the 3D meshes.
 
-가져온 glTF 모델은 카탈로그의 원치수를 그대로 쓴다. 카탈로그 값은 파일의 장면 변환이 반영된 외곽 크기이며 제품 실측치가 아니다. 5 mm 이내 입력 반올림은 원치수로 정규화한다. 그 이상 다르면 새 제안은 거부하며, 회전·모듈 추가·맞춤 개략 형상을 사용하도록 안내한다. 기존 잘못된 모델은 저장된 외곽 크기의 상자로 표시하고 경고한다.
+Imported glTF models use the catalog's native dimensions as is. Catalog values are outer sizes with the file's scene transforms applied, not product measurements. Input rounding within 5 mm is normalized to the native dimensions. Larger differences make a new proposal be rejected, with guidance to use rotation, additional modules or a custom schematic shape. Existing invalid models are shown as boxes of their stored outer size with a warning.
 
-## 검증과 한계
+## Verification and limits
 
-화면 메시 외곽, 평면도, 충돌 검사의 회전된 외곽 박스가 같은 미터 치수를 사용한다. 충돌 검사는 가구 다리 사이 빈 공간까지 차지하는 보수적 외곽 박스 검사이며 정밀 메시 충돌이나 법규·피난 검증이 아니다. 외곽이 일치한다고 좌석 용도와 배치 품질까지 자동 보장하지 않는다. 최소 통로·여유 공간과 실제 제품 사양은 별도 검토한다.
+The on-screen mesh bounds, the floor plan and the rotated bounding boxes used for collision checks share the same metre dimensions. The collision check is a conservative bounding-box check that also occupies the empty space between furniture legs; it is not precise mesh collision or code/egress verification. Matching bounds do not automatically guarantee seating use or layout quality. Minimum aisles, clearances and real product specifications are reviewed separately.
 
-## Instagram·Threads 재생성 검증 (2026-10-31)
+## Instagram/Threads regeneration check (2026-10-31)
 
-1B를 90 × 63 m로 보정하고 중앙 40 × 30 m 행사영역을 설계 기준으로 먼저 저장한 뒤 실제 모델 호출로 재생성했다. 적용 후 프로젝트를 다시 열어 설치물 68개, 영역 8개를 확인했다. 상담 테이블 2개, 대화 테이블 4개, 의자 44개, 조명·휴대전화 거치대 각 3개, 소파 2개를 포함한다. 저장 문서 검사에서 원치수 불일치, 기하 충돌 경고, 행사영역 이탈은 각각 0건이었다.
+1B was calibrated to 90 × 63 m and a central 40 × 30 m event area was saved as the design basis first, then the design was regenerated with real model calls. After applying, the project was reopened and 68 installations and 8 areas were confirmed. These include 2 consultation tables, 4 conversation tables, 44 chairs, 3 each of lights and phone stands, and 2 sofas. Saved-document checks found 0 native-dimension mismatches, 0 geometric collision warnings and 0 event-area escapes.
 
-자동 검증은 개략 기구 6종의 메시 외곽·회전된 충돌 범위와 실제 glTF 15종의 장면 변환 후 정점을 검사한다. 진열장 높이·깊이의 잘못된 카탈로그 기록도 파일 기준으로 수정했다. 웹 514개 테스트, 타입 검사, 린트와 엔진 53개 테스트, Ruff를 통과했다. 이 결과는 현장 실측이나 피난·시공 검증을 대신하지 않는다.
+Automated verification checks the mesh bounds and rotated collision extents of the 6 schematic fixtures and the post-scene-transform vertices of 15 real glTF files. Incorrect catalog records for vitrine height and depth were also corrected from the files. 514 web tests, type checking and lint, plus 53 engine tests and Ruff, passed. These results do not replace a site survey or egress/construction verification.
 
-## 착석·이동 검토
+## Seating and movement review
 
-물체끼리 겹치지 않는 것과 사람이 사용할 수 있는 것은 다르다. 새 생성은 `reviewUsability`를 통과해야 제출할 수 있다. `event-chair`와 `lounge-sofa`는 `useTargetId`로 사용할 테이블 또는 무대를 지정하며, 앞 방향은 0° 북쪽 / 90° 동쪽 / 180° 남쪽 / 270° 서쪽이다. 객체 회전은 네 방향을 지원하고 존 회전은 기존 0°/90°를 유지한다. 평면도와 생성 검토 이미지에도 좌석 앞 방향을 표시한다.
+Objects not overlapping is different from people being able to use them. New generations must pass `reviewUsability` before submission. `event-chair` and `lounge-sofa` name the table or stage they are used with via `useTargetId`, and their front direction is 0° north / 90° east / 180° south / 270° west. Object rotation supports four directions; zone rotation keeps the existing 0°/90°. The floor plan and generation review images also show the front direction of seats.
 
-앱의 개략 설계 가정:
+The app's schematic design assumptions:
 
-- 작업·대화 테이블과 의자 앞면 사이 0.10–0.35m, 소파와 커피 테이블 사이 0.35–0.60m.
-- 의자 뒤 0.75m의 이동 공간, 관람석 앞 0.45m의 다리 공간, 소파 앞 0.35m의 사용 공간. 사용 공간은 물체·벽·주 통로와 겹치지 않아야 한다.
-- 명시된 주 통로 폭 1.20m 이상. 통로 영역들이 하나의 연결된 내부 경로를 이루어야 한다.
-- 테이블 좌석 뒤와 소파 앞쪽 측면에서 통로까지 1.20m, 관람석 뒤에서 통로까지 0.90m 폭의 직선 접근을 검사한다. 꺾이는 접근이 필요하면 연결되는 가지 통로 영역을 추가한다. 검사에는 기존 보행 형상의 벽 두께·외곽·설치물과 보수적 샘플 여유를 재사용한다.
-- 관람석은 깊이 0.55m 의자 기준 줄 간격 1.60m 이상을 권장한다. 좌석 사이 빈틈만으로 주 통로를 대신하지 않는다.
+- 0.10–0.35m between work/conversation tables and chair fronts; 0.35–0.60m between sofas and coffee tables.
+- 0.75m of movement space behind chairs, 0.45m of legroom in front of audience seats, and 0.35m of use space in front of sofas. Use spaces must not overlap objects, walls or main aisles.
+- Declared main aisles at least 1.20m wide. Aisle areas must form one connected interior route.
+- A straight 1.20m-wide approach from behind table seats and from the front sides of sofas to an aisle, and 0.90m from behind audience seats, is checked. If a turning approach is needed, add a connecting branch-aisle area. The check reuses the existing walking geometry's wall thickness, bounds and installations with a conservative sampling margin.
+- Audience seating is recommended at a row pitch of at least 1.60m for 0.55m-deep chairs. Gaps between seats alone do not substitute for a main aisle.
 
-이 값은 법정 기준이 아니라 명시적인 앱 설계 가정이다. [미국 Access Board의 접근 경로 안내](https://www.access-board.gov/ada/guides/chapter-4-accessible-routes/)에서도 경로의 연속된 유효 폭과 회전·교행 공간을 별도로 다룬다. 본 검사에는 실제 출입구까지의 피난, 휠체어 좌석·회전 공간, 이동약자 무대 접근, 군중·대기열, 경사와 바닥 마감, 머리로 인한 시야 가림 검증이 포함되지 않는다. 출입구가 확인되지 않으면 내부 경로 연결만 확인했다고 설명한다. 모델 가구의 외관만으로 인체공학 인증을 주장하지 않는다.
+These values are explicit app design assumptions, not legal standards. The [US Access Board guide to accessible routes](https://www.access-board.gov/ada/guides/chapter-4-accessible-routes/) likewise treats continuous clear route width and turning/passing space separately. This check does not cover egress to actual exits, wheelchair seating or turning space, stage access for people with reduced mobility, crowds and queues, slopes and floor finishes, or sightlines blocked by heads. If entrances are not confirmed, describe only the interior route connection as checked. Do not claim ergonomic certification from model furniture appearance alone.
 
-### Instagram·Threads 사용성 재검증 (2026-10-31)
+### Instagram/Threads usability re-check (2026-10-31)
 
-실제 모델 호출로 기존 68개 설치물을 재배치했다. 전체 요청은 7분 제한에 도달했으며, 확보한 미저장 초안으로 남은 검토를 이어서 완료했다. 반복 검토가 늘어난 생성의 총 제한을 10분으로 늘리고 HTTP 실행 한도를 이에 맞췄다. 마지막 제안은 검사 실패로 저장되지 않은 앞줄 다리 공간을 수정하고, 높이 0.45m 무대에 0.15/0.30m 높이의 개략 발판 두 개를 추가했다. 무대 발판은 오르내림을 표현한 설계 요소이며 뷰어의 평지 보행 기능이 계단 보행을 시뮬레이션하지는 않는다.
+The existing 68 installations were rearranged with real model calls. The full request hit the 7-minute limit, and the remaining review was completed from the unsaved draft that had been obtained. The total limit for generations with more review iterations was raised to 10 minutes, with the HTTP execution limit adjusted to match. The final proposal fixed front-row legroom that had failed the check and was not saved, and added two schematic steps 0.15/0.30m high to the 0.45m-high stage. The stage steps are a design element representing going up and down; the viewer's level-ground walking does not simulate walking on stairs.
 
-최종 저장본은 설치물 70개·존 12개, 의자 44개·2인 소파 2개다. 46개 좌석 객체 모두 사용 대상·방향·간격·통로 연결을 통과했다. 테이블 전면 간격 약 0.20m, 소파 전면 간격 약 0.40m, 관람석 줄 간격 1.60m, 무대와 앞줄 의자 사이 최소 0.475m, 주 통로 3m·가지 통로 1.2–1.5m를 확인했다. 치수 불일치·물체 충돌·행사영역 이탈·사용성 문제는 0건이었다. 실제 앱의 평면/눈높이 화면과 바닥 클릭 이동, 저장 후 재로딩을 확인했다. 이 결과의 ‘연결’은 확인된 실제 출입구까지의 피난 검증을 뜻하지 않는다.
+The final saved version has 70 installations and 12 zones, with 44 chairs and 2 two-person sofas. All 46 seating objects passed use target, orientation, spacing and aisle connection checks. Confirmed: table front gaps of about 0.20m, sofa front gaps of about 0.40m, audience row pitch 1.60m, at least 0.475m between the stage and front-row chairs, a 3m main aisle and 1.2–1.5m branch aisles. There were 0 dimension mismatches, object collisions, event-area escapes and usability issues. The real app's plan and eye-level views, floor-click movement, and reload after saving were checked. "Connected" in this result does not mean egress verification to confirmed actual exits.

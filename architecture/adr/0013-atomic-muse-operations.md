@@ -2,23 +2,23 @@
 status: accepted
 recorded: 2026-11-03
 ---
-# Muse 작업은 원자적 operation 단위로 즉시 커밋한다
+# Commit Muse work immediately in atomic operations
 
-[ADR-0004](0004-reviewed-design-proposals.md)는 공간 설계 결과 전체를 검토된 제안으로 돌려주고 사용자 Apply로 반영했다. 설계 한 번이 수 분 걸리는데 중간 실패·취소·연결 종료 시 그동안 만든 결과가 모두 사라졌고(Moscone West L3 첫 자동 설계: `edit_design` 8회 뒤 6.9분째 취소, 저장 0), 되돌리기도 설계 전체 한 단계뿐이었다. 사용자 결정에 따라 Muse의 작업을 operation 단위로 쪼개 도착 즉시 프로젝트에 커밋한다. ADR-0004의 설계 Apply 단계와 [ADR-0012](0012-muse-scale-floor-auto-design.md)의 "첫 자동 설계만 예외" 규칙을 대체한다. 선 검토(line review) 결과는 계속 제안 + Apply다.
+[ADR-0004](0004-reviewed-design-proposals.md) returned the whole spatial design result as a reviewed proposal and applied it on user Apply. A single design takes several minutes, and on an intermediate failure, cancellation or disconnect everything built so far was lost (Moscone West L3 first automatic design: cancelled at 6.9 minutes after 8 `edit_design` calls, 0 saved), and undo was only a single step for the whole design. By user decision, Muse's work is split into operations and committed to the project as soon as each arrives. This supersedes ADR-0004's design Apply step and [ADR-0012](0012-muse-scale-floor-auto-design.md)'s "only the first automatic design is an exception" rule. Line review results remain proposal + Apply.
 
-## 단위
+## Units
 
-- 설계: `edit_design` 한 번(라벨이 붙은 묶음, 최대 32개 요소, 예: 부스 하나와 구성품)과 통과한 `review_design` 교체가 operation 하나다. 요소 하나는 너무 잘고(200개 = 되돌리기 200번), 실행 전체는 너무 굵다. 최종 검토 리비전이 마지막 스트리밍 결과와 다르면 그 차이도 operation 하나로 커밋한다.
-- 도면 읽기: 원본 미리보기(도면 열기) → 벽 추적(축척 근거 포함) → 바닥 외곽선. 뒤 단계 실패는 앞 단계를 남긴다. 단계는 현재 도면에 병합하므로 그사이 사용자가 정한 축척·외곽선을 덮어쓰지 않는다.
+- Design: one `edit_design` call (a labeled batch of up to 32 elements, for example one booth and its components) and a passing `review_design` replacement are each one operation. A single element is too fine (200 elements = 200 undos), and the whole run is too coarse. If the final reviewed revision differs from the last streamed result, that difference is also committed as one operation.
+- Drawing reading: source preview (opening the drawing) → wall tracing (including scale evidence) → floor outline. A failure in a later stage keeps the earlier stages. Stages merge into the current drawing, so they do not overwrite a scale or outline the user set in the meantime.
 
-## 원자성과 검증
+## Atomicity and validation
 
-- 서버가 operation마다 적용 전후 기하 경고를 비교해 새 겹침·바닥/도면 밖·통로 막힘·벽 교차를 만드는 항목은 보류하고, 나머지 항목만 operation 하나로 커밋한다(2026-11-03 변경). 삭제는 한 단위로 함께 판단하고, 보류된 구역·파티션에 의존하는 항목도 함께 보류한다. 모델에는 보류 항목, 원인 경고, 배치 수정 좌표를 돌려주고 보류 항목만 다시 보내게 한다. 저장할 항목이 하나도 없으면 묶음을 거부하고 초안과 프로젝트는 그대로다. 처음에는 묶음 전체를 거부했지만, 성수 팝업 실측에서 묶음 12개 중 4~7개가 항목 하나 때문에 거부되어 묶음마다 30~60초 걸리는 모델 단계를 다시 썼고 600초 제한을 넘었다. 보류해도 커밋된 결과에 새 기하 문제가 없다는 보장은 같다. `edit_design`의 `sets`(2026-11-04 추가)는 회의 테이블·라운지·피팅 바 같은 가구 묶음을 서버가 좌석 규칙(방향, 테이블 간격, 의자 뒤 여유)에 맞춰 펼친 것으로, 묶음 단위로 저장하거나 보류한다. 라이브 데모 실행에서 Muse가 좌석을 하나씩 배치하면 좌석 검토가 600초 안에 수렴하지 않았고 바닥이 성겼기 때문이다. 펼쳐진 요소는 `<set id>-<part>` ID의 일반 객체라 저장 형식은 바뀌지 않는다. 좌석·테이블 짝 같은 사용성 검사와 바닥 전체 할당·요구사항 연결은 중간 단계에서 일시적으로 미충족일 수 있어 기존처럼 `review_design`에서 확인한다.
-- 클라이언트는 스트리밍 이벤트 하나를 일반 편집과 같은 되돌리기 한 단계로 커밋한다. 실행이 커밋한 문서 외의 변경(사용자 편집)이나 참고 자료 변경은 실행을 멈춘다.
-- 실행 카드는 완료·중단 후 결과 요약과 검토를 보여 주고, 중단된 실행은 이어서 디자인, 실행 전체 되돌리기(그 뒤 다른 변경이 없을 때)를 제공한다.
+- For each operation, the server compares geometry warnings before and after applying it, holds back items that create new overlaps, go outside the floor/drawing, block aisles or cross walls, and commits only the remaining items as one operation (changed 2026-11-03). Deletions are judged together as one unit, and items that depend on held-back zones or partitions are held back with them. The model receives the held-back items, the causing warnings and suggested placement coordinates, and is asked to resend only the held-back items. If no item can be saved, the batch is rejected and the draft and project stay unchanged. At first the whole batch was rejected, but in a Seongsu pop-up live run 4–7 of 12 batches were rejected because of a single item, re-running model steps that take 30–60 seconds per batch and exceeding the 600-second limit. Holding items back keeps the same guarantee that committed results have no new geometry problems. `sets` in `edit_design` (added 2026-11-04) are furniture groups such as meeting tables, lounges and fitting bars that the server expands according to seating rules (orientation, table spacing, clearance behind chairs), and they are saved or held back as a group. In live demo runs, when Muse placed seats one by one, seating review did not converge within 600 seconds and the floor was sparse. Expanded elements are ordinary objects with `<set id>-<part>` IDs, so the storage format does not change. Usability checks such as seat-table pairing, full-floor allocation and requirement linking may be temporarily unmet in intermediate stages, so they are checked in `review_design` as before.
+- The client commits one streaming event as one undo step, the same as a regular edit. Changes other than documents committed by the run (user edits) or reference source changes stop the run.
+- After completion or interruption, the run card shows a result summary and review; an interrupted run offers continue designing and undo the whole run (when no other changes followed).
 
-## 참고와 한계
+## References and limits
 
-tldraw의 history mark/squash, tldraw agent의 action 단위 적용과 sanitize, SketchUp의 operation commit/abort, Figma MCP bridge의 쓰기별 체크포인트, Onshape의 불변 microversion, 배치 단위 검증 후 커밋하는 Agentic Designer를 참고했다. 이 원자성은 요청이 살아 있는 동안의 것이다. 서버 재시작 뒤 이어서 실행하려면 영속 작업 큐가 필요하며, AGENTS.md에 따라 그 요구가 생길 때 재검토한다. 되돌리기 기록은 세션 메모리(최근 40단계)이며 operation 로그는 저장하지 않는다.
+References: tldraw's history mark/squash, tldraw agent's per-action application and sanitizing, SketchUp's operation commit/abort, the Figma MCP bridge's per-write checkpoints, Onshape's immutable microversions, and Agentic Designer's validate-then-commit per batch. This atomicity holds while the request is alive. Continuing a run after a server restart requires a durable job queue, which per AGENTS.md is revisited when that requirement arises. Undo history is session memory (last 40 steps), and no operation log is stored.
 
-근거: [operation 검증](../../web/lib/plans/design.ts), [설계 도구](../../web/server/agent/tools/design-tools.ts), [실시간 커밋](../../web/components/studio/studio-chat.tsx), [도면 읽기 단계](../../web/server/plans/extract.ts), [단계 병합](../../web/lib/plans/trace.ts), [회귀 테스트](../../web/tests/plan-trace.test.ts).
+Evidence: [operation validation](../../web/lib/plans/design.ts), [design tools](../../web/server/agent/tools/design-tools.ts), [live commits](../../web/components/studio/studio-chat.tsx), [drawing reading stages](../../web/server/plans/extract.ts), [stage merging](../../web/lib/plans/trace.ts), [regression test](../../web/tests/plan-trace.test.ts).

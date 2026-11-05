@@ -2,22 +2,22 @@
 status: accepted
 recorded: 2026-11-02
 ---
-# Python 서비스를 제거하고 Next.js와 Meta Model로 처리한다
+# Remove the Python service and handle the work with Next.js and Meta Model
 
-현재 변경: [ADR-0012](0012-muse-scale-floor-auto-design.md)에 따라 Muse가 축척 막대·치수를 측정해 축척을 확정하고 바닥 외곽선을 추적한다.
+Current change: per [ADR-0012](0012-muse-scale-floor-auto-design.md), Muse measures scale bars and dimensions to finalize the scale and traces the floor outline.
 
-사용자의 Python 제거 요청에 따라 문서 준비를 Next.js로 옮기고 FastAPI 및 엔진 전송 계약을 제거한다. ADR-0001의 서비스 경계와 ADR-0003의 Python 계약 정본 결정을 대체한다. ADR-0010에서 남았던 문서 서비스 의존성을 해소한다. [ADR-0008](0008-muse-pdf-wall-tracing.md)의 엔진 선 대체를 대신해 Muse 읽기를 한 번 재시도하고, 그래도 실패하면 오류를 보여 준다. 원본 자산·사용자 Apply·SQLite 소유권은 유지한다.
+At the user's request to remove Python, document preparation moves to Next.js and FastAPI and the engine transport contract are removed. This supersedes ADR-0001's service boundary and ADR-0003's decision to make the Python contract the source of truth. It resolves the document service dependency left over from ADR-0010. In place of the engine line fallback in [ADR-0008](0008-muse-pdf-wall-tracing.md), Muse reading is retried once, and if it still fails an error is shown. Ownership of original assets, user Apply and SQLite is kept.
 
-PDF.js와 기존 Sharp는 원본 페이지를 이미지로 만드는 데만 사용하고, 벽·문자·치수 해석은 Meta Model에 맡긴다. 업로드와 샘플이 같은 경로를 사용한다. PDF 참고 자료는 페이지 이미지를 모델 문맥에 직접 첨부한다. 키가 없으면 미해석 미리보기임을 표시하고, 모델 실패를 로컬 추출 결과로 대체하지 않는다. 기존 웹 데이터·기하 검사는 유지한다.
+PDF.js and the existing Sharp are used only to turn original pages into images; interpretation of walls, text and dimensions is left to Meta Model. Uploads and samples use the same path. PDF reference sources attach page images directly to the model context. Without a key, the preview is marked as uninterpreted, and model failures are not replaced with local extraction results. Existing web data and geometry checks are kept.
 
-문서 렌더링은 요청 단위 Node worker에서 실행하고 파일 크기·페이지 수·이미지 크기·시간을 제한한다. 취소 시 worker를 종료한다. 이는 별도 서버나 내구성 있는 작업 시스템이 아니다. 사용자는 DXF 신규 지원도 제거하기로 결정했다. 새 도면은 PDF·PNG·JPG만 받고 CAD는 PDF 내보내기를 안내한다. DXF 변환 라이브러리는 추가하지 않는다. 기존 DXF의 원본·저장 미리보기·편집 결과는 계약 호환으로 보존한다. PDF 좌표는 회전이 적용된 보이는 crop 기준이다.
+Document rendering runs in a request-scoped Node worker with limits on file size, page count, image size and time. The worker is terminated on cancellation. This is not a separate server or a durable job system. The user also decided to drop new DXF support. New drawings accept only PDF, PNG and JPG, and CAD users are directed to export to PDF. No DXF conversion library is added. Originals, saved previews and edit results of existing DXF drawings are preserved for contract compatibility. PDF coordinates are relative to the visible crop with rotation applied.
 
-`web/lib/plans/schema.ts`가 도면 계약의 정본이다. 예전 추출 provenance는 기존 프로젝트 호환을 위해 읽을 수 있지만 새 파일은 `preview`/`muse`로 기록한다. Python/OpenAPI 생성 절차·환경 설정·Docker 서비스·테스트 런타임을 제거한다. 영상 제작용 독립 Python 스크립트는 앱 실행 의존성이 아니다.
+`web/lib/plans/schema.ts` is the source of truth for the drawing contract. Old extraction provenance remains readable for compatibility with existing projects, but new files are recorded as `preview`/`muse`. The Python/OpenAPI generation steps, environment configuration, Docker service and test runtime are removed. Standalone Python scripts for video production are not app runtime dependencies.
 
-## 이유
+## Reasons
 
-제거 대상은 Python 서버 자체보다 그 안의 로컬 ML·CV 계산이다. OpenCV 선 검출, PDF 벡터 선·문자 추출, OR-Tools 배치 솔버, Shapely 기하 검증을 앱에서 걷어내고, 도면 해석은 Meta Model 한 곳에서 맡는다. 이렇게 하면 해석 품질을 개선할 지점이 프롬프트와 Muse 결과 반영 코드 하나로 모이고, 형식마다 다른 로컬 알고리즘을 유지하지 않아도 된다.
+What is being removed is less the Python server itself than the local ML/CV computation inside it. OpenCV line detection, PDF vector line and text extraction, the OR-Tools layout solver and Shapely geometry validation are taken out of the app, and drawing interpretation is handled in one place, Meta Model. This concentrates the places to improve interpretation quality into the prompts and the code that applies Muse results, and removes the need to maintain different local algorithms per format.
 
-같은 이유로 PNG·JPG·PDF 도면을 하나의 경로로 처리한다: Node worker 미리보기 → Muse 벽·문자 읽기. 제거 직전 main에서는 Muse 추적이 PDF에만 적용됐다. 2026-11-02 같은 Loft39 평면도로 비교했을 때 PNG 업로드는 OpenCV 선 후보 572개(가구 선 포함, 문자 0개)였고, 같은 이미지를 PDF로 감싸면 Muse 벽 40개가 나왔다. 제거 후에는 PNG 원본 그대로 Muse 벽 33개·문자 15개를 읽었다. 사용자가 올린 파일 형식이 결과 품질을 바꾸지 않아야 한다.
+For the same reason, PNG, JPG and PDF drawings are handled through one path: Node worker preview → Muse wall and text reading. On main just before the removal, Muse tracing applied only to PDFs. In a 2026-11-02 comparison on the same Loft39 floor plan, a PNG upload produced 572 OpenCV line candidates (including furniture lines, 0 text items), while wrapping the same image in a PDF produced 40 Muse walls. After the removal, the PNG original read directly gave 33 Muse walls and 15 text items. The file format a user uploads should not change result quality.
 
-문서 형식 재현성이나 정밀 CAD annotation 지원이 제품 요구가 되면 렌더러를 재검토한다. 물리 시뮬레이션이나 검증된 최적해가 필요해질 때 별도 요구와 검증을 정의하며 현재 결과를 그처럼 설명하지 않는다.
+If document format fidelity or precise CAD annotation support becomes a product requirement, revisit the renderer. When physical simulation or validated optimal solutions become necessary, define separate requirements and validation, and do not describe current results that way.
